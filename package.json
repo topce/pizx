@@ -1,0 +1,96 @@
+{
+  "name": "@topce/pizx",
+  "version": "0.1.0",
+  "description": "zx fork with native Pi AI integration — π (pi-ai), Π (pi-coding-agent), and agent pattern template tags (Ρ Φ Σ Δ Λ Ψ Ω)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./globals": {
+      "types": "./dist/globals.d.ts",
+      "import": "./dist/globals.js",
+      "default": "./dist/globals.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "pizx": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "skill.sh",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "npm run build:js && npm run build:dts",
+    "build:js": "node scripts/build.mjs",
+    "build:dts": "tsc --project tsconfig.build.json",
+    "dev": "node scripts/build.mjs --watch",
+    "check": "biome check --write src/",
+    "test": "vitest --run",
+    "test:integration": "PIZX_INTEGRATION=1 vitest --run",
+    "prepublishOnly": "npm run build",
+    "example:hello": "node dist/cli.js examples/hello-pizx.mjs",
+    "example:pi": "node dist/cli.js examples/basic-pi.mjs",
+    "example:Pi": "node dist/cli.js examples/basic-capital-pi.mjs",
+    "example:quick": "node dist/cli.js examples/quick-ask.mjs",
+    "example:ralph": "node dist/cli.js examples/ralph-loop.mjs",
+    "example:pattern-ralph": "node dist/cli.js examples/pattern-ralph.mjs",
+    "example:pattern-fleet": "node dist/cli.js examples/pattern-fleet.mjs",
+    "example:pattern-subagent": "node dist/cli.js examples/pattern-subagent.mjs",
+    "example:pattern-debate": "node dist/cli.js examples/pattern-debate.mjs",
+    "example:pattern-pipeline": "node dist/cli.js examples/pattern-pipeline.mjs",
+    "example:pattern-critique": "node dist/cli.js examples/pattern-critique.mjs",
+    "example:pattern-orchestrator": "node dist/cli.js examples/pattern-orchestrator.mjs",
+    "example:all": "npm run example:hello && npm run example:pi && npm run example:Pi && npm run example:quick && npm run example:ralph && npm run example:pattern-ralph && npm run example:pattern-fleet && npm run example:pattern-subagent && npm run example:pattern-debate && npm run example:pattern-pipeline && npm run example:pattern-critique && npm run example:pattern-orchestrator && npm run example:pattern-thread && npm run example:pattern-memory && npm run example:pattern-broadcast && npm run example:pattern-adaptive && npm run example:pattern-graph && npm run example:pattern-nu && npm run example:pattern-chi && npm run example:pattern-tau && npm run example:five-whys"
+,
+    "example:pattern-thread": "node dist/cli.js examples/pattern-thread.mjs",
+    "example:pattern-memory": "node dist/cli.js examples/pattern-memory.mjs",
+    "example:pattern-broadcast": "node dist/cli.js examples/pattern-broadcast.mjs",
+    "example:pattern-adaptive": "node dist/cli.js examples/pattern-adaptive.mjs",
+    "example:pattern-graph": "node dist/cli.js examples/pattern-graph.mjs",
+    "example:pattern-nu": "node dist/cli.js examples/pattern-nu.mjs",
+    "example:pattern-chi": "node dist/cli.js examples/pattern-chi.mjs",
+    "example:pattern-tau": "node dist/cli.js examples/pattern-tau.mjs",
+    "example:five-whys": "node dist/cli.js examples/pattern-five-whys.mjs"
+
+  },
+  "keywords": [
+    "zx",
+    "pi",
+    "ai",
+    "pi-ai",
+    "pi-coding-agent",
+    "shell",
+    "script",
+    "cli",
+    "automation",
+    "llm"
+  ],
+  "author": "Slobodan Filipovic <topce@users.noreply.github.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/topce/pizx.git"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "dependencies": {
+    "@earendil-works/pi-ai": "0.78.1",
+    "@earendil-works/pi-coding-agent": "0.78.1",
+    "zx": "8.8.5"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.16",
+    "@types/node": "25.9.2",
+    "esbuild": "0.28.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.8"
+  }
+}
