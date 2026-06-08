@@ -18,14 +18,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import {
-  ask,
-  build,
-  type PatternFn,
-  type PatternOptions,
-  PatternOutput,
-  PatternPromise,
-} from './types.ts'
+import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -119,7 +112,7 @@ async function execute(
   const t0 = Date.now()
   const count = opts.perspectives ?? 3
   const totalRounds = opts.rounds ?? 1
-  const roles = opts.roles ?? ROLE_SETS[count] ?? ROLE_SETS[3]!
+  const roles = opts.roles ?? ROLE_SETS[count] ?? ROLE_SETS[3] ?? []
 
   // Planner model for synthesis, worker model for individual perspectives
   const plannerModel = opts.plannerModel ?? opts.model
@@ -161,8 +154,7 @@ async function execute(
   })
   allPerspectives.push(...round1Perspectives)
 
-  debateHistory +=
-    round1Perspectives.map((p) => `[Round 1] ${p.role}: ${p.argument}`).join('\n\n') + '\n'
+  debateHistory += `${round1Perspectives.map((p) => `[Round 1] ${p.role}: ${p.argument}`).join('\n\n')}\n`
 
   // ── Rounds 2+: Rebuttals (parallel within each round) ──
   for (let round = 2; round <= totalRounds; round++) {
@@ -204,8 +196,7 @@ async function execute(
     })
     allPerspectives.push(...roundPerspectives)
 
-    debateHistory +=
-      roundPerspectives.map((p) => `[Round ${round}] ${p.role}: ${p.argument}`).join('\n\n') + '\n'
+    debateHistory += `${roundPerspectives.map((p) => `[Round ${round}] ${p.role}: ${p.argument}`).join('\n\n')}\n`
   }
 
   // ── Synthesize with full debate history ──

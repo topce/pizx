@@ -24,14 +24,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import {
-  ask,
-  build,
-  type PatternFn,
-  type PatternOptions,
-  PatternOutput,
-  PatternPromise,
-} from './types.ts'
+import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -141,7 +134,9 @@ async function execute(
 
   if (!opts.quiet) {
     process.stderr.write(`Λ: Pipeline — ${stages.length} stage(s)\n`)
-    stages.forEach((s, i) => process.stderr.write(`  [${i + 1}] ${s}\n`))
+    for (let i = 0; i < stages.length; i++) {
+      process.stderr.write(`  [${i + 1}] ${stages[i]}\n`)
+    }
   }
 
   const stageResults: PipelineStageResult[] = []

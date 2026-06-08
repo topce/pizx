@@ -6,7 +6,7 @@
  *   await Π.quiet()`update import paths`
  */
 
-import type { Model, ThinkingLevel } from '@earendil-works/pi-ai'
+import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import { type AgentSession, createAgentSession } from '@earendil-works/pi-coding-agent'
 
 export interface AgentOptions {

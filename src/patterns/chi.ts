@@ -17,14 +17,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import {
-  ask,
-  build,
-  type PatternFn,
-  type PatternOptions,
-  PatternOutput,
-  PatternPromise,
-} from './types.ts'
+import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -120,7 +113,8 @@ function parseInsights(response: string): {
   // Parse each category block
   const categoryRegex =
     /CATEGORY\s*:\s*(\w+)[\s\S]*?PATTERN\s*:\s*(.+?)\nRECOMMENDATION\s*:\s*(.+?)\nCONFIDENCE\s*:\s*([\d.]+)/gi
-  let match
+  let match: RegExpExecArray | null
+  // biome-ignore lint/suspicious/noAssignInExpressions: regex exec pattern
   while ((match = categoryRegex.exec(response)) !== null) {
     const category = match[1].trim().toLowerCase()
     const pattern = match[2].trim()

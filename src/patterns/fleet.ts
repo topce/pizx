@@ -23,14 +23,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import {
-  ask,
-  build,
-  type PatternFn,
-  type PatternOptions,
-  PatternOutput,
-  PatternPromise,
-} from './types.ts'
+import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -147,9 +140,10 @@ async function execute(
 
   if (!opts.quiet) {
     process.stderr.write(`Φ: Fleet executing ${tasks.length} task(s) in parallel\n`)
-    tasks.forEach((t, i) =>
+    for (let i = 0; i < tasks.length; i++) {
+      const t = tasks[i]
       process.stderr.write(`  [${i + 1}] ${t.slice(0, 60)}${t.length > 60 ? '...' : ''}\n`)
-    )
+    }
   }
 
   // Run tasks with concurrency limit

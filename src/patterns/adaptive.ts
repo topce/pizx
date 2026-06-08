@@ -15,14 +15,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import {
-  ask,
-  build,
-  type PatternFn,
-  type PatternOptions,
-  PatternOutput,
-  PatternPromise,
-} from './types.ts'
+import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -124,9 +117,10 @@ async function execute(
 
   if (!opts.quiet) {
     process.stderr.write(`  → ${steps.length} step(s) planned\n`)
-    steps.forEach((s, i) =>
+    for (let i = 0; i < steps.length; i++) {
+      const s = steps[i]
       process.stderr.write(`      [${i + 1}] ${s.slice(0, 60)}${s.length > 60 ? '...' : ''}\n`)
-    )
+    }
   }
 
   // 2. Execute adaptively

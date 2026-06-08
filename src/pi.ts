@@ -253,8 +253,8 @@ function makePi(opts: Partial<PiOptions> = {}): PiFn {
     configurable: true,
   })
 
-  fn.stream = function* stream_pi(pieces: TemplateStringsArray, ...args: unknown[]) {
-    return runStream(pieces, args, merged)
+  fn.stream = async function* stream_pi(pieces: TemplateStringsArray, ...args: unknown[]) {
+    yield* runStream(pieces, args, merged)
   } as unknown as PiFn['stream']
 
   return fn

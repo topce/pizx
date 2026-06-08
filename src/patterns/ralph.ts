@@ -18,11 +18,9 @@
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import { createAgentSession } from '@earendil-works/pi-coding-agent'
-import { AgentOutput } from '../pi-agent.ts'
 import {
   ask,
   build,
-  type PatternFn,
   type PatternOptions,
   PatternOutput,
   PatternPromise,

@@ -19,14 +19,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import {
-  ask,
-  build,
-  type PatternFn,
-  type PatternOptions,
-  PatternOutput,
-  PatternPromise,
-} from './types.ts'
+import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -290,11 +283,11 @@ async function execute(
 
   if (!opts.quiet) {
     process.stderr.write(`  → ${roles.length} role(s) proposed:\n`)
-    roles.forEach((r) =>
+    for (const r of roles) {
       process.stderr.write(
         `      ${r.name}: ${r.goal.slice(0, 60)}${r.goal.length > 60 ? '...' : ''}\n`
       )
-    )
+    }
   }
 
   // Phase 2: Decide workflow

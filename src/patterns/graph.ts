@@ -15,14 +15,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import {
-  ask,
-  build,
-  type PatternFn,
-  type PatternOptions,
-  PatternOutput,
-  PatternPromise,
-} from './types.ts'
+import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -172,9 +165,9 @@ async function execute(
 
   if (!opts.quiet) {
     process.stderr.write(`Γ: DAG Graph — ${nodes.length} node(s), ${edges.length} edge(s)\n`)
-    nodes.forEach((n) =>
+    for (const n of nodes) {
       process.stderr.write(`  [${n.id}] ${n.task.slice(0, 60)}${n.task.length > 60 ? '...' : ''}\n`)
-    )
+    }
   }
 
   const batches = topoBatches(nodes, edges)

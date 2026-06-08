@@ -82,7 +82,7 @@ describe('π tag', () => {
   })
 
   it('call with options returns a new function', async () => {
-    const { π, configurePi } = await import('./pi.ts')
+    const { π } = await import('./pi.ts')
     const tag = π({ model: 'anthropic/claude-sonnet-4-5' })
     expect(typeof tag).toBe('function')
   })

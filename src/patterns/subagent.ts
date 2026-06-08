@@ -20,14 +20,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import {
-  ask,
-  build,
-  type PatternFn,
-  type PatternOptions,
-  PatternOutput,
-  PatternPromise,
-} from './types.ts'
+import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -145,9 +138,10 @@ async function execute(
 
   if (!opts.quiet) {
     process.stderr.write(`  → ${subTasks.length} sub-task(s) identified:\n`)
-    subTasks.forEach((st, i) =>
+    for (let i = 0; i < subTasks.length; i++) {
+      const st = subTasks[i]
       process.stderr.write(`      [${i + 1}] ${st.slice(0, 60)}${st.length > 60 ? '...' : ''}\n`)
-    )
+    }
   }
 
   // 2. Execute sub-tasks in parallel (with concurrency limit)

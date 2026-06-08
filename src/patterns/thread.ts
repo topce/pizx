@@ -14,14 +14,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import {
-  ask,
-  build,
-  type PatternFn,
-  type PatternOptions,
-  PatternOutput,
-  PatternPromise,
-} from './types.ts'
+import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -114,7 +107,7 @@ async function execute(
   const t0 = Date.now()
   const agentCount = opts.agents ?? 3
   const maxTurns = opts.turns ?? 3
-  const roles = opts.roles ?? ROLE_SETS[agentCount] ?? ROLE_SETS[3]!
+  const roles = opts.roles ?? ROLE_SETS[agentCount] ?? ROLE_SETS[3] ?? []
 
   const plannerModel = opts.plannerModel ?? opts.model
   const workerModel = opts.workerModel ?? opts.model

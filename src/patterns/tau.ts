@@ -21,14 +21,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import {
-  ask,
-  build,
-  type PatternFn,
-  type PatternOptions,
-  PatternOutput,
-  PatternPromise,
-} from './types.ts'
+import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -164,7 +157,8 @@ async function defineSchema(
   const roles: string[] = []
   const assignments = new Map<string, string[]>()
 
-  let match
+  let match: RegExpExecArray | null
+  // biome-ignore lint/suspicious/noAssignInExpressions: regex exec pattern
   while ((match = agentRegex.exec(response)) !== null) {
     const role = match[1].trim()
     const agentKeys = match[2]
@@ -198,7 +192,7 @@ function formatStore(store: Record<string, string>): string {
 
 function mergeEntry(store: Record<string, string>, key: string, content: string): void {
   if (store[key]) {
-    store[key] += '\n\n' + content
+    store[key] += `\n\n${content}`
   } else {
     store[key] = content
   }
@@ -249,9 +243,10 @@ async function executeRound(
 
     // Parse KEY: ... VALUE: ... pairs
     const kvRegex = /KEY\s*:\s*(.+?)\nVALUE\s*:\s*([\s\S]*?)(?=\nKEY\s*:|\n*$)/gi
-    let kvMatch
+    let kvMatch: RegExpExecArray | null
     let found = false
 
+    // biome-ignore lint/suspicious/noAssignInExpressions: regex exec pattern
     while ((kvMatch = kvRegex.exec(response)) !== null) {
       const key = kvMatch[1].trim()
       const value = kvMatch[2].trim()

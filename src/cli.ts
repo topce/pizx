@@ -99,7 +99,7 @@ function parseArgs(argv: string[]) {
 function printHelp() {
   // language=txt
   console.log(`
- ${chalk.bold('pizx ' + VERSION)}   zx/${zxVersion}
+ ${chalk.bold(`pizx ${VERSION}`)}   zx/${zxVersion}
    zx-compatible script runner with Pi AI built-in
 
  ${chalk.bold('Usage')}
@@ -166,7 +166,7 @@ async function runPrintMode(flags: ReturnType<typeof parseArgs>['flags'], args: 
   try {
     const result = await tag`${prompt}`
     if (flags.quiet) {
-      process.stdout.write(result.toString() + '\n')
+      process.stdout.write(`${result.toString()}\n`)
     }
   } catch (err) {
     console.error('pizx: pi-ai error:', err instanceof Error ? err.message : err)

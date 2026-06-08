@@ -14,14 +14,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import {
-  ask,
-  build,
-  type PatternFn,
-  type PatternOptions,
-  PatternOutput,
-  PatternPromise,
-} from './types.ts'
+import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -107,7 +100,7 @@ async function execute(
   const question = build(pieces, args)
   const t0 = Date.now()
   const workerCount = opts.workers ?? 4
-  const roles = opts.roles ?? ROLE_SETS[workerCount] ?? ROLE_SETS[4]!
+  const roles = opts.roles ?? ROLE_SETS[workerCount] ?? ROLE_SETS[4] ?? []
 
   const plannerModel = opts.plannerModel ?? opts.model
   const workerModel = opts.workerModel ?? opts.model
@@ -147,7 +140,7 @@ async function execute(
   // Synthesize (planner model)
   if (!opts.quiet) process.stderr.write('  → Synthesizing responses...\n')
 
-  const responsesText = responses.map((wr, i) => `--- ${wr.role} ---\n${wr.response}`).join('\n\n')
+  const responsesText = responses.map((wr) => `--- ${wr.role} ---\n${wr.response}`).join('\n\n')
 
   const synthesis = await ask(
     `Original question:\n${question}\n\nWorker responses:\n${responsesText}\n\nSynthesize a cohesive, actionable recommendation.`,
