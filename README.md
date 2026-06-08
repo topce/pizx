@@ -1,5 +1,7 @@
 # pizx
 
+[![GitHub Sponsors](https://img.shields.io/github/sponsors/topce?style=social&logo=github)](https://github.com/sponsors/topce)
+
 > **zx fork with native Pi AI integration** — 15 template tags for shell scripting, AI text generation, coding agents, agentic patterns, communication, and orchestration topologies.
 
 ## Quick Start
