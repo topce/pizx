@@ -17,7 +17,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -26,6 +26,8 @@ export interface ChiOptions extends PatternOptions {
   source?: PatternOutput
   /** Explicit execution trace text to analyze */
   trace?: string
+  /** Run a quality review on the extracted insights. Default: false */
+  qualityCheck?: boolean
 }
 
 const defaults: ChiOptions = {
@@ -58,7 +60,9 @@ export class ChiOutput extends PatternOutput {
     /** Concrete suggested changes to roles, prompts, or workflow */
     public readonly suggestedChanges: string,
     startTime: number,
-    endTime: number
+    endTime: number,
+    /** Quality review, if qualityCheck was enabled */
+    public readonly qualityReview?: QualityReviewResult
   ) {
     super(text, startTime, endTime)
   }
@@ -161,6 +165,10 @@ async function execute(
 
   const { insights, summary, suggestedChanges } = parseInsights(response)
 
+  // Quality review (optional) — validate the extracted insights
+  if (!opts.quiet && opts.qualityCheck) process.stderr.write('  → Quality review...\n')
+  const qualityReview = await runQualityReview(input, response, opts)
+
   const t1 = Date.now()
 
   const text = [
@@ -175,7 +183,7 @@ async function execute(
     `\nChanges: ${suggestedChanges}`,
   ].join('\n')
 
-  return new ChiOutput(text, insights, summary, suggestedChanges, t0, t1)
+  return new ChiOutput(text, insights, summary, suggestedChanges, t0, t1, qualityReview)
 }
 
 /** Χ tag — Cross-Agent Learning: extract patterns and recommendations from traces */

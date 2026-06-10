@@ -15,7 +15,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -40,6 +40,8 @@ export interface GraphOptions extends PatternOptions {
   graph?: { nodes: GraphNode[]; edges: GraphEdge[] }
   /** Separator for parsing graph from template. Default: "→" */
   separator?: string
+  /** Run a quality review on the final graph output. Default: false */
+  qualityCheck?: boolean
 }
 
 const defaults: GraphOptions = {
@@ -64,7 +66,9 @@ export class GraphOutput extends PatternOutput {
     public readonly finalOutput: string,
     public readonly nodeResults: GraphNodeResult[],
     startTime: number,
-    endTime: number
+    endTime: number,
+    /** Quality review, if qualityCheck was enabled */
+    public readonly qualityReview?: QualityReviewResult
   ) {
     super(text, startTime, endTime)
   }
@@ -225,6 +229,10 @@ async function execute(
   const finalNodeResults = lastBatch.map((id) => results.get(id)).filter(Boolean)
   const finalOutput = finalNodeResults.length > 0 ? finalNodeResults.join('\n\n') : ''
 
+  // Quality review (optional)
+  if (!opts.quiet && opts.qualityCheck) process.stderr.write('  → Quality review...\n')
+  const qualityReview = await runQualityReview(template, finalOutput, opts)
+
   const summary = nodeResults
     .map(
       (nr) =>
@@ -232,7 +240,7 @@ async function execute(
     )
     .join('\n\n')
 
-  return new GraphOutput(summary, finalOutput, nodeResults, t0, t1)
+  return new GraphOutput(summary, finalOutput, nodeResults, t0, t1, qualityReview)
 }
 
 /** Γ tag — Graph: DAG-based task execution */

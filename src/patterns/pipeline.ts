@@ -24,7 +24,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -35,6 +35,8 @@ export interface PipelineOptions extends PatternOptions {
   stagePrompts?: string[]
   /** Separator used to parse stages from template. Default: "→" or "->" */
   separator?: string
+  /** Run a quality review on the final pipeline output. Default: false */
+  qualityCheck?: boolean
 }
 
 const defaults: PipelineOptions = {
@@ -63,7 +65,9 @@ export class PipelineOutput extends PatternOutput {
     /** Results from each stage */
     public readonly stages: PipelineStageResult[],
     startTime: number,
-    endTime: number
+    endTime: number,
+    /** Quality review, if qualityCheck was enabled */
+    public readonly qualityReview?: QualityReviewResult
   ) {
     super(text, startTime, endTime)
   }
@@ -164,6 +168,10 @@ async function execute(
   const t1 = Date.now()
   const finalOutput = currentInput
 
+  // Quality review (optional) — use the original template as the request
+  if (!opts.quiet && opts.qualityCheck) process.stderr.write('  → Quality review...\n')
+  const qualityReview = await runQualityReview(template, finalOutput, opts)
+
   const summary = stageResults
     .map(
       (sr) =>
@@ -171,7 +179,7 @@ async function execute(
     )
     .join('\n\n')
 
-  return new PipelineOutput(summary, finalOutput, stageResults, t0, t1)
+  return new PipelineOutput(summary, finalOutput, stageResults, t0, t1, qualityReview)
 }
 
 /** Λ tag — Pipeline: sequential agent chain */

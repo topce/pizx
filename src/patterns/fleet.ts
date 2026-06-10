@@ -23,7 +23,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
 import { getErrorMessage } from '../utils.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
@@ -33,6 +33,8 @@ export interface FleetOptions extends PatternOptions {
   tasks?: string[]
   /** Maximum concurrency. Default: 5 */
   concurrency?: number
+  /** Run a quality review on the fleet results. Default: false */
+  qualityCheck?: boolean
 }
 
 const defaults: FleetOptions = {
@@ -62,7 +64,9 @@ export class FleetOutput extends PatternOutput {
     /** Results for each fleet member */
     public readonly members: FleetMemberOutput[],
     startTime: number,
-    endTime: number
+    endTime: number,
+    /** Quality review, if qualityCheck was enabled */
+    public readonly qualityReview?: QualityReviewResult
   ) {
     super(text, startTime, endTime)
   }
@@ -175,7 +179,11 @@ async function execute(
 
   const header = `Fleet Results: ${results.filter((r) => r.success).length}/${results.length} succeeded\n\n`
 
-  return new FleetOutput(header + summary, results, t0, t1)
+  // Quality review (optional) — review the fleet results as a whole
+  if (!opts.quiet && opts.qualityCheck) process.stderr.write('  → Quality review...\n')
+  const qualityReview = await runQualityReview(template, header + summary, opts)
+
+  return new FleetOutput(header + summary, results, t0, t1, qualityReview)
 }
 
 /** Φ tag — Fleet: parallel agent execution */

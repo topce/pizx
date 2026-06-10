@@ -314,6 +314,12 @@ describe('FleetOutput', () => {
     expect(m1.success).toBe(true)
     expect(m2.error).toBe('error')
   })
+  it('stores quality review when provided', () => {
+    const out = new FleetOutput('summary', [], 1000, 1200, {
+      score: 0.75, assessment: 'Mixed results', recommendation: 'Retry failed tasks',
+    })
+    expect(out.qualityReview?.score).toBe(0.75)
+  })
 })
 
 describe('SubagentOutput', () => {
@@ -380,6 +386,12 @@ describe('PipelineOutput', () => {
     expect(sr.stage).toBe('analyze')
     expect(sr.index).toBe(0)
   })
+  it('stores quality review when provided', () => {
+    const out = new PipelineOutput('summary', 'final', [], 1000, 1200, {
+      score: 0.86, assessment: 'Pipeline output is clear', recommendation: 'Add more stages',
+    })
+    expect(out.qualityReview?.score).toBe(0.86)
+  })
 })
 
 describe('CritiqueOutput', () => {
@@ -437,6 +449,13 @@ describe('NuOutput', () => {
     expect(role.name).toBe('Analyst')
     expect(role.expertise).toBe('data analysis')
   })
+  it('stores quality review when provided', () => {
+    const out = new NuOutput(
+      'summary', [], 'parallel', 'no deps', [], 'synth', 1000, 1200,
+      { score: 0.84, assessment: 'Team organized well', recommendation: 'Add more roles' }
+    )
+    expect(out.qualityReview?.score).toBe(0.84)
+  })
 })
 
 // ── Cross-Agent Learning (Χ) Outputs ───────────────────────────────────────
@@ -459,6 +478,12 @@ describe('ChiOutput', () => {
     expect(ins.pattern).toBe('agents repeated info')
     expect(ins.confidence).toBe(0.85)
   })
+  it('stores quality review when provided', () => {
+    const out = new ChiOutput('text', [], 'summary', 'changes', 1000, 1200, {
+      score: 0.90, assessment: 'Insights are actionable', recommendation: 'Prioritize top 3',
+    })
+    expect(out.qualityReview?.score).toBe(0.90)
+  })
 })
 
 // ── Tool-Mediated Orchestration (Τ) Outputs ─────────────────────────────────
@@ -477,6 +502,12 @@ describe('TauOutput', () => {
     expect(entry.operation).toBe('write')
     expect(entry.key).toBe('Market')
     expect(entry.round).toBe(1)
+  })
+  it('stores quality review when provided', () => {
+    const out = new TauOutput('summary', [], {}, 'synth', 1000, 1200, {
+      score: 0.87, assessment: 'Store well-structured', recommendation: 'Add cross-references',
+    })
+    expect(out.qualityReview?.score).toBe(0.87)
   })
 })
 
@@ -504,6 +535,12 @@ describe('ThreadOutput', () => {
     expect(msg.role).toBe('Proposer')
     expect(msg.turn).toBe(1)
   })
+  it('stores quality review when provided', () => {
+    const out = new ThreadOutput('summary', 'conclusion', [], 1000, 1200, {
+      score: 0.82, assessment: 'Good synthesis', recommendation: 'Add citations',
+    })
+    expect(out.qualityReview?.score).toBe(0.82)
+  })
 })
 
 describe('MemoryOutput', () => {
@@ -514,6 +551,12 @@ describe('MemoryOutput', () => {
     expect(out.entries.length).toBe(1)
     expect(entry.round).toBe(1)
   })
+  it('stores quality review when provided', () => {
+    const out = new MemoryOutput('summary', 'synth', [], 1000, 1200, {
+      score: 0.79, assessment: 'Adequate coverage', recommendation: 'Deepen analysis',
+    })
+    expect(out.qualityReview?.score).toBe(0.79)
+  })
 })
 
 describe('BroadcastOutput', () => {
@@ -523,6 +566,12 @@ describe('BroadcastOutput', () => {
     expect(out.synthesis).toBe('synthesis')
     expect(out.responses.length).toBe(1)
     expect(resp.success).toBe(true)
+  })
+  it('stores quality review when provided', () => {
+    const out = new BroadcastOutput('summary', 'synth', [], 1000, 1200, {
+      score: 0.93, assessment: 'Excellent synthesis', recommendation: 'None',
+    })
+    expect(out.qualityReview?.score).toBe(0.93)
   })
 })
 
@@ -544,6 +593,12 @@ describe('GraphOutput', () => {
     expect(out.finalOutput).toBe('final')
     expect(out.nodeResults.length).toBe(1)
     expect(nr.nodeId).toBe('step_1')
+  })
+  it('stores quality review when provided', () => {
+    const out = new GraphOutput('summary', 'final', [], 1000, 1200, {
+      score: 0.81, assessment: 'Graph executed well', recommendation: 'Add error handling',
+    })
+    expect(out.qualityReview?.score).toBe(0.81)
   })
 })
 

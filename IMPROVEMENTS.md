@@ -151,7 +151,63 @@ console.log(`Input: ${answer.inputTokens}, Output: ${answer.outputTokens}`)
 | Retry support | ❌ | ✅ `maxRetries` on all tags |
 | Token tracking | ❌ | ✅ `.trace`, `.totalTokens` on all outputs |
 | Cost tracking | ❌ | ✅ `.totalCost` in USD on all outputs |
-| Tests | 95/95 | 95/95 |
+| Tests | 95/95 | 220/220 |
+| Quality validation patterns | 3/15 | 15/15 |
+
+---
+
+---
+
+## #5 — Quality Validation for All Patterns (2026-06-10)
+
+**Problem:** Only 3 of 15 patterns (Ρ Ralph, Ψ Critique, Α Adaptive) had built-in quality validation. The remaining 12 produced outputs with no quality assessment.
+
+**Fix:** Added optional `qualityCheck` option to all 12 remaining patterns. When enabled, runs a post-execution LLM review that scores the final output (0.0–1.0), provides an assessment, and recommends improvements.
+
+### Approach
+
+1. Extracted a shared `runQualityReview()` helper into `types.ts` to avoid ~420 lines of duplication
+2. Added `qualityCheck?: boolean` option to each pattern's Options interface
+3. Added optional `qualityReview?: QualityReviewResult` field to each pattern's Output class
+4. Each pattern calls `runQualityReview(originalRequest, finalOutput, opts)` after its final synthesis/execution step
+
+### Patterns updated (12)
+
+| Pattern | Review Target |
+|---|---|
+| Ω Orchestrator | Final synthesis |
+| Σ Subagents | Final synthesis |
+| Δ Debate | Final conclusion |
+| Θ Thread | Final conclusion |
+| Μ Memory | Consolidated synthesis |
+| Β Broadcast | Synthesized recommendation |
+| Ν Nu | Synthesized final answer |
+| Τ Tau | Consolidated synthesis |
+| Λ Pipeline | Final pipeline output |
+| Φ Fleet | Aggregate fleet results |
+| Γ Graph | Final DAG output |
+| Χ Chi | Extracted insights |
+
+### Usage
+
+```js
+const result = await Ω({ qualityCheck: true })`design the system architecture`
+if (result.qualityReview) {
+  console.log(`Quality: ${result.qualityReview.score}`)
+  console.log(result.qualityReview.assessment)
+}
+```
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `src/patterns/types.ts` | +42 lines: `QualityReviewResult`, `QUALITY_REVIEW_SYSTEM`, `runQualityReview()` |
+| `src/patterns/index.ts` | +2 exports |
+| 12 pattern files | ~10 lines each: option, constructor field, review call |
+| `src/pizx.test.ts` | +70 lines: qualityReview tests for all Output classes |
+
+**Verification:** ✅ JS build, DTS, 220/220 tests pass (was 211).
 
 ---
 
@@ -159,7 +215,7 @@ console.log(`Input: ${answer.inputTokens}, Output: ${answer.outputTokens}`)
 
 | # | Issue | Impact |
 |---|---|---|
-| 5 | Quality validation only in 3/15 patterns (Ρ, Ψ, Α) | 🟡 Medium |
+| 5 | ~~Quality validation only in 3/15 patterns (Ρ, Ψ, Α)~~ ✅ All 15 now have qualityCheck | 🟡 Medium |
 | 6 | No human-in-the-loop / approval gates | 🟡 Medium |
 | 7 | No structured audit logging for pattern phases | 🟡 Medium |
 | 8 | No pattern composition / nesting | 🟢 Low |
