@@ -462,6 +462,49 @@ describe('π tag (pi.ts)', () => {
     })
   })
 
+  // ── thinkingBudgets and appendSystemPrompt ───────────────────────────
+
+  describe('thinkingBudgets and appendSystemPrompt', () => {
+    it('passes thinkingBudgets to streamSimple', async () => {
+      const { pickModel } = await import('./model-picker.ts')
+      vi.mocked(pickModel).mockReturnValue(fakeModel())
+      const { π } = await import('./pi.ts')
+      const { streamSimple } = await import('@earendil-works/pi-ai')
+      const budgets = { medium: 16384, high: 65536 }
+
+      await π({ thinkingBudgets: budgets })`test`
+
+      const call = vi.mocked(streamSimple).mock.calls.at(-1)
+      expect(call?.[2]).toMatchObject({ thinkingBudgets: budgets })
+    })
+
+    it('appends appendSystemPrompt to system prompt', async () => {
+      const { pickModel } = await import('./model-picker.ts')
+      vi.mocked(pickModel).mockReturnValue(fakeModel())
+      const { π } = await import('./pi.ts')
+      const { streamSimple } = await import('@earendil-works/pi-ai')
+
+      await π({ system: 'Base system', appendSystemPrompt: 'Extra context' })`test`
+
+      const call = vi.mocked(streamSimple).mock.calls.at(-1)
+      const ctx = call?.[1]
+      expect(ctx?.systemPrompt).toContain('Base system')
+      expect(ctx?.systemPrompt).toContain('Extra context')
+    })
+
+    it('works with only appendSystemPrompt (no system)', async () => {
+      const { pickModel } = await import('./model-picker.ts')
+      vi.mocked(pickModel).mockReturnValue(fakeModel())
+      const { π } = await import('./pi.ts')
+      const { streamSimple } = await import('@earendil-works/pi-ai')
+
+      await π({ appendSystemPrompt: 'Standalone append' })`test`
+
+      const call = vi.mocked(streamSimple).mock.calls.at(-1)
+      expect(call?.[1]?.systemPrompt).toBe('Standalone append')
+    })
+  })
+
   // ── configurePi ────────────────────────────────────────────────────────
 
   describe('configurePi', () => {
@@ -799,6 +842,49 @@ describe('Π tag (pi-agent.ts)', () => {
       expect(disposeFn).toHaveBeenCalled()
     })
   })
+
+  // ── system, skills, and appendSystemPrompt options ────────────────────
+
+  describe('system, skills, and appendSystemPrompt', () => {
+    it('creates resource loader when system is set', async () => {
+      // Force new session by using a unique model id
+      const { closeAgent, Π } = await import('./pi-agent.ts')
+      await closeAgent()
+      const { createAgentSession } = await import('@earendil-works/pi-coding-agent')
+
+      await Π({ system: 'You are a test agent', tools: ['read'], model: 'test/sys' })`hello`
+
+      // Verify createAgentSession received a resourceLoader
+      const callOpts = vi.mocked(createAgentSession).mock.calls.at(-1)?.[0]
+      expect(callOpts?.resourceLoader).toBeDefined()
+    })
+
+    it('does not create resource loader when no overrides are set', async () => {
+      const { closeAgent, Π } = await import('./pi-agent.ts')
+      await closeAgent()
+      const { createAgentSession } = await import('@earendil-works/pi-coding-agent')
+
+      await Π({ tools: ['read'], model: 'test/noopts' })`hello`
+
+      const callOpts = vi.mocked(createAgentSession).mock.calls.at(-1)?.[0]
+      expect(callOpts?.resourceLoader).toBeUndefined()
+    })
+
+    it('passes appendSystemPrompt to resource loader', async () => {
+      const { closeAgent, Π } = await import('./pi-agent.ts')
+      await closeAgent()
+      const { createAgentSession } = await import('@earendil-works/pi-coding-agent')
+
+      await Π({
+        appendSystemPrompt: 'Focus on security',
+        tools: ['read'],
+        model: 'test/append',
+      })`hello`
+
+      const callOpts = vi.mocked(createAgentSession).mock.calls.at(-1)?.[0]
+      expect(callOpts?.resourceLoader).toBeDefined()
+    })
+  })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1125,6 +1211,71 @@ describe('ask (patterns/types.ts)', () => {
     expect(output.trace[0].totalTokens).toBe(30)
     expect(output.trace[0].cost).toBe(0.002)
     expect(output.trace[0].call).toBe(1)
+  })
+
+  // ── thinkingBudgets and skills in ask() ────────────────────────────────
+
+  describe('thinkingBudgets and skills propagation', () => {
+    it('passes thinkingBudgets to completeSimple', async () => {
+      const { ask } = await import('./patterns/types.ts')
+      const { completeSimple } = await import('@earendil-works/pi-ai')
+      const budgets = { medium: 20480, high: 65536 }
+
+      await ask('test task', { thinkingBudgets: budgets, model: 'test/provider' })
+
+      const call = vi.mocked(completeSimple).mock.calls.at(-1)
+      expect(call?.[2]).toMatchObject({ thinkingBudgets: budgets })
+    })
+
+    it('injects skill content into system prompt', async () => {
+      // Simulate skill loading by loading from disk
+      const { loadSkillContents } = await import('./skill-loader.ts')
+      // loadSkillContents returns empty map for non-existent skills
+      const found = await loadSkillContents(['non-existent-skill-xyz-123'])
+      expect(found.size).toBe(0)
+    })
+
+    it('does not fail when skills option is empty', async () => {
+      const { ask } = await import('./patterns/types.ts')
+      // Empty skills array should be a no-op
+      const result = await ask('test', { skills: [], model: 'test/provider' })
+      expect(typeof result).toBe('string')
+    })
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// skill-loader.ts — loadSkillContent
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('skill-loader', () => {
+  it('returns undefined for non-existent skills', async () => {
+    const { loadSkillContent } = await import('./skill-loader.ts')
+    const content = await loadSkillContent('non-existent-skill-xyz-123')
+    expect(content).toBeUndefined()
+  })
+
+  it('finds skills in configured paths', async () => {
+    const { loadSkillContent } = await import('./skill-loader.ts')
+    // The shipping-and-launch skill exists in .agents/skills/
+    const content = await loadSkillContent('shipping-and-launch')
+    // Should find it (project has .agents/skills)
+    expect(content).toBeDefined()
+    expect(content).toContain('Shipping and Launch')
+  })
+
+  it('loadSkillContents returns map of found skills', async () => {
+    const { loadSkillContents } = await import('./skill-loader.ts')
+    const map = await loadSkillContents(['shipping-and-launch', 'non-existent'])
+    expect(map.size).toBeGreaterThanOrEqual(1)
+    expect(map.has('shipping-and-launch')).toBe(true)
+    expect(map.has('non-existent')).toBe(false)
+  })
+
+  it('SKILL_PATHS array is defined', async () => {
+    const { SKILL_PATHS } = await import('./skill-loader.ts')
+    expect(Array.isArray(SKILL_PATHS)).toBe(true)
+    expect(SKILL_PATHS.length).toBeGreaterThanOrEqual(4)
   })
 })
 

@@ -11,6 +11,7 @@ import {
   type Context,
   type SimpleStreamOptions,
   streamSimple,
+  type ThinkingBudgets,
   type ThinkingLevel,
 } from '@earendil-works/pi-ai'
 import { PiOutput } from './pi-output.ts'
@@ -25,8 +26,12 @@ import { getErrorMessage } from './utils.ts'
 export interface PiOptions {
   model?: string
   thinkingLevel?: ThinkingLevel
+  /** Token budgets per thinking level (token-based providers only). */
+  thinkingBudgets?: ThinkingBudgets
   quiet?: boolean
   system?: string
+  /** Text appended after the system prompt. */
+  appendSystemPrompt?: string
   maxTokens?: number
   /** Timeout in milliseconds for each LLM call. Default: provider SDK default. */
   timeoutMs?: number
@@ -41,8 +46,11 @@ const defaults: PiOptions = {
 }
 
 function makeContext(pieces: TemplateStringsArray, args: unknown[], opts: PiOptions): Context {
+  const systemParts: string[] = []
+  if (opts.system) systemParts.push(opts.system)
+  if (opts.appendSystemPrompt) systemParts.push(opts.appendSystemPrompt)
   return {
-    systemPrompt: opts.system,
+    systemPrompt: systemParts.length > 0 ? systemParts.join('\n\n') : undefined,
     messages: [
       {
         role: 'user' as const,
@@ -57,6 +65,7 @@ function makeOpts(opts: PiOptions): SimpleStreamOptions {
   return {
     maxTokens: opts.maxTokens,
     reasoning: opts.thinkingLevel,
+    thinkingBudgets: opts.thinkingBudgets,
     timeoutMs: opts.timeoutMs,
     maxRetries: opts.maxRetries,
   }

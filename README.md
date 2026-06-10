@@ -289,6 +289,57 @@ configurePi({ model: 'anthropic/claude-sonnet-4-5', maxTokens: 8000, timeoutMs: 
 configureAgent({ maxTurns: 5, excludeTools: ['write'] })
 ```
 
+### System Prompt Overrides
+
+All tags accept `system` (replaces default) and `appendSystemPrompt` (appended after system).
+
+```js
+// π: custom system prompt
+await π({ system: 'You are a security auditor' })`review this code`
+
+// Π: set system prompt and append extra instructions
+await Π({ system: 'You are a test engineer', appendSystemPrompt: 'Write tests first' })`add tests for auth`
+
+// Patterns: inject system context via mergeSystem
+await Ω({ system: 'Prioritize security over performance' })`design login flow`
+```
+
+### Thinking Budgets
+
+Fine-grained token budgets per reasoning level. Passes through to providers via `thinkingBudgets`.
+
+```js
+// Per-call
+await π({ thinkingBudgets: { medium: 16384, high: 65536 } })`analyze`
+
+// Global default
+configurePi({ thinkingBudgets: { medium: 20480, high: 131072 } })
+
+// Patterns support it too
+await Ω({ thinkingBudgets: { high: 65536 } })`deep analysis task`
+```
+
+### Skill Integration
+
+Load Pi agent skills from disk and inject them as system context. Skills are discovered from the same paths as `skill.sh`: `.pi/skills`, `.agents/skills`, `~/.pi/agent/skills`, etc.
+
+```js
+import { loadSkillContent, loadSkillContents } from '@topce/pizx'
+
+// Load a single skill
+const codeStyle = await loadSkillContent('code-simplification')
+if (codeStyle) {
+  await π({ system: codeStyle })`refactor auth.ts`
+}
+
+// Load multiple skills
+const skills = await loadSkillContents(['test-driven-development', 'spec-driven-development'])
+
+// Π and all patterns accept skills option
+await Π({ skills: ['code-simplification'] })`clean up this file`
+await Ω({ skills: ['spec-driven-development', 'incremental-implementation'] })`build the feature`
+```
+
 ## CLI Reference
 
 ```bash

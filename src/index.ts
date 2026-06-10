@@ -135,3 +135,4 @@ export {
   // Π — pi-coding-agent with tools
   Π,
 } from './pi-agent.ts'
+export { loadSkillContent, loadSkillContents, SKILL_PATHS } from './skill-loader.ts'

@@ -6,8 +6,12 @@
  *   await Π.quiet()`update import paths`
  */
 
-import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { type AgentSession, createAgentSession } from '@earendil-works/pi-coding-agent'
+import type { ThinkingBudgets, ThinkingLevel } from '@earendil-works/pi-ai'
+import {
+  type AgentSession,
+  createAgentSession,
+  DefaultResourceLoader,
+} from '@earendil-works/pi-coding-agent'
 import { build } from './patterns/types.ts'
 import { getErrorMessage } from './utils.ts'
 
@@ -15,10 +19,18 @@ export interface AgentOptions {
   cwd?: string
   model?: string
   thinkingLevel?: ThinkingLevel
+  /** Token budgets per thinking level (token-based providers only). */
+  thinkingBudgets?: ThinkingBudgets
   quiet?: boolean
   maxTurns?: number
   tools?: string[]
   excludeTools?: string[]
+  /** Custom system prompt (replaces Pi default). */
+  system?: string
+  /** Text appended after the system prompt. */
+  appendSystemPrompt?: string
+  /** Skill names to load and register with the agent session. */
+  skills?: string[]
 }
 
 const _agentDefaults: AgentOptions = {
@@ -54,17 +66,57 @@ export class AgentPromise extends Promise<AgentOutput> {}
 
 // ── Session management ───────────────────────────────────────────────────────
 
+import { loadSkillContents, SKILL_PATHS } from './skill-loader.ts'
+
 let _sharedSession: AgentSession | null = null
+
+/** Build a resource loader with system prompt and skill overrides. */
+function createLoader(opts: AgentOptions): DefaultResourceLoader | undefined {
+  const hasSystem = opts.system !== undefined
+  const hasAppend = opts.appendSystemPrompt !== undefined
+  const hasSkills = opts.skills && opts.skills.length > 0
+  if (!hasSystem && !hasAppend && !hasSkills) return undefined
+
+  return new DefaultResourceLoader({
+    cwd: opts.cwd ?? process.cwd(),
+    agentDir: '',
+    systemPrompt: opts.system,
+    appendSystemPrompt: opts.appendSystemPrompt ? [opts.appendSystemPrompt] : undefined,
+  })
+}
 
 async function getSession(opts: AgentOptions): Promise<AgentSession> {
   if (_sharedSession && !opts.model) return _sharedSession
 
   try {
+    const loader = createLoader(opts)
+
+    // Register skill directories with the resource loader
+    if (opts.skills && opts.skills.length > 0 && loader) {
+      const skillMap = await loadSkillContents(opts.skills)
+      const skillPaths: Array<{
+        path: string
+        metadata: { source: string; scope: 'project' | 'user' | 'temporary'; origin: 'top-level' }
+      }> = []
+      for (const [name] of skillMap) {
+        for (const base of SKILL_PATHS) {
+          skillPaths.push({
+            path: `${base}/${name}`,
+            metadata: { source: 'pizx', scope: 'project', origin: 'top-level' },
+          })
+        }
+      }
+      if (skillPaths.length > 0) {
+        loader.extendResources({ skillPaths })
+      }
+    }
+
     const result = await createAgentSession({
       cwd: opts.cwd,
       thinkingLevel: opts.thinkingLevel,
       tools: opts.tools,
       excludeTools: opts.excludeTools,
+      resourceLoader: loader,
     })
 
     _sharedSession = result.session

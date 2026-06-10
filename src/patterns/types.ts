@@ -6,7 +6,7 @@
  * and a typed result object.
  */
 
-import type { ThinkingLevel } from '@earendil-works/pi-ai'
+import type { ThinkingBudgets, ThinkingLevel } from '@earendil-works/pi-ai'
 
 // ── Common options ──────────────────────────────────────────────────────────
 
@@ -30,6 +30,10 @@ export interface PatternOptions {
   timeoutMs?: number
   /** Maximum retry attempts for transient failures (network errors, rate limits). Default: provider SDK default (typically 2). */
   maxRetries?: number
+  /** Token budgets per thinking level (token-based providers only). */
+  thinkingBudgets?: ThinkingBudgets
+  /** Skill names to load and inject as system context (e.g. ['code-simplification']). */
+  skills?: string[]
   /** If true, pause before the first major execution phase and ask for confirmation via stdin. Default: false */
   confirm?: boolean
 }
@@ -281,6 +285,7 @@ export async function confirmPhase(
 import { completeSimple } from '@earendil-works/pi-ai'
 
 import { pickModel } from '../model-picker.ts'
+import { loadSkillContents } from '../skill-loader.ts'
 
 export { pickModel }
 
@@ -292,16 +297,31 @@ export async function ask(prompt: string, opts: Partial<PatternOptions> = {}): P
   const model = pickModel(opts.model)
   if (!model) throw new Error('pizx/patterns: No AI models configured. Run `pi auth login` first.')
 
+  // Load and inject skills into the system prompt
+  let systemPrompt = opts.system
+  if (opts.skills && opts.skills.length > 0) {
+    const skillMap = await loadSkillContents(opts.skills)
+    if (skillMap.size > 0) {
+      const skillBlocks: string[] = []
+      for (const [name, content] of skillMap) {
+        skillBlocks.push(`Skill context (${name}):\n${content}`)
+      }
+      const skillContext = skillBlocks.join('\n\n')
+      systemPrompt = systemPrompt ? `${systemPrompt}\n\n${skillContext}` : skillContext
+    }
+  }
+
   const t0 = Date.now()
   const result = await completeSimple(
     model,
     {
-      systemPrompt: opts.system,
+      systemPrompt,
       messages: [{ role: 'user', content: prompt, timestamp: Date.now() }],
     },
     {
       maxTokens: opts.maxTokens ?? 4096,
       reasoning: opts.thinkingLevel ?? ('medium' as ThinkingLevel),
+      thinkingBudgets: opts.thinkingBudgets,
       timeoutMs: opts.timeoutMs,
       maxRetries: opts.maxRetries,
     }
