@@ -15,7 +15,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, mergeSystem } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -103,7 +103,7 @@ async function execute(
     ...opts,
     model: plannerModel,
     thinkingLevel: 'high' as ThinkingLevel,
-    system: PLAN_SYSTEM,
+    system: mergeSystem(opts.system, PLAN_SYSTEM),
   })
 
   // Parse plan into steps
@@ -138,7 +138,7 @@ async function execute(
       process.stderr.write(`  → Step ${executionStep}: ${currentStep.slice(0, 60)}...\n`)
 
     // Execute current step (worker model)
-    const result = await ask(currentStep, { ...opts, model: workerModel, system: EXECUTE_SYSTEM })
+    const result = await ask(currentStep, { ...opts, model: workerModel, system: mergeSystem(opts.system, EXECUTE_SYSTEM) })
 
     // Evaluate (planner model)
     const evaluation = await ask(
@@ -148,7 +148,7 @@ async function execute(
         model: plannerModel,
         maxTokens: 512,
         thinkingLevel: 'high' as ThinkingLevel,
-        system: EVALUATE_SYSTEM,
+        system: mergeSystem(opts.system, EVALUATE_SYSTEM),
       }
     )
 

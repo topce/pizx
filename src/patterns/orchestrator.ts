@@ -16,7 +16,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -116,7 +116,7 @@ async function execute(
     ...opts,
     model: plannerModel,
     thinkingLevel: 'high' as ThinkingLevel,
-    system: PLANNER_SYSTEM.replace('{$workerCount}', String(workerCount)),
+    system: mergeSystem(opts.system, PLANNER_SYSTEM.replace('{$workerCount}', String(workerCount))),
   })
 
   // Extract sub-tasks from the plan
@@ -152,7 +152,7 @@ async function execute(
     const batch = tasks.slice(i, i + concurrency)
     const batchResults = await Promise.allSettled(
       batch.map((task) =>
-        ask(task, { ...opts, model: workerModel, system: WORKER_SYSTEM })
+        ask(task, { ...opts, model: workerModel, system: mergeSystem(opts.system, WORKER_SYSTEM) })
           .then((text) => new OrchestratorWorkerResult(task, text, true))
           .catch((err) => new OrchestratorWorkerResult(task, String(err), false))
       )
@@ -175,7 +175,7 @@ async function execute(
       ...opts,
       model: plannerModel,
       thinkingLevel: 'high' as ThinkingLevel,
-      system: SYNTHESIS_SYSTEM,
+      system: mergeSystem(opts.system, SYNTHESIS_SYSTEM),
     }
   )
 

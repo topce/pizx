@@ -19,7 +19,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -179,7 +179,7 @@ async function decideWorkflow(
       model: opts.plannerModel ?? opts.model,
       maxTokens: 512,
       thinkingLevel: 'high' as ThinkingLevel,
-      system: WORKFLOW_SYSTEM,
+      system: mergeSystem(opts.system, WORKFLOW_SYSTEM),
     }
   )
 
@@ -217,7 +217,7 @@ async function executeRoles(
       const output = await ask(context, {
         ...opts,
         model: workerModel,
-        system: EXECUTE_SYSTEM(role),
+        system: mergeSystem(opts.system, EXECUTE_SYSTEM(role)),
       })
       results.push({ role: role.name, output })
       context = `Previous output from ${role.name}:\n${output}\n\nContinue with: ${task}`
@@ -226,7 +226,7 @@ async function executeRoles(
     // parallel or mixed: run all in parallel (v1 simplification)
     const parallelResults = await Promise.allSettled(
       roles.map((role) =>
-        ask(task, { ...opts, model: workerModel, system: EXECUTE_SYSTEM(role) })
+        ask(task, { ...opts, model: workerModel, system: mergeSystem(opts.system, EXECUTE_SYSTEM(role)) })
           .then((text) => ({ role: role.name, output: text }))
           .catch((err) => ({ role: role.name, output: `(failed: ${String(err)})` }))
       )
@@ -254,7 +254,7 @@ async function synthesize(
       ...opts,
       model: opts.plannerModel ?? opts.model,
       thinkingLevel: 'high' as ThinkingLevel,
-      system: SYNTHESIS_SYSTEM,
+      system: mergeSystem(opts.system, SYNTHESIS_SYSTEM),
     }
   )
 }

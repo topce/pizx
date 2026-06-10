@@ -218,6 +218,17 @@ export function build(pieces: TemplateStringsArray, args: unknown[]): string {
   return s.trim()
 }
 
+// ── System prompt merging ──────────────────────────────────────────────────
+
+/**
+ * Combine a user-provided system prompt with a pattern's default system prompt.
+ * If no user system is provided, returns the pattern prompt as-is.
+ */
+export function mergeSystem(userSystem: string | undefined, patternSystem: string): string {
+  if (!userSystem) return patternSystem
+  return `${userSystem}\n\n${patternSystem}`
+}
+
 // ── Helper: make a factory function ─────────────────────────────────────────
 
 import { completeSimple } from '@earendil-works/pi-ai'

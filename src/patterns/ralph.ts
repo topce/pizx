@@ -24,6 +24,7 @@ import {
   createPatternTag,
   type PatternOptions,
   PatternOutput,
+  mergeSystem,
   pickModel,
 } from './types.ts'
 
@@ -153,14 +154,14 @@ async function execute(
     const analysis = await ask(currentGoal, {
       ...opts,
       model: plannerModel,
-      system: ANALYSIS_SYSTEM,
+      system: mergeSystem(opts.system, ANALYSIS_SYSTEM),
     })
 
     // 2. Plan (planner model — high-level reasoning)
     if (!opts.quiet) process.stderr.write('  → Planning...\n')
     const plan = await ask(
       `Goal: ${currentGoal}\n\nAnalysis: ${analysis}\n\nGenerate an implementation plan.`,
-      { ...opts, model: plannerModel, system: PLAN_SYSTEM }
+      { ...opts, model: plannerModel, system: mergeSystem(opts.system, PLAN_SYSTEM) }
     )
 
     // 3. Execute (worker model — lower-level execution)
@@ -182,7 +183,7 @@ async function execute(
       model: plannerModel,
       maxTokens: 1024,
       thinkingLevel: 'high' as ThinkingLevel,
-      system: REVIEW_SYSTEM,
+      system: mergeSystem(opts.system, REVIEW_SYSTEM),
     })
 
     const shouldContinue = review.includes('ITERATE') && !review.includes('DONE')

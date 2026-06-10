@@ -20,7 +20,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -87,7 +87,7 @@ async function decomposeTask(task: string, opts: SubagentOptions): Promise<strin
       model: opts.model,
       maxTokens: 1024,
       thinkingLevel: 'medium' as ThinkingLevel,
-      system: DECOMPOSE_SYSTEM,
+      system: mergeSystem(opts.system, DECOMPOSE_SYSTEM),
     }
   )
 
@@ -157,7 +157,7 @@ async function execute(
     const batch = subTasks.slice(i, i + concurrency)
     const batchResults = await Promise.allSettled(
       batch.map((st) =>
-        ask(st, { ...opts, model: workerModel, system: SUBAGENT_SYSTEM })
+        ask(st, { ...opts, model: workerModel, system: mergeSystem(opts.system, SUBAGENT_SYSTEM) })
           .then((text) => new SubagentResult(st, text, true))
           .catch((err) => new SubagentResult(st, String(err), false))
       )
@@ -175,7 +175,7 @@ async function execute(
 
   const synthesis = await ask(
     `Original task:\n${task}\n\nSub-task results:\n${subResultsText}\n\nSynthesize a comprehensive answer.`,
-    { ...opts, model: plannerModel, system: SYNTHESIS_SYSTEM }
+    { ...opts, model: plannerModel, system: mergeSystem(opts.system, SYNTHESIS_SYSTEM) }
   )
 
   // 4. Quality review (optional)

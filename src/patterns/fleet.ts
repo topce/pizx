@@ -23,7 +23,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
 import { getErrorMessage } from '../utils.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
@@ -121,7 +121,7 @@ async function executeTask(
     const text = await ask(task, {
       ...opts,
       model,
-      system: opts.system ?? FLEET_SYSTEM,
+      system: mergeSystem(opts.system, FLEET_SYSTEM),
     })
     return new FleetMemberOutput(task, text, true)
   } catch (err) {

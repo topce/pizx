@@ -24,7 +24,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -159,7 +159,7 @@ async function execute(
         ? `You are a specialist executing stage ${i + 1}: ${stage}. Focus only on this stage's output.`
         : `You are a specialist executing stage ${i + 1}: ${stage}. Process the previous stage's output according to your instructions. Maintain all important information from previous stages.`
 
-    const output = await ask(prompt, { ...opts, model: workerModel, system: systemMessage })
+    const output = await ask(prompt, { ...opts, model: workerModel, system: mergeSystem(opts.system, systemMessage) })
 
     stageResults.push(new PipelineStageResult(stage, output, i))
     currentInput = output

@@ -18,7 +18,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
 import { DEBATE_ROLE_SETS } from './role-sets.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ async function execute(
 
   const round1Results = await Promise.allSettled(
     roles.map((role) =>
-      ask(question, { ...opts, model: workerModel, system: PERSPECTIVE_SYSTEM(role) }).then(
+      ask(question, { ...opts, model: workerModel, system: mergeSystem(opts.system, PERSPECTIVE_SYSTEM(role)) }).then(
         (text) => new DebatePerspective(role, text, 1)
       )
     )
@@ -154,7 +154,7 @@ async function execute(
         return ask(prompt, {
           ...opts,
           model: workerModel,
-          system: REBUTTAL_SYSTEM(role),
+          system: mergeSystem(opts.system, REBUTTAL_SYSTEM(role)),
         }).then((text) => new DebatePerspective(role, text, round))
       })
     )
@@ -183,7 +183,7 @@ async function execute(
       ...opts,
       model: plannerModel,
       thinkingLevel: 'high' as ThinkingLevel,
-      system: SYNTHESIS_SYSTEM,
+      system: mergeSystem(opts.system, SYNTHESIS_SYSTEM),
     }
   )
 

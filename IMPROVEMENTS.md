@@ -211,6 +211,36 @@ if (result.qualityReview) {
 
 ---
 
+## #6 — System Prompt Propagation for All Patterns (2026-06-10)
+
+**Problem:** The `system` option in `PatternOptions` was silently ignored by most patterns. Each pattern had hardcoded system prompts (e.g., `PLAN_SYSTEM`, `ANALYSIS_SYSTEM`) that completely replaced the user's custom system prompt. Only `fleet.ts` (via `opts.system ?? FLEET_SYSTEM`) and `pi.ts` (via the `ask()` default) respected it.
+
+**Fix:** Added a shared `mergeSystem(userSystem, patternSystem)` helper in `types.ts` that prepends the user's system prompt to the pattern's default. Updated all 15 patterns to wrap every `system:` override with `mergeSystem(opts.system, …)`.
+
+### How it works
+
+```typescript
+// Before: user's system prompt silently replaced
+const result = await Ω({ system: 'You are an expert in cloud architecture.' })`design a deployment`
+// → Only PLANNER_SYSTEM was used
+
+// After: user's system is prepended to pattern's default
+const result = await Ω({ system: 'You are an expert in cloud architecture.' })`design a deployment`
+// → "You are an expert in cloud architecture.\n\n[PLANNER_SYSTEM]"
+```
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `src/patterns/types.ts` | +8 lines: `mergeSystem()` helper |
+| `src/patterns/index.ts` | Export `mergeSystem` |
+| 15 pattern files | +1 import, +1-4 `mergeSystem()` wraps each |
+
+**Verification:** ✅ JS build, DTS, 220/220 tests pass.
+
+---
+
 ## Remaining Opportunities
 
 | # | Issue | Impact |
@@ -219,5 +249,5 @@ if (result.qualityReview) {
 | 6 | No human-in-the-loop / approval gates | 🟡 Medium |
 | 7 | No structured audit logging for pattern phases | 🟡 Medium |
 | 8 | No pattern composition / nesting | 🟢 Low |
-| 9 | `system` option ignored by most patterns | 🟢 Low |
+| 9 | ~~`system` option ignored by most patterns~~ ✅ All patterns now merge user system with pattern defaults | 🟢 Low |
 | 10 | ~~Duplicate `build()` function (pi.ts vs types.ts)~~ ✅ Already deduplicated (imports from types.ts) | 🟢 Low |

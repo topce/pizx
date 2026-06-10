@@ -56,4 +56,5 @@ export {
   PatternPromise,
   type QualityReviewResult,
   runQualityReview,
+  mergeSystem,
 } from './types.ts'

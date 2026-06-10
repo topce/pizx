@@ -21,7 +21,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -228,7 +228,7 @@ async function executeRound(
         ? `Write your initial findings to your assigned keys: ${keysStr}`
         : `Review the shared context and update your entries for keys: ${keysStr}`
 
-      const response = await ask(task, { ...opts, model: workerModel, system: systemPrompt })
+      const response = await ask(task, { ...opts, model: workerModel, system: mergeSystem(opts.system, systemPrompt) })
 
       return { role, response }
     })
@@ -282,7 +282,7 @@ async function consolidateStore(
       ...opts,
       model: opts.plannerModel ?? opts.model,
       thinkingLevel: 'high' as ThinkingLevel,
-      system: CONSOLIDATE_SYSTEM,
+      system: mergeSystem(opts.system, CONSOLIDATE_SYSTEM),
     }
   )
 }

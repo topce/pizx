@@ -19,7 +19,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, mergeSystem } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -103,14 +103,14 @@ async function execute(
     // Generate (first round) or improve (subsequent rounds)
     if (r === 0) {
       if (!opts.quiet) process.stderr.write('  → Generating initial content...\n')
-      currentContent = await ask(prompt, { ...opts, model: workerModel, system: undefined })
+      currentContent = await ask(prompt, { ...opts, model: workerModel, system: opts.system })
     } else {
       if (!opts.quiet) process.stderr.write(`  → Improving (round ${r + 1})...\n`)
       // Use the previous round's critique from the stored result
       const prevCritique = critiqueRounds[r - 1]?.critique ?? ''
       currentContent = await ask(
         `Original request: ${prompt}\n\nCritique:\n${prevCritique}\n\nContent to improve:\n${currentContent}\n\nRevise the content based on the critique.`,
-        { ...opts, model: workerModel, system: IMPROVE_SYSTEM }
+        { ...opts, model: workerModel, system: mergeSystem(opts.system, IMPROVE_SYSTEM) }
       )
     }
 
@@ -119,7 +119,7 @@ async function execute(
     const critique = await ask(currentContent, {
       ...opts,
       model: plannerModel,
-      system: CRITIQUE_SYSTEM,
+      system: mergeSystem(opts.system, CRITIQUE_SYSTEM),
     })
 
     critiqueRounds.push(new CritiqueRound(currentContent, critique, r))

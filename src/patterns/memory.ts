@@ -14,7 +14,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
 import { MEMORY_ROLE_SETS } from './role-sets.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
@@ -133,7 +133,7 @@ async function execute(
       ...opts,
       model: plannerModel,
       thinkingLevel: 'high' as ThinkingLevel,
-      system: CONSOLIDATOR_SYSTEM,
+      system: mergeSystem(opts.system, CONSOLIDATOR_SYSTEM),
     }
   )
 

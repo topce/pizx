@@ -17,7 +17,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -161,7 +161,7 @@ async function execute(
     process.stderr.write(`Χ: Cross-Agent Learning — analyzing ${label}\n`)
   }
 
-  const response = await ask(input, { ...opts, model: plannerModel, system: ANALYSIS_SYSTEM })
+  const response = await ask(input, { ...opts, model: plannerModel, system: mergeSystem(opts.system, ANALYSIS_SYSTEM) })
 
   const { insights, summary, suggestedChanges } = parseInsights(response)
 
