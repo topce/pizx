@@ -54,6 +54,7 @@ export {
   type PatternOptions,
   PatternOutput,
   PatternPromise,
+  type PhaseEntry,
   type QualityReviewResult,
   runQualityReview,
   mergeSystem,

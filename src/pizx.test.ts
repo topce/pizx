@@ -259,6 +259,7 @@ import {
   FleetOutput,
   OrchestratorOutput,
   OrchestratorWorkerResult,
+  type PhaseEntry,
   PatternOutput,
   PipelineOutput,
   PipelineStageResult,
@@ -289,6 +290,16 @@ describe('PatternOutput', () => {
   it('default timestamps set to now', () => {
     const out = new PatternOutput('x')
     expect(out.duration).toBeGreaterThanOrEqual(0)
+  })
+
+  it('stores phase log entries', () => {
+    const out = new PatternOutput('result', 1000, 1200)
+    expect(out.phaseLog).toEqual([])
+    const phase: PhaseEntry = { phase: 'plan', durationMs: 200, description: 'Generated plan', modelUsed: 'test-model' }
+    out.phaseLog.push(phase)
+    expect(out.phaseLog.length).toBe(1)
+    expect(out.phaseLog[0].phase).toBe('plan')
+    expect(out.phaseLog[0].durationMs).toBe(200)
   })
 })
 

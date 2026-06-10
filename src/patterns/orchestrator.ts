@@ -16,7 +16,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, type PhaseEntry } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -99,6 +99,7 @@ async function execute(
   const request = build(pieces, args)
   const t0 = Date.now()
   const workerCount = opts.workers ?? 3
+  const phases: PhaseEntry[] = []
 
   // Planner model for plan/synthesize, worker model for worker execution
   const plannerModel = opts.plannerModel ?? opts.model
@@ -112,12 +113,14 @@ async function execute(
 
   // 1. Plan (planner model — high-level orchestration)
   if (!opts.quiet) process.stderr.write('  → Planning...\n')
+  const planStart = Date.now()
   const planText = await ask(request, {
     ...opts,
     model: plannerModel,
     thinkingLevel: 'high' as ThinkingLevel,
     system: mergeSystem(opts.system, PLANNER_SYSTEM.replace('{$workerCount}', String(workerCount))),
   })
+  phases.push({ phase: 'plan', durationMs: Date.now() - planStart, description: `Generated plan with ${workerCount} workers`, modelUsed: plannerModel })
 
   // Extract sub-tasks from the plan
   const subTasks: string[] = []
@@ -147,6 +150,7 @@ async function execute(
   // 2. Dispatch (parallel execution with concurrency limit)
   const workerResults: OrchestratorWorkerResult[] = []
   const concurrency = opts.concurrency ?? 3
+  const dispatchStart = Date.now()
 
   for (let i = 0; i < tasks.length; i += concurrency) {
     const batch = tasks.slice(i, i + concurrency)
@@ -161,6 +165,8 @@ async function execute(
       if (r.status === 'fulfilled') workerResults.push(r.value)
     })
   }
+  const succeeded = workerResults.filter((w) => w.success).length
+  phases.push({ phase: 'dispatch', durationMs: Date.now() - dispatchStart, description: `Executed ${workerResults.length} worker(s), ${succeeded} succeeded`, modelUsed: workerModel, callCount: workerResults.length })
 
   // 3. Synthesize (planner model — high-level synthesis)
   if (!opts.quiet) process.stderr.write('  → Synthesizing results...\n')
@@ -169,6 +175,7 @@ async function execute(
     .map((wr, i) => `Task ${i + 1}: ${wr.task}\nResult: ${wr.output}`)
     .join('\n\n')
 
+  const synthStart = Date.now()
   const synthesis = await ask(
     `Original request:\n${request}\n\nPlan:\n${planText}\n\nWorker results:\n${workerTexts}\n\nSynthesize a final deliverable.`,
     {
@@ -178,10 +185,15 @@ async function execute(
       system: mergeSystem(opts.system, SYNTHESIS_SYSTEM),
     }
   )
+  phases.push({ phase: 'synthesize', durationMs: Date.now() - synthStart, description: 'Synthesized worker results into final deliverable', modelUsed: plannerModel })
 
   // 4. Quality review (optional)
   if (!opts.quiet && opts.qualityCheck) process.stderr.write('  → Quality review...\n')
+  const qualityStart = Date.now()
   const qualityReview = await runQualityReview(request, synthesis, opts)
+  if (qualityReview) {
+    phases.push({ phase: 'quality-review', durationMs: Date.now() - qualityStart, description: `Score: ${qualityReview.score.toFixed(2)} — ${qualityReview.assessment.slice(0, 60)}`, modelUsed: plannerModel })
+  }
 
   const t1 = Date.now()
 
@@ -191,7 +203,9 @@ async function execute(
 
   const summary = `Plan:\n${planText}\n\nWorkers: ${workerResults.filter((w) => w.success).length}/${workerResults.length} succeeded\n\nSynthesis:\n${synthesis}${reviewSection}`
 
-  return new OrchestratorOutput(summary, planText, synthesis, workerResults, t0, t1, qualityReview)
+  const output = new OrchestratorOutput(summary, planText, synthesis, workerResults, t0, t1, qualityReview)
+  output.phaseLog = phases
+  return output
 }
 
 /** Ω tag — Orchestrator: plan → dispatch → synthesize */

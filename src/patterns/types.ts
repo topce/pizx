@@ -62,6 +62,20 @@ export interface CallTrace {
 
 // ── Base output class ───────────────────────────────────────────────────────
 
+/** A single structured phase entry in a pattern execution. */
+export interface PhaseEntry {
+  /** Phase name — e.g. 'plan', 'decompose', 'execute', 'synthesize', 'review' */
+  phase: string
+  /** Duration of this phase in milliseconds */
+  durationMs: number
+  /** Brief description of what happened */
+  description: string
+  /** The model used for this phase, if any */
+  modelUsed?: string
+  /** How many LLM calls this phase made */
+  callCount?: number
+}
+
 /**
  * Base output for all pattern tags.
  * Provides common fields and coercion methods like PiOutput/AgentOutput.
@@ -69,6 +83,8 @@ export interface CallTrace {
 export class PatternOutput {
   /** Execution trace: one entry per LLM call within this pattern run. Populated by createPatternTag. */
   public trace: CallTrace[] = []
+  /** Structured phase log: key phases during execution, populated by each pattern. */
+  public phaseLog: PhaseEntry[] = []
 
   constructor(
     /** Full text result from the pattern execution */
