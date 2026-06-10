@@ -23,7 +23,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, confirmPhase } from './types.ts'
 import { getErrorMessage } from '../utils.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
@@ -147,6 +147,12 @@ async function execute(
       const t = tasks[i]
       process.stderr.write(`  [${i + 1}] ${t.slice(0, 60)}${t.length > 60 ? '...' : ''}\n`)
     }
+  }
+
+  // Confirm before execution (optional)
+  const taskSummary = `Execute ${tasks.length} fleet task(s)?\n    ${tasks.map((t, i) => `${i + 1}. ${t.slice(0, 80)}`).join('\n    ')}`
+  if (!await confirmPhase(taskSummary, opts)) {
+    throw new Error('pizx/Φ: Execution cancelled by user.')
   }
 
   // Run tasks with concurrency limit

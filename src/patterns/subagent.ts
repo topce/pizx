@@ -20,7 +20,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, type PhaseEntry } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, type PhaseEntry, confirmPhase } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -150,6 +150,12 @@ async function execute(
       const st = subTasks[i]
       process.stderr.write(`      [${i + 1}] ${st.slice(0, 60)}${st.length > 60 ? '...' : ''}\n`)
     }
+  }
+
+  // Confirm before execution (optional)
+  const subTaskSummary = `Execute ${subTasks.length} sub-task(s)?\n    ${subTasks.map((st, i) => `${i + 1}. ${st.slice(0, 80)}`).join('\n    ')}`
+  if (!await confirmPhase(subTaskSummary, opts)) {
+    throw new Error('pizx/Σ: Execution cancelled by user.')
   }
 
   // 2. Execute sub-tasks in parallel (with concurrency limit)

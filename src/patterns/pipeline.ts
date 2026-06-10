@@ -24,7 +24,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, confirmPhase } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -141,6 +141,12 @@ async function execute(
     for (let i = 0; i < stages.length; i++) {
       process.stderr.write(`  [${i + 1}] ${stages[i]}\n`)
     }
+  }
+
+  // Confirm before pipeline execution (optional)
+  const stageSummary = `Run ${stages.length} pipeline stage(s)?\n    ${stages.map((s, i) => `${i + 1}. ${s}`).join('\n    ')}`
+  if (!await confirmPhase(stageSummary, opts)) {
+    throw new Error('pizx/Λ: Execution cancelled by user.')
   }
 
   const stageResults: PipelineStageResult[] = []

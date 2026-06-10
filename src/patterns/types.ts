@@ -30,6 +30,8 @@ export interface PatternOptions {
   timeoutMs?: number
   /** Maximum retry attempts for transient failures (network errors, rate limits). Default: provider SDK default (typically 2). */
   maxRetries?: number
+  /** If true, pause before the first major execution phase and ask for confirmation via stdin. Default: false */
+  confirm?: boolean
 }
 
 // ── Execution trace ─────────────────────────────────────────────────────────
@@ -243,6 +245,29 @@ export function build(pieces: TemplateStringsArray, args: unknown[]): string {
 export function mergeSystem(userSystem: string | undefined, patternSystem: string): string {
   if (!userSystem) return patternSystem
   return `${userSystem}\n\n${patternSystem}`
+}
+
+// ── Confirmation helper ─────────────────────────────────────────────────────
+
+import { createInterface } from 'node:readline'
+
+/**
+ * If opts.confirm is true, pause and prompt the user for confirmation.
+ * Returns true if execution should continue, false to abort.
+ */
+export async function confirmPhase(description: string, opts: { confirm?: boolean; quiet?: boolean }): Promise<boolean> {
+  if (!opts.confirm) return true
+  if (!opts.quiet) {
+    process.stderr.write(`\n  ── Confirm ──\n  ${description}\n  Proceed? [Y/n] `)
+  }
+  const rl = createInterface({ input: process.stdin, output: process.stderr })
+  const answer = await new Promise<string>((resolve) => {
+    rl.question('', (ans: string) => resolve(ans))
+  })
+  rl.close()
+  const trimmed = answer.trim().toLowerCase()
+  if (trimmed === '' || trimmed === 'y' || trimmed === 'yes') return true
+  return false
 }
 
 // ── Helper: make a factory function ─────────────────────────────────────────

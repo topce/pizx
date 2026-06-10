@@ -16,7 +16,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, type PhaseEntry } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, type PhaseEntry, confirmPhase } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -145,6 +145,14 @@ async function execute(
       const t = tasks[i]
       process.stderr.write(`      [${i + 1}] ${t.slice(0, 60)}${t.length > 60 ? '...' : ''}\n`)
     }
+  }
+
+  // Confirm before dispatch (optional)
+  const planSummary = tasks.length > 0
+    ? `Execute ${tasks.length} sub-task(s) as planned?\n    ${tasks.map((t, i) => `${i + 1}. ${t.slice(0, 80)}`).join('\n    ')}`
+    : `Execute the plan?`
+  if (!await confirmPhase(planSummary, opts)) {
+    throw new Error('pizx/Ω: Execution cancelled by user.')
   }
 
   // 2. Dispatch (parallel execution with concurrency limit)

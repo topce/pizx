@@ -58,4 +58,5 @@ export {
   type QualityReviewResult,
   runQualityReview,
   mergeSystem,
+  confirmPhase,
 } from './types.ts'
