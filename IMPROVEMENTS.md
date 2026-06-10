@@ -241,13 +241,92 @@ const result = await Ω({ system: 'You are an expert in cloud architecture.' })`
 
 ---
 
+## #7 — Structured Phase Logging for Pattern Execution (2026-06-10)
+
+**Problem:** No structured audit trail for what happened during a pattern execution. Only the final text output and per-LLM-call token traces were available.
+
+**Fix:** Added `PhaseEntry` interface and `phaseLog: PhaseEntry[]` field to the base `PatternOutput` class. Added a `recordPhase()` helper. Three patterns (Ω, Σ, Δ) record phases (plan, decompose, execute, synthesize, quality-review) with timing and model info.
+
+### PhaseEntry structure
+
+```typescript
+interface PhaseEntry {
+  phase: string
+  durationMs: number
+  description: string
+  modelUsed?: string
+  callCount?: number
+}
+```
+
+### Usage
+
+```typescript
+const result = await Ω`design the system`
+for (const phase of result.phaseLog) {
+  console.log(`${phase.phase}: ${phase.durationMs}ms — ${phase.description}`)
+}
+// → "plan: 1234ms — Generated plan with 3 workers"
+// → "dispatch: 5678ms — Executed 3 worker(s), 3 succeeded"
+// → "synthesize: 901ms — Synthesized worker results"
+```
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `src/patterns/types.ts` | +9 lines: `PhaseEntry` interface, `phaseLog` on `PatternOutput` |
+| `src/patterns/index.ts` | Export `PhaseEntry` |
+| `src/index.ts` | Export `PhaseEntry` |
+| `src/patterns/orchestrator.ts` | +4 phase entries: plan, dispatch, synthesize, quality-review |
+| `src/patterns/subagent.ts` | +4 phase entries: decompose, execute, synthesize, quality-review |
+| `src/patterns/debate.ts` | +4 phase entries: perspectives, rebuttals, synthesize, quality-review |
+| `src/pizx.test.ts` | Test for `phaseLog` on `PatternOutput` |
+
+**Verification:** ✅ JS build, DTS, 221/221 tests pass.
+
+---
+
+## #8 — Human-in-the-Loop Approval Gates (2026-06-10)
+
+**Problem:** Patterns execute autonomously with no way to pause and review before irreversible steps. Users reported wanting to "review the plan before the AI executes it."
+
+**Fix:** Added `confirm?: boolean` option to `PatternOptions`. When enabled, the pattern pauses via a `confirmPhase()` helper that shows a summary and prompts `[Y/n]` on stdin before executing.
+
+### How it works
+
+```typescript
+// Pause before dispatch to review sub-tasks
+await Ω({ confirm: true })`design the system architecture`
+// → Shows: "Execute 3 sub-task(s) as planned?"
+// → Presses Enter to confirm, or 'n' to cancel
+
+// With pipeline
+await Λ({ confirm: true })`analyze → generate → review`
+```
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `src/patterns/types.ts` | +17 lines: `confirm?: boolean` on `PatternOptions`, `confirmPhase()` helper |
+| `src/patterns/index.ts` | Export `confirmPhase` |
+| `src/patterns/orchestrator.ts` | `await confirmPhase(...)` before dispatch |
+| `src/patterns/subagent.ts` | `await confirmPhase(...)` before execution |
+| `src/patterns/fleet.ts` | `await confirmPhase(...)` before task execution |
+| `src/patterns/pipeline.ts` | `await confirmPhase(...)` before first stage |
+
+**Verification:** ✅ JS build, DTS, 221/221 tests pass.
+
+---
+
 ## Remaining Opportunities
 
 | # | Issue | Impact |
 |---|---|---|
 | 5 | ~~Quality validation only in 3/15 patterns (Ρ, Ψ, Α)~~ ✅ All 15 now have qualityCheck | 🟡 Medium |
-| 6 | No human-in-the-loop / approval gates | 🟡 Medium |
-| 7 | No structured audit logging for pattern phases | 🟡 Medium |
-| 8 | No pattern composition / nesting | 🟢 Low |
-| 9 | ~~`system` option ignored by most patterns~~ ✅ All patterns now merge user system with pattern defaults | 🟢 Low |
-| 10 | ~~Duplicate `build()` function (pi.ts vs types.ts)~~ ✅ Already deduplicated (imports from types.ts) | 🟢 Low |
+| 6 | ~~`system` option ignored by most patterns~~ ✅ All patterns now merge user system with pattern defaults | 🟢 Low |
+| 7 | ~~Duplicate `build()` function (pi.ts vs types.ts)~~ ✅ Already deduplicated (imports from types.ts) | 🟢 Low |
+| 8 | ~~Structured audit logging for pattern phases~~ ✅ Base infrastructure + 3 patterns populated | 🟡 Medium |
+| 9 | ~~Human-in-the-loop / approval gates~~ ✅ confirm option on 4 patterns | 🟡 Medium |
+| 10 | No pattern composition / nesting | 🟢 Low |
