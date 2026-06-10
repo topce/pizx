@@ -2,6 +2,8 @@
 
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/topce?style=social&logo=github)](https://github.com/sponsors/topce)
 
+![pizx — zx fork with native Pi AI integration](github-social-banner.png)
+
 > **zx fork with native Pi AI integration** — 15 template tags for shell scripting, AI text generation, coding agents, agentic patterns, communication, and orchestration topologies.
 
 ## Quick Start
@@ -395,3 +397,10 @@ See [`examples/`](examples/) for runnable examples of every pattern and feature:
 ## License
 
 MIT
+
+## Credits
+
+Built on the shoulders of two outstanding tools:
+
+- [**zx**](https://github.com/google/zx) by Google — the original shell scripting tool for Node.js that popularized template-tag ergonomics for command execution. pizx preserves every zx API (`$`, `cd`, `echo`, `fetch`, `chalk`, etc.) unchanged.
+- [**Pi**](https://github.com/earendil-works/pi) by Mario Zechner / Earendil Works — the unified LLM API and coding agent harness that powers all `π`, `Π`, and pattern tags through `@earendil-works/pi-ai` and `@earendil-works/pi-coding-agent`.
