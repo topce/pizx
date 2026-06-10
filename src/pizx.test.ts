@@ -323,6 +323,15 @@ describe('SubagentOutput', () => {
     expect(sr.subTask).toBe('subtask')
     expect(sr.success).toBe(true)
   })
+  it('stores quality review when provided', () => {
+    const out = new SubagentOutput('synth', 'synth', [], 1000, 1200, {
+      score: 0.88,
+      assessment: 'Good coverage',
+      recommendation: 'Consider edge cases',
+    })
+    expect(out.qualityReview?.score).toBe(0.88)
+    expect(out.qualityReview?.recommendation).toBe('Consider edge cases')
+  })
 })
 
 describe('DebateOutput', () => {
