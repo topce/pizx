@@ -20,7 +20,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, type PhaseEntry } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -126,6 +126,7 @@ async function execute(
 ): Promise<SubagentOutput> {
   const task = build(pieces, args)
   const t0 = Date.now()
+  const phases: PhaseEntry[] = []
 
   // Planner model for decompose/synthesize, worker model for sub-agents
   const plannerModel = opts.plannerModel ?? opts.model
@@ -139,7 +140,9 @@ async function execute(
 
   // 1. Decompose (planner model — high-level planning)
   if (!opts.quiet) process.stderr.write('  → Decomposing task into sub-tasks...\n')
+  const decomposeStart = Date.now()
   const subTasks = await decomposeTask(task, { ...opts, model: plannerModel })
+  phases.push({ phase: 'decompose', durationMs: Date.now() - decomposeStart, description: `Decomposed into ${subTasks.length} sub-task(s)`, modelUsed: plannerModel })
 
   if (!opts.quiet) {
     process.stderr.write(`  → ${subTasks.length} sub-task(s) identified:\n`)
@@ -152,6 +155,7 @@ async function execute(
   // 2. Execute sub-tasks in parallel (with concurrency limit)
   const subResults: SubagentResult[] = []
   const concurrency = opts.concurrency ?? 4
+  const execStart = Date.now()
 
   for (let i = 0; i < subTasks.length; i += concurrency) {
     const batch = subTasks.slice(i, i + concurrency)
@@ -166,25 +170,34 @@ async function execute(
       if (r.status === 'fulfilled') subResults.push(r.value)
     })
   }
+  const succeeded = subResults.filter((r) => r.success).length
+  phases.push({ phase: 'execute', durationMs: Date.now() - execStart, description: `Executed ${subResults.length} sub-task(s), ${succeeded} succeeded`, modelUsed: workerModel, callCount: subResults.length })
 
   // 3. Synthesize (planner model — high-level synthesis)
   if (!opts.quiet) process.stderr.write('  → Synthesizing results...\n')
   const subResultsText = subResults
     .map((sr, i) => `Sub-task ${i + 1}: ${sr.subTask}\nResult: ${sr.text}`)
     .join('\n\n')
-
+  const synthStart = Date.now()
   const synthesis = await ask(
     `Original task:\n${task}\n\nSub-task results:\n${subResultsText}\n\nSynthesize a comprehensive answer.`,
     { ...opts, model: plannerModel, system: mergeSystem(opts.system, SYNTHESIS_SYSTEM) }
   )
+  phases.push({ phase: 'synthesize', durationMs: Date.now() - synthStart, description: 'Synthesized sub-agent results', modelUsed: plannerModel })
 
   // 4. Quality review (optional)
   if (!opts.quiet && opts.qualityCheck) process.stderr.write('  → Quality review...\n')
+  const qStart = Date.now()
   const qualityReview = await runQualityReview(task, synthesis, opts)
+  if (qualityReview) {
+    phases.push({ phase: 'quality-review', durationMs: Date.now() - qStart, description: `Score: ${qualityReview.score.toFixed(2)}`, modelUsed: plannerModel })
+  }
 
   const t1 = Date.now()
 
-  return new SubagentOutput(synthesis, synthesis, subResults, t0, t1, qualityReview)
+  const output = new SubagentOutput(synthesis, synthesis, subResults, t0, t1, qualityReview)
+  output.phaseLog = phases
+  return output
 }
 
 /** Σ tag — Subagents: hierarchical task delegation */
