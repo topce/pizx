@@ -124,6 +124,18 @@ Each tag has detailed documentation in [`docs/`](docs/):
 | `Χ` | Chi | Analyze traces → extract patterns | [docs/chi.md](docs/chi.md) |
 | `Τ` | Tau | Define schema → write → refine → consolidate | [docs/tau.md](docs/tau.md) |
 
+## Architecture
+
+See [docs/decisions/](docs/decisions/) for Architecture Decision Records covering the key design choices:
+
+- [ADR-001: Template-Tag DSL](docs/decisions/ADR-001-template-tag-dsl.md) — Why patterns are template tags with curried option chaining
+- [ADR-002: Shared Tag Factory](docs/decisions/ADR-002-shared-tag-factory.md) — How `createPatternTag` eliminates 450 lines of boilerplate
+- [ADR-003: Quality Validation](docs/decisions/ADR-003-quality-validation.md) — The `qualityCheck` design and `runQualityReview` helper
+- [ADR-004: Phase Logging](docs/decisions/ADR-004-phase-logging.md) — Structured audit trails via `phaseLog` on every output
+- [ADR-005: Pattern Composition](docs/decisions/ADR-005-pattern-composition.md) — How `TaskDescriptor` enables nested patterns
+- [ADR-006: Confirm Gates](docs/decisions/ADR-006-confirm-gates.md) — Human-in-the-loop approval via `confirm` option
+- [ADR-007: System Propagation](docs/decisions/ADR-007-system-propagation.md) — How `mergeSystem` propagates user prompts
+
 ## Advanced Features
 
 ### Per-Phase Model Selection
