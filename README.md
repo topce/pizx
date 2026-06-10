@@ -139,6 +139,45 @@ await Ω({
 
 Without per-phase models, patterns fall back to `model` → Pi default.
 
+### System Prompt Propagation
+
+All patterns respect the `system` option. When you provide a custom system prompt, it is prepended to the pattern's default system prompt — your context is never silently discarded:
+
+```js
+await Ω({ system: 'You are a senior security architect.' })`design an auth system`
+// → "You are a senior security architect.\n\n[PLANNER_SYSTEM]"
+```
+
+### Quality Validation
+
+All 15 patterns support an optional `qualityCheck` flag. When enabled, the pattern runs a post-execution LLM review that scores the final output (0.0–1.0), provides an assessment, and recommends improvements:
+
+```js
+const result = await Ω({ qualityCheck: true })`design the system architecture`
+
+if (result.qualityReview) {
+  console.log(`Quality score: ${result.qualityReview.score}`)   // 0.0 – 1.0
+  console.log(result.qualityReview.assessment)                   // 1-2 sentence assessment
+  console.log(result.qualityReview.recommendation)               // improvement suggestion
+}
+```
+
+### Human-in-the-Loop (Confirm Gates)
+
+Set `confirm: true` to pause before the main execution phase and ask for approval. The pattern displays a summary of what it's about to do and waits for `[Y/n]` on stdin:
+
+```js
+await Ω({ confirm: true })`design the system`
+// → "── Confirm ──"
+// → "Execute 3 sub-task(s) as planned?"
+// → "  1. Analyze requirements"
+// → "  2. Design architecture"
+// → "  3. Document decisions"
+// → "Proceed? [Y/n] "
+```
+
+Supported by: `Ω`, `Σ`, `Φ`, `Λ` (more patterns coming).
+
 ### Option Chaining & Quiet Mode
 
 All tags support option chaining and `.quiet` mode to suppress output:
@@ -167,9 +206,9 @@ await π({ timeoutMs: 15000 })`summarize this document`
 configurePi({ timeoutMs: 60000, maxRetries: 3 })
 ```
 
-### Token & Cost Tracking
+### Token, Cost & Phase Tracking
 
-Every pattern output and π call includes an execution trace with token usage and cost. Traces are collected automatically — no extra flags needed.
+Every pattern output and π call includes an execution trace with token usage, cost, and a structured phase log. All collected automatically — no extra flags needed.
 
 ```js
 const result = await Ω`design a notification system`
@@ -184,6 +223,14 @@ console.log(`Total: ${result.totalTokens} tokens`)
 console.log(`Cost:  $${result.totalCost.toFixed(4)}`)
 console.log(`Calls: ${result.callCount}`)
 
+// Structured phase log — what happened during execution
+for (const phase of result.phaseLog) {
+  console.log(`${phase.phase}: ${phase.durationMs}ms — ${phase.description}`)
+}
+// → "plan: 1234ms — Generated plan with 3 workers"
+// → "dispatch: 5678ms — Executed 3 worker(s), 3 succeeded"
+// → "synthesize: 901ms — Synthesized worker results"
+
 // Works with π too
 const answer = await π`explain quantum computing`
 console.log(`Input: ${answer.inputTokens}, Output: ${answer.outputTokens}`)
@@ -191,6 +238,33 @@ console.log(`Cost:  $${answer.totalCost.toFixed(6)}`)
 ```
 
 Each `CallTrace` entry includes: call index, model id, prompt/output previews, input/output/cache tokens, cost (USD), and duration.
+
+### Pattern Composition (Nesting)
+
+Fleet and Pipeline accept `TaskDescriptor` — either a plain string (for a standard LLM call) or a function that invokes another pattern as a sub-task. This lets you compose patterns inside patterns.
+
+**Fleet with mixed tasks:**
+
+```js
+await Φ({
+  tasks: [
+    'analyze the frontend',              // string: standard LLM call
+    () => Σ\`analyze the backend\`,       // function: compose a Subagents pattern
+    () => Ψ\`review the API design\`,     // function: compose a Critique pattern
+  ],
+})`review everything`
+```
+
+**Pipeline with composed stages:**
+
+```js
+await Λ({
+  stages: [
+    'generate product description',       // string: standard LLM call
+    (prev) => Ψ\`critique this: ${prev}\`, // function: receives previous output
+  ],
+})`generate → improve`
+```
 
 ### Global Configuration
 
@@ -219,17 +293,24 @@ pizx --help                   # Print help
 ## Commands
 
 ```bash
-npm run build            # Build (JS + DTS)
-npm run check            # Lint and format with Biome
-npm test                 # 95 unit tests
-npm run example:hello    # Run hello example
-npm run example:π        # Run pi-ai example
-npm run example:all      # Run all examples
+npm run build                  # Build (JS + DTS)
+npm run check                  # Lint and format with Biome
+npm test                       # 223 unit tests (no network)
+npm run test:integration       # Integration tests (requires Pi credentials)
+npm run test:quality           # Run qualityCheck example
+npm run test:confirm           # Run confirm gate example
+npm run test:composition-fleet # Run pattern composition in Fleet example
+npm run test:composition-pipeline # Run pattern composition in Pipeline example
+npm run test:new-features      # Run all 4 feature examples
+npm run example:hello          # Run hello example
+npm run example:all            # Run all pattern examples
 ```
 
 ## Examples
 
-See [`examples/`](examples/) for runnable examples of every pattern:
+See [`examples/`](examples/) for runnable examples of every pattern and feature:
+
+### Pattern Examples
 
 - [`hello-pizx.mjs`](examples/hello-pizx.mjs) — Basic script with shell + AI
 - [`basic-pi.mjs`](examples/basic-pi.mjs) — π text generation
@@ -238,6 +319,13 @@ See [`examples/`](examples/) for runnable examples of every pattern:
 - [`pattern-fleet.mjs`](examples/pattern-fleet.mjs) — Fleet parallel execution
 - [`pattern-debate.mjs`](examples/pattern-debate.mjs) — Multi-perspective debate
 - ... and more for every pattern
+
+### New Feature Demos
+
+- [`test-quality.mjs`](examples/test-quality.mjs) — `qualityCheck` + `system` + `phaseLog`
+- [`test-confirm.mjs`](examples/test-confirm.mjs) — Human-in-the-loop approval gate
+- [`test-composition-fleet.mjs`](examples/test-composition-fleet.mjs) — Pattern composition in Fleet
+- [`test-composition-pipeline.mjs`](examples/test-composition-pipeline.mjs) — Pattern composition in Pipeline
 
 ## License
 
