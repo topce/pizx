@@ -220,4 +220,4 @@ if (result.qualityReview) {
 | 7 | No structured audit logging for pattern phases | 🟡 Medium |
 | 8 | No pattern composition / nesting | 🟢 Low |
 | 9 | `system` option ignored by most patterns | 🟢 Low |
-| 10 | Duplicate `build()` function (pi.ts vs types.ts) | 🟢 Low |
+| 10 | ~~Duplicate `build()` function (pi.ts vs types.ts)~~ ✅ Already deduplicated (imports from types.ts) | 🟢 Low |
