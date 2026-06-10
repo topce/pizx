@@ -36,6 +36,8 @@ chmod +x hello.mjs
 pizx hello.mjs
 ```
 
+**New to pizx?** Start with the [Onboarding Guide](docs/onboarding.md).
+
 ## Install
 
 ```bash
@@ -253,7 +255,7 @@ Each `CallTrace` entry includes: call index, model id, prompt/output previews, i
 
 ### Pattern Composition (Nesting)
 
-Fleet and Pipeline accept `TaskDescriptor` — either a plain string (for a standard LLM call) or a function that invokes another pattern as a sub-task. This lets you compose patterns inside patterns.
+Fleet and Pipeline accept `TaskDescriptor` — either a plain string (for a standard LLM call) or a function that invokes another pattern as a sub-task. See [docs/advanced-features.md](docs/advanced-features.md#pattern-composition-taskdescriptor) for details.
 
 **Fleet with mixed tasks:**
 

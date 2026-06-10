@@ -41,6 +41,19 @@ await Φ({ workerModel: 'deepseek/deepseek-v4-flash' })`
   review auth.ts
   review api.ts
 `
+
+// Quality check (optional)
+await Φ({ qualityCheck: true })`review all source files for errors`
+
+// Human-in-the-loop
+await Φ({ confirm: true })`execute these batch tasks`
+
+// Composition: patterns as sub-tasks
+await Φ({ tasks: [
+  'analyze the frontend',
+  () => Σ\`analyze the backend\`,    // Subagents pattern as a fleet task
+  () => Ψ\`review the API design\`,   // Critique pattern as a fleet task
+] })`review everything`
 ```
 
 ## Options
@@ -52,9 +65,11 @@ await Φ({ workerModel: 'deepseek/deepseek-v4-flash' })`
 | `thinkingLevel` | `ThinkingLevel` | `'medium'` | Reasoning depth |
 | `quiet` | `boolean` | `false` | Suppress output |
 | `maxTokens` | `number` | `4096` | Max tokens per call |
-| `system` | `string` | — | System prompt |
-| `tasks` | `string[]` | — | Explicit task list (overrides template) |
+| `system` | `string` | — | System prompt (merged with pattern default) |
+| `tasks` | `TaskDescriptor[]` | — | Explicit task list (overrides template). Accepts strings or pattern-call functions |
 | `concurrency` | `number` | `5` | Maximum parallel tasks at once |
+| `qualityCheck` | `boolean` | `false` | Run a quality review on results |
+| `confirm` | `boolean` | `false` | Pause and ask before execution |
 
 ## Output
 

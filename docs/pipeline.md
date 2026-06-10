@@ -25,6 +25,18 @@ await Λ({ stagePrompts: [
   'Review the documentation for accuracy and completeness',
 ] })`document the auth module`
 
+// Composition: patterns as stages (receives previous output)
+await Λ({ stages: [
+  'generate a product description',
+  (prev) => Ψ\`critique this: ${prev}\`,  // Critique pattern receives prev output
+] })`generate → improve`
+
+// Quality check (optional)
+await Λ({ qualityCheck: true })`analyze → document → review`
+
+// Human-in-the-loop
+await Λ({ confirm: true })`extract → analyze → summarize`
+
 // Quiet mode
 await Λ.quiet`extract errors → suggest fixes → generate patch`
 ```
@@ -38,10 +50,12 @@ await Λ.quiet`extract errors → suggest fixes → generate patch`
 | `thinkingLevel` | `ThinkingLevel` | `'medium'` | Reasoning depth |
 | `quiet` | `boolean` | `false` | Suppress output |
 | `maxTokens` | `number` | `4096` | Max tokens per call |
-| `system` | `string` | — | System prompt |
-| `stages` | `string[]` | auto | Explicit stage names |
+| `system` | `string` | — | System prompt (merged with pattern default) |
+| `stages` | `TaskDescriptor[]` | auto | Explicit stage names or pattern-call functions |
 | `stagePrompts` | `string[]` | auto | Custom prompt per stage |
 | `separator` | `string` | `'→'` | Stage separator in template |
+| `qualityCheck` | `boolean` | `false` | Run a quality review on final output |
+| `confirm` | `boolean` | `false` | Pause and ask before execution |
 
 ## Output
 
@@ -50,6 +64,7 @@ class PipelineOutput extends PatternOutput {
   text: string                          // Summary of all stages
   finalOutput: string                   // Result of the last stage
   stages: PipelineStageResult[]         // Per-stage outputs
+  qualityReview?: QualityReviewResult   // Present if qualityCheck was enabled
   duration: number
 }
 
