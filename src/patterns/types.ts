@@ -278,3 +278,63 @@ export async function ask(prompt: string, opts: Partial<PatternOptions> = {}): P
 
   return text.trim()
 }
+
+// ── Quality Review Helper ──────────────────────────────────────────────────
+
+/** Structured quality review result shared by all patterns. */
+export interface QualityReviewResult {
+  /** Quality score from 0.0 (poor) to 1.0 (perfect) */
+  score: number
+  /** 1-2 sentence assessment */
+  assessment: string
+  /** 1 sentence recommendation for improvement */
+  recommendation: string
+}
+
+const QUALITY_REVIEW_SYSTEM = `You are a quality assurance reviewer. Evaluate the final deliverable against the original request.
+
+Output format:
+SCORE: 0.XX (quality score from 0.0 to 1.0)
+ASSESSMENT: (1-2 sentences — is the output complete, consistent, and actionable?)
+RECOMMENDATION: (1 sentence — what would improve this output?)`
+
+/**
+ * Run a quality review on the final output of a pattern.
+ * Returns a structured assessment or undefined if qualityCheck is disabled.
+ */
+export async function runQualityReview(
+  originalRequest: string,
+  finalOutput: string,
+  opts: { qualityCheck?: boolean; quiet?: boolean; plannerModel?: string; model?: string; maxTokens?: number; timeoutMs?: number; maxRetries?: number }
+): Promise<QualityReviewResult | undefined> {
+  if (!opts.qualityCheck) return undefined
+
+  const reviewText = await ask(
+    `Original request:\n${originalRequest}\n\nFinal deliverable:\n${finalOutput}\n\nEvaluate the quality.`,
+    {
+      model: opts.plannerModel ?? opts.model,
+      maxTokens: 512,
+      thinkingLevel: 'high' as ThinkingLevel,
+      timeoutMs: opts.timeoutMs,
+      maxRetries: opts.maxRetries,
+      system: QUALITY_REVIEW_SYSTEM,
+    }
+  )
+
+  const scoreMatch = reviewText.match(/SCORE:\s*([\d.]+)/i)
+  const assessMatch = reviewText.match(/ASSESSMENT:\s*(.+)/i)
+  const recMatch = reviewText.match(/RECOMMENDATION:\s*(.+)/i)
+
+  const result: QualityReviewResult = {
+    score: scoreMatch ? parseFloat(scoreMatch[1]) : 0.5,
+    assessment: assessMatch?.[1]?.trim() ?? '(no assessment)',
+    recommendation: recMatch?.[1]?.trim() ?? '(no recommendation)',
+  }
+
+  if (!opts.quiet) {
+    process.stderr.write(`      Quality score: ${result.score.toFixed(2)}\n`)
+    process.stderr.write(`      ${result.assessment.slice(0, 80)}...\n`)
+  }
+
+  return result
+}

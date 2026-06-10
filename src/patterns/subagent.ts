@@ -20,7 +20,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -65,11 +65,7 @@ export class SubagentOutput extends PatternOutput {
     startTime: number,
     endTime: number,
     /** Quality review, if qualityCheck was enabled */
-    public readonly qualityReview?: {
-      score: number
-      assessment: string
-      recommendation: string
-    }
+    public readonly qualityReview?: QualityReviewResult
   ) {
     super(text, startTime, endTime)
   }
@@ -80,13 +76,6 @@ export class SubagentOutput extends PatternOutput {
 const DECOMPOSE_SYSTEM = `You are a task decomposition specialist. Break down complex tasks into independent sub-tasks that can be worked on in parallel. Output ONLY a JSON array of strings, each being a self-contained sub-task description. No markdown, no explanation.`
 
 const SYNTHESIS_SYSTEM = `You are a synthesis specialist. Combine the results from multiple sub-agent analyses into a coherent, comprehensive answer. Identify patterns, conflicts, and gaps.`
-
-const QUALITY_REVIEW_SYSTEM = `You are a quality assurance reviewer. Evaluate the final deliverable against the original request.
-
-Output format:
-SCORE: 0.XX (quality score from 0.0 to 1.0)
-ASSESSMENT: (1-2 sentences — is the output complete, consistent, and actionable?)
-RECOMMENDATION: (1 sentence — what would improve this output?)`
 
 async function decomposeTask(task: string, opts: SubagentOptions): Promise<string[]> {
   if (opts.subdomains && opts.subdomains.length > 0) return opts.subdomains
@@ -190,32 +179,8 @@ async function execute(
   )
 
   // 4. Quality review (optional)
-  let qualityReview: { score: number; assessment: string; recommendation: string } | undefined
-  if (opts.qualityCheck) {
-    if (!opts.quiet) process.stderr.write('  → Quality review...\n')
-    const reviewText = await ask(
-      `Original task:\n${task}\n\nFinal answer:\n${synthesis}\n\nEvaluate the quality.`,
-      {
-        ...opts,
-        model: plannerModel,
-        maxTokens: 512,
-        thinkingLevel: 'high' as ThinkingLevel,
-        system: QUALITY_REVIEW_SYSTEM,
-      }
-    )
-    const scoreMatch = reviewText.match(/SCORE:\s*([\d.]+)/i)
-    const assessMatch = reviewText.match(/ASSESSMENT:\s*(.+)/i)
-    const recMatch = reviewText.match(/RECOMMENDATION:\s*(.+)/i)
-    qualityReview = {
-      score: scoreMatch ? parseFloat(scoreMatch[1]) : 0.5,
-      assessment: assessMatch?.[1]?.trim() ?? '(no assessment)',
-      recommendation: recMatch?.[1]?.trim() ?? '(no recommendation)',
-    }
-    if (!opts.quiet) {
-      process.stderr.write(`      Quality score: ${qualityReview.score.toFixed(2)}\n`)
-      process.stderr.write(`      ${qualityReview.assessment.slice(0, 80)}...\n`)
-    }
-  }
+  if (!opts.quiet && opts.qualityCheck) process.stderr.write('  → Quality review...\n')
+  const qualityReview = await runQualityReview(task, synthesis, opts)
 
   const t1 = Date.now()
 

@@ -18,7 +18,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
 import { DEBATE_ROLE_SETS } from './role-sets.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
@@ -30,6 +30,8 @@ export interface DebateOptions extends PatternOptions {
   roles?: string[]
   /** Number of debate rounds (1 = initial only, 2+ = rebuttals). Default: 1 */
   rounds?: number
+  /** Run a quality review on the final conclusion. Default: false */
+  qualityCheck?: boolean
 }
 
 const defaults: DebateOptions = {
@@ -62,7 +64,9 @@ export class DebateOutput extends PatternOutput {
     /** Number of debate rounds executed */
     public readonly rounds: number,
     startTime: number,
-    endTime: number
+    endTime: number,
+    /** Quality review, if qualityCheck was enabled */
+    public readonly qualityReview?: QualityReviewResult
   ) {
     super(text, startTime, endTime)
   }
@@ -183,9 +187,13 @@ async function execute(
     }
   )
 
+  // Quality review (optional)
+  if (!opts.quiet && opts.qualityCheck) process.stderr.write('  → Quality review...\n')
+  const qualityReview = await runQualityReview(question, conclusion, opts)
+
   const t1 = Date.now()
 
-  return new DebateOutput(conclusion, conclusion, allPerspectives, totalRounds, t0, t1)
+  return new DebateOutput(conclusion, conclusion, allPerspectives, totalRounds, t0, t1, qualityReview)
 }
 
 /** Δ tag — Debate: multiple perspectives converge */

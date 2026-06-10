@@ -54,4 +54,6 @@ export {
   type PatternOptions,
   PatternOutput,
   PatternPromise,
+  type QualityReviewResult,
+  runQualityReview,
 } from './types.ts'

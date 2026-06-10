@@ -250,6 +250,7 @@ describe('Pi detection', () => {
 // ── Pattern Outputs ─────────────────────────────────────────────────────────
 
 import {
+  type CallTrace,
   CritiqueOutput,
   CritiqueRound,
   DebateOutput,
@@ -261,6 +262,7 @@ import {
   PatternOutput,
   PipelineOutput,
   PipelineStageResult,
+  type QualityReviewResult,
   RalphOutput,
   SubagentOutput,
   SubagentResult,
@@ -354,6 +356,13 @@ describe('DebateOutput', () => {
     expect(p2.round).toBe(2)
     expect(p1.argument).toBe('initial')
     expect(p2.argument).toBe('rebuttal')
+  })
+
+  it('stores quality review when provided', () => {
+    const qr: QualityReviewResult = { score: 0.91, assessment: 'Well-reasoned', recommendation: 'Add data' }
+    const out = new DebateOutput('conclusion', 'conclusion', [], 1, 1000, 1200, qr)
+    expect(out.qualityReview?.score).toBe(0.91)
+    expect(out.qualityReview?.assessment).toBe('Well-reasoned')
   })
 
   it('DebatePerspective round defaults to 1', () => {
