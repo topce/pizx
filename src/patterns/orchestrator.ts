@@ -25,6 +25,8 @@ export interface OrchestratorOptions extends PatternOptions {
   workers?: number
   /** Maximum concurrency for worker execution. Default: 3 */
   concurrency?: number
+  /** Run a quality review on the final synthesis. Default: false */
+  qualityCheck?: boolean
 }
 
 const defaults: OrchestratorOptions = {
@@ -57,7 +59,13 @@ export class OrchestratorOutput extends PatternOutput {
     /** Individual worker results */
     public readonly workerResults: OrchestratorWorkerResult[],
     startTime: number,
-    endTime: number
+    endTime: number,
+    /** Quality review, if qualityCheck was enabled */
+    public readonly qualityReview?: {
+      score: number
+      assessment: string
+      recommendation: string
+    }
   ) {
     super(text, startTime, endTime)
   }
@@ -84,6 +92,13 @@ Focus on concrete actions, not abstractions.`
 const WORKER_SYSTEM = `You are a task specialist. Complete your assigned sub-task thoroughly and concisely. Output your findings, code, or analysis directly — no meta-commentary.`
 
 const SYNTHESIS_SYSTEM = `You are a delivery manager. Synthesize the worker results into a final, coherent deliverable that fulfills the original request. Combine, reconcile, and structure the outputs. Address any gaps or conflicts.`
+
+const QUALITY_REVIEW_SYSTEM = `You are a quality assurance reviewer. Evaluate the final deliverable against the original request.
+
+Output format:
+SCORE: 0.XX (quality score from 0.0 to 1.0)
+ASSESSMENT: (1-2 sentences — is the output complete, consistent, and actionable?)
+RECOMMENDATION: (1 sentence — what would improve this output?)`
 
 // ── Execute ─────────────────────────────────────────────────────────────────
 
@@ -175,11 +190,43 @@ async function execute(
     }
   )
 
+  // 4. Quality review (optional)
+  let qualityReview: { score: number; assessment: string; recommendation: string } | undefined
+  if (opts.qualityCheck) {
+    if (!opts.quiet) process.stderr.write('  → Quality review...\n')
+    const reviewText = await ask(
+      `Original request:\n${request}\n\nFinal deliverable:\n${synthesis}\n\nEvaluate the quality.`,
+      {
+        ...opts,
+        model: plannerModel,
+        maxTokens: 512,
+        thinkingLevel: 'high' as ThinkingLevel,
+        system: QUALITY_REVIEW_SYSTEM,
+      }
+    )
+    const scoreMatch = reviewText.match(/SCORE:\s*([\d.]+)/i)
+    const assessMatch = reviewText.match(/ASSESSMENT:\s*(.+)/i)
+    const recMatch = reviewText.match(/RECOMMENDATION:\s*(.+)/i)
+    qualityReview = {
+      score: scoreMatch ? parseFloat(scoreMatch[1]) : 0.5,
+      assessment: assessMatch?.[1]?.trim() ?? '(no assessment)',
+      recommendation: recMatch?.[1]?.trim() ?? '(no recommendation)',
+    }
+    if (!opts.quiet) {
+      process.stderr.write(`      Quality score: ${qualityReview.score.toFixed(2)}\n`)
+      process.stderr.write(`      ${qualityReview.assessment.slice(0, 80)}...\n`)
+    }
+  }
+
   const t1 = Date.now()
 
-  const summary = `Plan:\n${planText}\n\nWorkers: ${workerResults.filter((w) => w.success).length}/${workerResults.length} succeeded\n\nSynthesis:\n${synthesis}`
+  const reviewSection = qualityReview
+    ? `\n\nQuality Review: ${qualityReview.score.toFixed(2)} — ${qualityReview.assessment}\n  Recommendation: ${qualityReview.recommendation}`
+    : ''
 
-  return new OrchestratorOutput(summary, planText, synthesis, workerResults, t0, t1)
+  const summary = `Plan:\n${planText}\n\nWorkers: ${workerResults.filter((w) => w.success).length}/${workerResults.length} succeeded\n\nSynthesis:\n${synthesis}${reviewSection}`
+
+  return new OrchestratorOutput(summary, planText, synthesis, workerResults, t0, t1, qualityReview)
 }
 
 /** Ω tag — Orchestrator: plan → dispatch → synthesize */

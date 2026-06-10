@@ -383,6 +383,15 @@ describe('OrchestratorOutput', () => {
     expect(out.workerResults.length).toBe(1)
     expect(wr.success).toBe(true)
   })
+  it('stores quality review when provided', () => {
+    const out = new OrchestratorOutput('summary', 'plan', 'synth', [], 1000, 1200, {
+      score: 0.92,
+      assessment: 'Complete and actionable',
+      recommendation: 'Add more examples',
+    })
+    expect(out.qualityReview?.score).toBe(0.92)
+    expect(out.qualityReview?.assessment).toBe('Complete and actionable')
+  })
 })
 
 // ── Self-Organizing Teams (Ν) Outputs ──────────────────────────────────────
