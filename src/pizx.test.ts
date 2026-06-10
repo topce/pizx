@@ -267,6 +267,7 @@ import {
   RalphOutput,
   SubagentOutput,
   SubagentResult,
+  type TaskDescriptor,
 } from './patterns/index.ts'
 
 describe('PatternOutput', () => {
@@ -881,6 +882,22 @@ describe('load-pi-auth re-exports', () => {
 // ── Graph topoBatches (pure logic) ─────────────────────────────────────────
 
 import { type GraphEdge, type GraphNode, topoBatches } from './patterns/graph.ts'
+
+describe('TaskDescriptor', () => {
+  it('accepts both strings and functions', () => {
+    const tasks: TaskDescriptor[] = [
+      'analyze the code',
+      (prev: string) => Promise.resolve(`review: ${prev}`),
+    ]
+    expect(typeof tasks[0]).toBe('string')
+    expect(typeof tasks[1]).toBe('function')
+  })
+  it('function can produce a string', async () => {
+    const task: TaskDescriptor = (prev: string) => Promise.resolve(`processed: ${prev}`)
+    const result = await task('input data')
+    expect(result).toBe('processed: input data')
+  })
+})
 
 describe('topoBatches', () => {
   it('empty nodes returns empty array', () => {

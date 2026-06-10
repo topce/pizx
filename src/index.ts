@@ -88,6 +88,7 @@ export {
   PatternOutput,
   PatternPromise,
   type PhaseEntry,
+  type TaskDescriptor,
   type PipelineOptions,
   PipelineOutput,
   PipelineStageResult,

@@ -59,4 +59,5 @@ export {
   runQualityReview,
   mergeSystem,
   confirmPhase,
+  type TaskDescriptor,
 } from './types.ts'

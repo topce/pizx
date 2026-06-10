@@ -11,6 +11,12 @@
  *   await Λ({ stages: ['analyze', 'generate', 'review'] })`write API docs`
  *   // Explicit stage names
  *
+ *   await Λ({ stages: [
+ *     'analyze the code',                // string: standard LLM call
+ *     (prev) => Ψ`review this: ${prev}`, // function: compose a critique pattern
+ *   ] })`analyze → review`
+ *   // Mixed: some stages are plain strings, others are pattern calls
+ *
  *   await Λ({ stagePrompts: [
  *     'Analyze the code and identify key functions',
  *     'Generate documentation based on this analysis',
@@ -20,23 +26,32 @@
  *
  *   await Λ.quiet`extract errors → suggest fixes → generate patch`
  *
- * Each stage runs sequentially, with the previous output prepended as context.
+ * Each stage runs sequentially, with the previous output passed as context.
+ * When a stage is a function, it receives the previous stage's output string.
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, confirmPhase } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, confirmPhase, type TaskDescriptor } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
 export interface PipelineOptions extends PatternOptions {
-  /** Explicit stage names (auto-generated if not provided) */
-  stages?: string[]
+  /** Explicit stage descriptors. String = LLM call, function = pattern call receiving previous output. */
+  stages?: TaskDescriptor[]
   /** Custom prompt for each stage (overrides auto-generated prompts) */
   stagePrompts?: string[]
   /** Separator used to parse stages from template. Default: "→" or "->" */
   separator?: string
   /** Run a quality review on the final pipeline output. Default: false */
   qualityCheck?: boolean
+}
+
+/**
+ * Resolve a stage to its description string, for display purposes.
+ */
+function describeStage(stage: TaskDescriptor): string {
+  if (typeof stage === 'function') return '(composed pattern)'
+  return stage
 }
 
 const defaults: PipelineOptions = {
@@ -75,7 +90,7 @@ export class PipelineOutput extends PatternOutput {
 
 // ── Stage parsing ───────────────────────────────────────────────────────────
 
-function parseStages(template: string, explicitStages?: string[], separator?: string): string[] {
+function parseStages(template: string, explicitStages?: TaskDescriptor[], separator?: string): TaskDescriptor[] {
   if (explicitStages && explicitStages.length > 0) return explicitStages
 
   const sep = separator ?? '→'
@@ -144,7 +159,7 @@ async function execute(
   }
 
   // Confirm before pipeline execution (optional)
-  const stageSummary = `Run ${stages.length} pipeline stage(s)?\n    ${stages.map((s, i) => `${i + 1}. ${s}`).join('\n    ')}`
+  const stageSummary = `Run ${stages.length} pipeline stage(s)?\n    ${stages.map((s, i) => `${i + 1}. ${describeStage(s)}`).join('\n    ')}`
   if (!await confirmPhase(stageSummary, opts)) {
     throw new Error('pizx/Λ: Execution cancelled by user.')
   }
@@ -154,20 +169,29 @@ async function execute(
 
   for (let i = 0; i < stages.length; i++) {
     const stage = stages[i]
+    const stageLabel = describeStage(stage)
     const customPrompt = opts.stagePrompts?.[i]
 
     if (!opts.quiet)
-      process.stderr.write(`  → Stage ${i + 1}/${stages.length}: ${stage.slice(0, 50)}...\n`)
+      process.stderr.write(`  → Stage ${i + 1}/${stages.length}: ${stageLabel.slice(0, 50)}...\n`)
 
-    const prompt = customPrompt ?? generateStagePrompt(stage, currentInput, i === 0)
-    const systemMessage =
-      i === 0
-        ? `You are a specialist executing stage ${i + 1}: ${stage}. Focus only on this stage's output.`
-        : `You are a specialist executing stage ${i + 1}: ${stage}. Process the previous stage's output according to your instructions. Maintain all important information from previous stages.`
+    let output: string
 
-    const output = await ask(prompt, { ...opts, model: workerModel, system: mergeSystem(opts.system, systemMessage) })
+    if (typeof stage === 'function') {
+      // Pattern call: invoke with previous output as context
+      output = await stage(currentInput)
+    } else {
+      // String stage: standard LLM call
+      const prompt = customPrompt ?? generateStagePrompt(stage, currentInput, i === 0)
+      const systemMessage =
+        i === 0
+          ? `You are a specialist executing stage ${i + 1}: ${stage}. Focus only on this stage's output.`
+          : `You are a specialist executing stage ${i + 1}: ${stage}. Process the previous stage's output according to your instructions. Maintain all important information from previous stages.`
 
-    stageResults.push(new PipelineStageResult(stage, output, i))
+      output = await ask(prompt, { ...opts, model: workerModel, system: mergeSystem(opts.system, systemMessage) })
+    }
+
+    stageResults.push(new PipelineStageResult(stageLabel, output, i))
     currentInput = output
   }
 

@@ -11,6 +11,13 @@
  *   await Φ({ tasks: ['lint src/', 'check types', 'run tests'] })`execute`
  *   // Explicit task list
  *
+ *   await Φ({ tasks: [
+ *     'analyze the frontend',
+ *     () => Σ`analyze the backend`,   // <-- compose a subagent pattern as a fleet task
+ *     () => Ψ`review the API design`,  // <-- compose a critique pattern
+ *   ] })`review everything`
+ *   // Mixed: some tasks are plain strings, others are pattern calls
+ *
  *   await Φ.quiet`analyze all examples for best practices`
  *   // Silent mode
  *
@@ -19,18 +26,19 @@
  *   - Bullet points (- or * each become a task)
  *   - A single paragraph (auto-split via AI)
  *
- * Each fleet member runs as a simple π-style text generation call.
+ * Each fleet member runs as a simple π-style text generation call,
+ * unless a function (pattern call) is provided in the tasks array.
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, confirmPhase } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, confirmPhase, type TaskDescriptor } from './types.ts'
 import { getErrorMessage } from '../utils.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
 export interface FleetOptions extends PatternOptions {
-  /** Explicit array of task descriptions. When provided, template is ignored. */
-  tasks?: string[]
+  /** Explicit array of task descriptions or pattern calls. When provided, template is ignored. */
+  tasks?: TaskDescriptor[]
   /** Maximum concurrency. Default: 5 */
   concurrency?: number
   /** Run a quality review on the fleet results. Default: false */
@@ -84,7 +92,7 @@ export class FleetOutput extends PatternOutput {
 
 // ── Task parsing ────────────────────────────────────────────────────────────
 
-function parseTasks(template: string, explicitTasks?: string[]): string[] {
+function parseTasks(template: string, explicitTasks?: TaskDescriptor[]): TaskDescriptor[] {
   if (explicitTasks && explicitTasks.length > 0) return explicitTasks
 
   const lines = template
@@ -107,15 +115,32 @@ function parseTasks(template: string, explicitTasks?: string[]): string[] {
   return [template]
 }
 
+// ── Task helpers ─────────────────────────────────────────────────────────────
+
+function describeTask(task: TaskDescriptor): string {
+  if (typeof task === 'function') return '(composed pattern)'
+  return task
+}
+
 // ── Execute ─────────────────────────────────────────────────────────────────
 
 const FLEET_SYSTEM = `You are a focused task specialist. Complete the assigned task concisely and accurately. Output only the result — no commentary about being an AI.`
 
 async function executeTask(
-  task: string,
+  task: TaskDescriptor,
   opts: FleetOptions,
   workerModel?: string
 ): Promise<FleetMemberOutput> {
+  // If task is a function (pattern call), invoke it
+  if (typeof task === 'function') {
+    try {
+      const text = await task('')
+      return new FleetMemberOutput('(composed pattern)', text, true)
+    } catch (err) {
+      return new FleetMemberOutput('(composed pattern)', '', false, getErrorMessage(err))
+    }
+  }
+  // String task: normal LLM call
   const model = workerModel ?? opts.model
   try {
     const text = await ask(task, {
@@ -144,13 +169,13 @@ async function execute(
   if (!opts.quiet) {
     process.stderr.write(`Φ: Fleet executing ${tasks.length} task(s) in parallel\n`)
     for (let i = 0; i < tasks.length; i++) {
-      const t = tasks[i]
+      const t = describeTask(tasks[i])
       process.stderr.write(`  [${i + 1}] ${t.slice(0, 60)}${t.length > 60 ? '...' : ''}\n`)
     }
   }
 
   // Confirm before execution (optional)
-  const taskSummary = `Execute ${tasks.length} fleet task(s)?\n    ${tasks.map((t, i) => `${i + 1}. ${t.slice(0, 80)}`).join('\n    ')}`
+  const taskSummary = `Execute ${tasks.length} fleet task(s)?\n    ${tasks.map((t, i) => `${i + 1}. ${describeTask(t).slice(0, 80)}`).join('\n    ')}`
   if (!await confirmPhase(taskSummary, opts)) {
     throw new Error('pizx/Φ: Execution cancelled by user.')
   }
@@ -168,7 +193,7 @@ async function execute(
       if (r.status === 'fulfilled') {
         results.push(r.value)
       } else {
-        results.push(new FleetMemberOutput(batch[idx], '', false, r.reason?.toString()))
+        results.push(new FleetMemberOutput(describeTask(batch[idx]), '', false, r.reason?.toString()))
       }
     })
   }

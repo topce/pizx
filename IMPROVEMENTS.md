@@ -320,13 +320,44 @@ await Λ({ confirm: true })`analyze → generate → review`
 
 ---
 
+## #9 — Pattern Composition / Nesting (2026-06-10)
+
+**Problem:** No way to use one pattern as a sub-task inside another. Users had to manually chain patterns — no native composition mechanism.
+
+**Fix:** Added `TaskDescriptor` type (`string | ((prev: string) => Promise<string>)`). Updated **Fleet** and **Pipeline** to accept `TaskDescriptor[]` in their `tasks`/`stages` options.
+
+### How it works
+
+```typescript
+// Fleet: mix plain tasks with pattern calls
+await Φ({ tasks: [
+  'analyze the frontend',             // string: standard LLM call
+  () => Σ\`analyze the backend\`,      // function: compose a Subagents pattern
+  () => Ψ\`review the API design\`,    // compose a Critique pattern
+] })`review everything`
+
+// Pipeline: stages receive previous output as context
+await Λ({ stages: [
+  'analyze the code',
+  (prev) => Ψ\`review this: ${prev}\`, // previous stage output flows into pattern
+] })`analyze → review`
+```
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `src/patterns/types.ts` | +1 line: `TaskDescriptor` type |
+| `src/patterns/fleet.ts` | `tasks` accepts `TaskDescriptor[]`; `executeTask` handles functions |
+| `src/patterns/pipeline.ts` | `stages` accepts `TaskDescriptor[]`; stage loop handles functions |
+| `src/patterns/index.ts` | Export `TaskDescriptor` |
+| `src/index.ts` | Export `TaskDescriptor` |
+| `src/pizx.test.ts` | +9 lines: `TaskDescriptor` type tests |
+
+**Verification:** ✅ JS build, DTS, 223/223 tests pass (was 221).
+
+---
+
 ## Remaining Opportunities
 
-| # | Issue | Impact |
-|---|---|---|
-| 5 | ~~Quality validation only in 3/15 patterns (Ρ, Ψ, Α)~~ ✅ All 15 now have qualityCheck | 🟡 Medium |
-| 6 | ~~`system` option ignored by most patterns~~ ✅ All patterns now merge user system with pattern defaults | 🟢 Low |
-| 7 | ~~Duplicate `build()` function (pi.ts vs types.ts)~~ ✅ Already deduplicated (imports from types.ts) | 🟢 Low |
-| 8 | ~~Structured audit logging for pattern phases~~ ✅ Base infrastructure + 3 patterns populated | 🟡 Medium |
-| 9 | ~~Human-in-the-loop / approval gates~~ ✅ confirm option on 4 patterns | 🟡 Medium |
-| 10 | No pattern composition / nesting | 🟢 Low |
+All original 10 improvements completed. ✅

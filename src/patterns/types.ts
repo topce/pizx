@@ -36,6 +36,9 @@ export interface PatternOptions {
 
 // ── Execution trace ─────────────────────────────────────────────────────────
 
+/** A task that can be either a plain string (LLM call) or a lazy pattern call receiving previous output. */
+export type TaskDescriptor = string | ((previousOutput: string) => Promise<string>)
+
 /** A single LLM call recorded during pattern execution. */
 export interface CallTrace {
   /** Auto-indexed call number (1-based) */
