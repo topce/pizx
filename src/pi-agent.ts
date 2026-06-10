@@ -8,6 +8,8 @@
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import { type AgentSession, createAgentSession } from '@earendil-works/pi-coding-agent'
+import { build } from './patterns/types.ts'
+import { getErrorMessage } from './utils.ts'
 
 export interface AgentOptions {
   cwd?: string
@@ -57,27 +59,22 @@ let _sharedSession: AgentSession | null = null
 async function getSession(opts: AgentOptions): Promise<AgentSession> {
   if (_sharedSession && !opts.model) return _sharedSession
 
-  const result = await createAgentSession({
-    cwd: opts.cwd,
-    thinkingLevel: opts.thinkingLevel,
-    tools: opts.tools,
-    excludeTools: opts.excludeTools,
-  })
+  try {
+    const result = await createAgentSession({
+      cwd: opts.cwd,
+      thinkingLevel: opts.thinkingLevel,
+      tools: opts.tools,
+      excludeTools: opts.excludeTools,
+    })
 
-  _sharedSession = result.session
-  return _sharedSession
+    _sharedSession = result.session
+    return _sharedSession
+  } catch (err) {
+    throw new Error(`pizx/Π: Failed to create agent session: ${getErrorMessage(err)}`)
+  }
 }
 
 // ── Execute ─────────────────────────────────────────────────────────────────
-
-function build(pieces: TemplateStringsArray, args: unknown[]): string {
-  let s = ''
-  for (let i = 0; i < pieces.length; i++) {
-    s += pieces[i]
-    if (i < args.length) s += String(args[i])
-  }
-  return s.trim()
-}
 
 /**
  * Extract text content from an agent message. Handles both string content
@@ -134,17 +131,13 @@ async function execute(
     const text = getLastAssistantText(session)
 
     // Count how many assistant turns happened (tool calls + final response)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const turnCount = (session.messages as readonly { role: string }[]).filter(
-      (m) => m.role === 'assistant'
-    ).length
+    const turnCount = session.messages.filter((m) => m.role === 'assistant').length
 
     return new AgentOutput(text || '(no assistant response)', turnCount, t0, t1)
   } catch (err) {
     const t1 = Date.now()
-    const msg = err instanceof Error ? err.message : String(err)
     console.error('Π error:', err)
-    return new AgentOutput(`Π error: ${msg}`, 0, t0, t1)
+    return new AgentOutput(`Π error: ${getErrorMessage(err)}`, 0, t0, t1)
   }
 }
 

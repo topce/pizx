@@ -47,4 +47,11 @@ export { type SubagentOptions, SubagentOutput, SubagentResult, Σ } from './suba
 export { type TauOptions, TauOutput, ToolMediatedEntry, Τ } from './tau.ts'
 export { ThreadMessage, type ThreadOptions, ThreadOutput, Θ } from './thread.ts'
 
-export { type PatternFn, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
+export {
+  type CallTrace,
+  createPatternTag,
+  type PatternFn,
+  type PatternOptions,
+  PatternOutput,
+  PatternPromise,
+} from './types.ts'

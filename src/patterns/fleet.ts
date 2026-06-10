@@ -23,7 +23,8 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { getErrorMessage } from '../utils.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -114,15 +115,13 @@ async function executeTask(
   const model = workerModel ?? opts.model
   try {
     const text = await ask(task, {
+      ...opts,
       model,
-      maxTokens: opts.maxTokens,
-      thinkingLevel: opts.thinkingLevel,
       system: opts.system ?? FLEET_SYSTEM,
     })
     return new FleetMemberOutput(task, text, true)
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    return new FleetMemberOutput(task, '', false, msg)
+    return new FleetMemberOutput(task, '', false, getErrorMessage(err))
   }
 }
 
@@ -179,41 +178,5 @@ async function execute(
   return new FleetOutput(header + summary, results, t0, t1)
 }
 
-// ── Tag factory ─────────────────────────────────────────────────────────────
-
-interface FleetFn {
-  (pieces: TemplateStringsArray, ...args: unknown[]): PatternPromise<FleetOutput>
-  (opts: Partial<FleetOptions>): FleetFn
-  quiet: FleetFn
-}
-
-function makeFleet(opts: Partial<FleetOptions> = {}): FleetFn {
-  const merged = { ...defaults, ...opts }
-
-  const fn = ((
-    pieces: TemplateStringsArray | Partial<FleetOptions>,
-    ...args: unknown[]
-  ): PatternPromise<FleetOutput> | FleetFn => {
-    if (!Array.isArray(pieces)) {
-      return makeFleet({ ...merged, ...(pieces as Partial<FleetOptions>) })
-    }
-    return new PatternPromise((resolve, reject) => {
-      execute(pieces as TemplateStringsArray, args, merged).then(resolve, reject)
-    })
-  }) as unknown as FleetFn
-
-  let _quiet: FleetFn | undefined
-  Object.defineProperty(fn, 'quiet', {
-    get(): FleetFn {
-      if (!_quiet) _quiet = makeFleet({ ...merged, quiet: true })
-      return _quiet
-    },
-    enumerable: true,
-    configurable: true,
-  })
-
-  return fn
-}
-
 /** Φ tag — Fleet: parallel agent execution */
-export const Φ: FleetFn = makeFleet()
+export const Φ = createPatternTag(defaults, execute)

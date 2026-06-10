@@ -24,7 +24,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -155,12 +155,7 @@ async function execute(
         ? `You are a specialist executing stage ${i + 1}: ${stage}. Focus only on this stage's output.`
         : `You are a specialist executing stage ${i + 1}: ${stage}. Process the previous stage's output according to your instructions. Maintain all important information from previous stages.`
 
-    const output = await ask(prompt, {
-      model: workerModel,
-      maxTokens: opts.maxTokens,
-      thinkingLevel: opts.thinkingLevel,
-      system: systemMessage,
-    })
+    const output = await ask(prompt, { ...opts, model: workerModel, system: systemMessage })
 
     stageResults.push(new PipelineStageResult(stage, output, i))
     currentInput = output
@@ -179,41 +174,5 @@ async function execute(
   return new PipelineOutput(summary, finalOutput, stageResults, t0, t1)
 }
 
-// ── Tag factory ─────────────────────────────────────────────────────────────
-
-interface PipelineFn {
-  (pieces: TemplateStringsArray, ...args: unknown[]): PatternPromise<PipelineOutput>
-  (opts: Partial<PipelineOptions>): PipelineFn
-  quiet: PipelineFn
-}
-
-function makePipeline(opts: Partial<PipelineOptions> = {}): PipelineFn {
-  const merged = { ...defaults, ...opts }
-
-  const fn = ((
-    pieces: TemplateStringsArray | Partial<PipelineOptions>,
-    ...args: unknown[]
-  ): PatternPromise<PipelineOutput> | PipelineFn => {
-    if (!Array.isArray(pieces)) {
-      return makePipeline({ ...merged, ...(pieces as Partial<PipelineOptions>) })
-    }
-    return new PatternPromise((resolve, reject) => {
-      execute(pieces as TemplateStringsArray, args, merged).then(resolve, reject)
-    })
-  }) as unknown as PipelineFn
-
-  let _quiet: PipelineFn | undefined
-  Object.defineProperty(fn, 'quiet', {
-    get(): PipelineFn {
-      if (!_quiet) _quiet = makePipeline({ ...merged, quiet: true })
-      return _quiet
-    },
-    enumerable: true,
-    configurable: true,
-  })
-
-  return fn
-}
-
 /** Λ tag — Pipeline: sequential agent chain */
-export const Λ: PipelineFn = makePipeline()
+export const Λ = createPatternTag(defaults, execute)

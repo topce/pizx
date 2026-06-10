@@ -14,7 +14,8 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { MEMORY_ROLE_SETS } from './role-sets.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -32,28 +33,6 @@ const defaults: MemoryOptions = {
   thinkingLevel: 'medium' as ThinkingLevel,
   agents: 3,
   rounds: 1,
-}
-
-const ROLE_SETS: Record<number, string[]> = {
-  2: ['Analyst — deep analysis of core aspects', 'Reviewer — check for gaps and blind spots'],
-  3: [
-    'Analyst — deep analysis of core aspects',
-    'Reviewer — check for gaps, edge cases, and blind spots',
-    'Strategist — connect findings to actionable insights',
-  ],
-  4: [
-    'Analyst',
-    'Reviewer',
-    'Strategist',
-    'Innovator — propose novel angles and creative solutions',
-  ],
-  5: [
-    'Analyst',
-    'Reviewer',
-    'Strategist',
-    'Innovator',
-    'Skeptic — challenge assumptions and stress-test conclusions',
-  ],
 }
 
 // ── Outputs ─────────────────────────────────────────────────────────────────
@@ -108,7 +87,7 @@ async function execute(
   const t0 = Date.now()
   const agentCount = opts.agents ?? 3
   const totalRounds = opts.rounds ?? 1
-  const roles = opts.roles ?? ROLE_SETS[agentCount] ?? ROLE_SETS[3] ?? []
+  const roles = opts.roles ?? MEMORY_ROLE_SETS[agentCount] ?? MEMORY_ROLE_SETS[3] ?? []
 
   const plannerModel = opts.plannerModel ?? opts.model
   const workerModel = opts.workerModel ?? opts.model
@@ -128,11 +107,7 @@ async function execute(
     const roundResults = await Promise.allSettled(
       roles.map(async (role) => {
         const prompt = buildWriterPrompt(role, topic, blackboard)
-        const text = await ask(prompt, {
-          model: workerModel,
-          maxTokens: opts.maxTokens,
-          thinkingLevel: opts.thinkingLevel,
-        })
+        const text = await ask(prompt, { ...opts, model: workerModel })
         return { role, text }
       })
     )
@@ -151,8 +126,8 @@ async function execute(
   const synthesis = await ask(
     `Topic: ${topic}\n\nBlackboard findings:\n${blackboard}\n\nConsolidate into a comprehensive, structured synthesis.`,
     {
+      ...opts,
       model: plannerModel,
-      maxTokens: opts.maxTokens,
       thinkingLevel: 'high' as ThinkingLevel,
       system: CONSOLIDATOR_SYSTEM,
     }
@@ -170,41 +145,5 @@ async function execute(
   return new MemoryOutput(summary, synthesis, entries, t0, t1)
 }
 
-// ── Tag factory ─────────────────────────────────────────────────────────────
-
-interface MemoryFn {
-  (pieces: TemplateStringsArray, ...args: unknown[]): PatternPromise<MemoryOutput>
-  (opts: Partial<MemoryOptions>): MemoryFn
-  quiet: MemoryFn
-}
-
-function makeMemory(opts: Partial<MemoryOptions> = {}): MemoryFn {
-  const merged = { ...defaults, ...opts }
-
-  const fn = ((
-    pieces: TemplateStringsArray | Partial<MemoryOptions>,
-    ...args: unknown[]
-  ): PatternPromise<MemoryOutput> | MemoryFn => {
-    if (!Array.isArray(pieces)) {
-      return makeMemory({ ...merged, ...(pieces as Partial<MemoryOptions>) })
-    }
-    return new PatternPromise((resolve, reject) => {
-      execute(pieces as TemplateStringsArray, args, merged).then(resolve, reject)
-    })
-  }) as unknown as MemoryFn
-
-  let _quiet: MemoryFn | undefined
-  Object.defineProperty(fn, 'quiet', {
-    get(): MemoryFn {
-      if (!_quiet) _quiet = makeMemory({ ...merged, quiet: true })
-      return _quiet
-    },
-    enumerable: true,
-    configurable: true,
-  })
-
-  return fn
-}
-
 /** Μ tag — Memory: shared blackboard pattern */
-export const Μ: MemoryFn = makeMemory()
+export const Μ = createPatternTag(defaults, execute)

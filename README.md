@@ -152,12 +152,52 @@ await Θ({ agents: 4, turns: 3 })`debate the architecture`
 await Γ({ graph: { nodes: [...], edges: [...] } })`execute workflow`
 ```
 
+### Timeout & Retry
+
+All tags accept `timeoutMs` and `maxRetries` to control LLM call resilience. When unset, the provider SDK defaults apply (typically 10 min timeout, 2 retries).
+
+```js
+// Per-pattern
+await Φ({ timeoutMs: 30000, maxRetries: 2 })`review all .ts files`
+
+// Per-call on π
+await π({ timeoutMs: 15000 })`summarize this document`
+
+// Global defaults
+configurePi({ timeoutMs: 60000, maxRetries: 3 })
+```
+
+### Token & Cost Tracking
+
+Every pattern output and π call includes an execution trace with token usage and cost. Traces are collected automatically — no extra flags needed.
+
+```js
+const result = await Ω`design a notification system`
+
+// Per-call breakdown
+for (const t of result.trace) {
+  console.log(`Call ${t.call}: ${t.modelId} — ${t.totalTokens} tokens, $${t.cost.toFixed(6)}`)
+}
+
+// Aggregates (on both PatternOutput and PiOutput)
+console.log(`Total: ${result.totalTokens} tokens`)
+console.log(`Cost:  $${result.totalCost.toFixed(4)}`)
+console.log(`Calls: ${result.callCount}`)
+
+// Works with π too
+const answer = await π`explain quantum computing`
+console.log(`Input: ${answer.inputTokens}, Output: ${answer.outputTokens}`)
+console.log(`Cost:  $${answer.totalCost.toFixed(6)}`)
+```
+
+Each `CallTrace` entry includes: call index, model id, prompt/output previews, input/output/cache tokens, cost (USD), and duration.
+
 ### Global Configuration
 
 ```js
 import { configurePi, configureAgent } from '@topce/pizx'
 
-configurePi({ model: 'anthropic/claude-sonnet-4-5', maxTokens: 8000 })
+configurePi({ model: 'anthropic/claude-sonnet-4-5', maxTokens: 8000, timeoutMs: 60000 })
 configureAgent({ maxTurns: 5, excludeTools: ['write'] })
 ```
 

@@ -21,7 +21,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -140,6 +140,7 @@ async function defineSchema(
   const prompt = SCHEMA_SYSTEM.replace('{agentCount}', String(agentCount))
 
   const response = await ask(`Task: ${task}\n\n${prompt}`, {
+    ...opts,
     model: opts.plannerModel ?? opts.model,
     maxTokens: 1024,
     thinkingLevel: 'high' as ThinkingLevel,
@@ -223,12 +224,7 @@ async function executeRound(
         ? `Write your initial findings to your assigned keys: ${keysStr}`
         : `Review the shared context and update your entries for keys: ${keysStr}`
 
-      const response = await ask(task, {
-        model: workerModel,
-        maxTokens: opts.maxTokens,
-        thinkingLevel: opts.thinkingLevel,
-        system: systemPrompt,
-      })
+      const response = await ask(task, { ...opts, model: workerModel, system: systemPrompt })
 
       return { role, response }
     })
@@ -279,8 +275,8 @@ async function consolidateStore(
   return ask(
     `Original task: ${task}\n\nStructured findings from all specialists:\n\n${storeText}\n\nConsolidate into a comprehensive, well-structured synthesis.`,
     {
+      ...opts,
       model: opts.plannerModel ?? opts.model,
-      maxTokens: opts.maxTokens,
       thinkingLevel: 'high' as ThinkingLevel,
       system: CONSOLIDATE_SYSTEM,
     }
@@ -354,41 +350,5 @@ async function execute(
   return new TauOutput(summary, allEntries, store, synthesis, t0, t1)
 }
 
-// ── Tag factory ─────────────────────────────────────────────────────────────
-
-interface TauFn {
-  (pieces: TemplateStringsArray, ...args: unknown[]): PatternPromise<TauOutput>
-  (opts: Partial<TauOptions>): TauFn
-  quiet: TauFn
-}
-
-function makeTau(opts: Partial<TauOptions> = {}): TauFn {
-  const merged = { ...defaults, ...opts }
-
-  const fn = ((
-    pieces: TemplateStringsArray | Partial<TauOptions>,
-    ...args: unknown[]
-  ): PatternPromise<TauOutput> | TauFn => {
-    if (!Array.isArray(pieces)) {
-      return makeTau({ ...merged, ...(pieces as Partial<TauOptions>) })
-    }
-    return new PatternPromise((resolve, reject) => {
-      execute(pieces as TemplateStringsArray, args, merged).then(resolve, reject)
-    })
-  }) as unknown as TauFn
-
-  let _quiet: TauFn | undefined
-  Object.defineProperty(fn, 'quiet', {
-    get(): TauFn {
-      if (!_quiet) _quiet = makeTau({ ...merged, quiet: true })
-      return _quiet
-    },
-    enumerable: true,
-    configurable: true,
-  })
-
-  return fn
-}
-
 /** Τ tag — Tool-Mediated Orchestration: shared structured key-value store */
-export const Τ: TauFn = makeTau()
+export const Τ = createPatternTag(defaults, execute)

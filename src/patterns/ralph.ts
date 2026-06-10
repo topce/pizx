@@ -21,9 +21,9 @@ import { createAgentSession } from '@earendil-works/pi-coding-agent'
 import {
   ask,
   build,
+  createPatternTag,
   type PatternOptions,
   PatternOutput,
-  PatternPromise,
   pickModel,
 } from './types.ts'
 
@@ -89,20 +89,19 @@ async function executeWithTools(goal: string, opts: RalphOptions): Promise<strin
   try {
     await session.sendUserMessage(goal)
     // Extract the last assistant message text
-    const msgs = (session as any).messages ?? []
-    for (let i = msgs.length - 1; i >= 0; i--) {
-      if (msgs[i].role === 'assistant') {
-        const c = msgs[i].content
-        if (typeof c === 'string') return c.trim()
-        if (Array.isArray(c)) {
-          const texts = c
-            .filter(
-              (x: { type?: string; text?: string }) =>
-                x.type === 'text' && typeof x.text === 'string'
-            )
-            .map((x: { text: string }) => x.text)
-          if (texts.length > 0) return texts.join('').trim()
-        }
+    const messages = session.messages
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i]
+      if (msg?.role !== 'assistant') continue
+      const c = 'content' in msg ? (msg as { content: unknown }).content : undefined
+      if (typeof c === 'string') return c.trim()
+      if (Array.isArray(c)) {
+        const texts = c
+          .filter(
+            (x: { type?: string; text?: string }) => x.type === 'text' && typeof x.text === 'string'
+          )
+          .map((x: { text: string }) => x.text)
+        if (texts.length > 0) return texts.join('').trim()
       }
     }
     return '(no assistant response)'
@@ -152,9 +151,8 @@ async function execute(
     // 1. Analyze (planner model — high-level reasoning)
     if (!opts.quiet) process.stderr.write('  → Analyzing...\n')
     const analysis = await ask(currentGoal, {
+      ...opts,
       model: plannerModel,
-      maxTokens: opts.maxTokens,
-      thinkingLevel: opts.thinkingLevel,
       system: ANALYSIS_SYSTEM,
     })
 
@@ -162,12 +160,7 @@ async function execute(
     if (!opts.quiet) process.stderr.write('  → Planning...\n')
     const plan = await ask(
       `Goal: ${currentGoal}\n\nAnalysis: ${analysis}\n\nGenerate an implementation plan.`,
-      {
-        model: plannerModel,
-        maxTokens: opts.maxTokens,
-        thinkingLevel: opts.thinkingLevel,
-        system: PLAN_SYSTEM,
-      }
+      { ...opts, model: plannerModel, system: PLAN_SYSTEM }
     )
 
     // 3. Execute (worker model — lower-level execution)
@@ -178,14 +171,14 @@ async function execute(
           model: workerModel,
         })
       : await ask(`Implement this plan:\n${plan}\n\nGoal: ${currentGoal}`, {
+          ...opts,
           model: workerModel,
-          maxTokens: opts.maxTokens,
-          thinkingLevel: opts.thinkingLevel,
         })
 
     // 4. Review (planner model — high-level quality check)
     if (!opts.quiet) process.stderr.write('  → Reviewing...\n')
     const review = await ask(`Plan:\n${plan}\n\nResult:\n${result}\n\nReview the implementation.`, {
+      ...opts,
       model: plannerModel,
       maxTokens: 1024,
       thinkingLevel: 'high' as ThinkingLevel,
@@ -231,41 +224,5 @@ async function execute(
   )
 }
 
-// ── Tag factory ─────────────────────────────────────────────────────────────
-
-interface RalphFn {
-  (pieces: TemplateStringsArray, ...args: unknown[]): PatternPromise<RalphOutput>
-  (opts: Partial<RalphOptions>): RalphFn
-  quiet: RalphFn
-}
-
-function makeRalph(opts: Partial<RalphOptions> = {}): RalphFn {
-  const merged = { ...defaults, ...opts }
-
-  const fn = ((
-    pieces: TemplateStringsArray | Partial<RalphOptions>,
-    ...args: unknown[]
-  ): PatternPromise<RalphOutput> | RalphFn => {
-    if (!Array.isArray(pieces)) {
-      return makeRalph({ ...merged, ...(pieces as Partial<RalphOptions>) })
-    }
-    return new PatternPromise((resolve, reject) => {
-      execute(pieces as TemplateStringsArray, args, merged).then(resolve, reject)
-    })
-  }) as unknown as RalphFn
-
-  let _quiet: RalphFn | undefined
-  Object.defineProperty(fn, 'quiet', {
-    get(): RalphFn {
-      if (!_quiet) _quiet = makeRalph({ ...merged, quiet: true })
-      return _quiet
-    },
-    enumerable: true,
-    configurable: true,
-  })
-
-  return fn
-}
-
 /** Ρ tag — Ralph Loop: iterative self-correcting loop */
-export const Ρ: RalphFn = makeRalph()
+export const Ρ = createPatternTag(defaults, execute)

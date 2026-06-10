@@ -10,45 +10,45 @@
  */
 
 import {
-  Α as _Α,
-  Β as _Β,
-  Γ as _Γ,
-  Δ as _Δ,
-  Θ as _Θ,
-  Λ as _Λ,
-  Μ as _Μ,
-  Ρ as _Ρ,
-  Σ as _Σ,
-  Φ as _Φ,
-  Ψ as _Ψ,
-  Ω as _Ω,
+  Α,
+  Β,
+  Γ,
+  Δ,
+  Θ,
+  Λ,
+  Μ,
+  Ρ,
+  Σ,
+  Φ,
+  Ψ,
+  Ω,
 } from './patterns/index.ts'
-import { π as _π, configurePi } from './pi.ts'
-import { Π as _Π, closeAgent, configureAgent } from './pi-agent.ts'
+import { π, configurePi } from './pi.ts'
+import { Π, closeAgent, configureAgent } from './pi-agent.ts'
 
 const g = globalThis as Record<string, unknown>
 
 // Core tags
-g.π = _π
-g.Π = _Π
+g.π = π
+g.Π = Π
 
 // Agent patterns
-g.Ρ = _Ρ // Rho — Ralph Loop
-g.Φ = _Φ // Phi — Fleet
-g.Σ = _Σ // Sigma — Subagents
-g.Δ = _Δ // Delta — Debate
-g.Λ = _Λ // Lambda — Pipeline
-g.Ψ = _Ψ // Psi — Critique
-g.Ω = _Ω // Omega — Orchestrator
+g.Ρ = Ρ // Rho — Ralph Loop
+g.Φ = Φ // Phi — Fleet
+g.Σ = Σ // Sigma — Subagents
+g.Δ = Δ // Delta — Debate
+g.Λ = Λ // Lambda — Pipeline
+g.Ψ = Ψ // Psi — Critique
+g.Ω = Ω // Omega — Orchestrator
 
 // Communication patterns
-g.Θ = _Θ // Theta — Thread
-g.Μ = _Μ // Mu — Memory
-g.Β = _Β // Beta — Broadcast
+g.Θ = Θ // Theta — Thread
+g.Μ = Μ // Mu — Memory
+g.Β = Β // Beta — Broadcast
 
 // Orchestration topologies
-g.Α = _Α // Alpha — Adaptive
-g.Γ = _Γ // Gamma — Graph
+g.Α = Α // Alpha — Adaptive
+g.Γ = Γ // Gamma — Graph
 
 // Helpers
 g.configurePi = configurePi
@@ -57,20 +57,20 @@ g.closeAgent = closeAgent
 
 // Named exports for explicit import
 export {
-  _Α as Α,
-  _Β as Β,
-  _Γ as Γ,
-  _Δ as Δ,
-  _Θ as Θ,
-  _Λ as Λ,
-  _Μ as Μ,
-  _Π as Π,
-  _Ρ as Ρ,
-  _Σ as Σ,
-  _Φ as Φ,
-  _Ψ as Ψ,
-  _Ω as Ω,
-  _π as π,
+  Α,
+  Β,
+  Γ,
+  Δ,
+  Θ,
+  Λ,
+  Μ,
+  Π,
+  π,
+  Ρ,
+  Σ,
+  Φ,
+  Ψ,
+  Ω,
   closeAgent,
   configureAgent,
   configurePi,

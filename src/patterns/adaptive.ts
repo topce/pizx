@@ -15,7 +15,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -100,8 +100,8 @@ async function execute(
   // 1. Generate initial plan (planner model)
   if (!opts.quiet) process.stderr.write('  → Planning...\n')
   const planText = await ask(goal, {
+    ...opts,
     model: plannerModel,
-    maxTokens: opts.maxTokens,
     thinkingLevel: 'high' as ThinkingLevel,
     system: PLAN_SYSTEM,
   })
@@ -138,17 +138,13 @@ async function execute(
       process.stderr.write(`  → Step ${executionStep}: ${currentStep.slice(0, 60)}...\n`)
 
     // Execute current step (worker model)
-    const result = await ask(currentStep, {
-      model: workerModel,
-      maxTokens: opts.maxTokens,
-      thinkingLevel: opts.thinkingLevel,
-      system: EXECUTE_SYSTEM,
-    })
+    const result = await ask(currentStep, { ...opts, model: workerModel, system: EXECUTE_SYSTEM })
 
     // Evaluate (planner model)
     const evaluation = await ask(
       `Goal: ${goal}\nStep executed: ${currentStep}\nResult: ${result}\n\nEvaluate the result.`,
       {
+        ...opts,
         model: plannerModel,
         maxTokens: 512,
         thinkingLevel: 'high' as ThinkingLevel,
@@ -181,8 +177,7 @@ async function execute(
 
     // Apply adaptation
     const adaptUpper = adaptation.toUpperCase()
-    if (adaptUpper.startsWith('REFINE')) {
-    } else if (adaptUpper.startsWith('SKIP_NEXT')) {
+    if (adaptUpper.startsWith('SKIP_NEXT')) {
       stepIndex += 2 // Skip current + next
     } else if (adaptUpper.startsWith('ADD')) {
       const newStep = adaptation.replace(/^ADD\s*/i, '')
@@ -208,41 +203,5 @@ async function execute(
   return new AdaptiveOutput(summary, finalResult, adaptiveSteps, executionStep, t0, t1)
 }
 
-// ── Tag factory ─────────────────────────────────────────────────────────────
-
-interface AdaptiveFn {
-  (pieces: TemplateStringsArray, ...args: unknown[]): PatternPromise<AdaptiveOutput>
-  (opts: Partial<AdaptiveOptions>): AdaptiveFn
-  quiet: AdaptiveFn
-}
-
-function makeAdaptive(opts: Partial<AdaptiveOptions> = {}): AdaptiveFn {
-  const merged = { ...defaults, ...opts }
-
-  const fn = ((
-    pieces: TemplateStringsArray | Partial<AdaptiveOptions>,
-    ...args: unknown[]
-  ): PatternPromise<AdaptiveOutput> | AdaptiveFn => {
-    if (!Array.isArray(pieces)) {
-      return makeAdaptive({ ...merged, ...(pieces as Partial<AdaptiveOptions>) })
-    }
-    return new PatternPromise((resolve, reject) => {
-      execute(pieces as TemplateStringsArray, args, merged).then(resolve, reject)
-    })
-  }) as unknown as AdaptiveFn
-
-  let _quiet: AdaptiveFn | undefined
-  Object.defineProperty(fn, 'quiet', {
-    get(): AdaptiveFn {
-      if (!_quiet) _quiet = makeAdaptive({ ...merged, quiet: true })
-      return _quiet
-    },
-    enumerable: true,
-    configurable: true,
-  })
-
-  return fn
-}
-
 /** Α tag — Adaptive: self-adjusting orchestration */
-export const Α: AdaptiveFn = makeAdaptive()
+export const Α = createPatternTag(defaults, execute)

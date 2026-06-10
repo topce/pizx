@@ -18,7 +18,8 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { DEBATE_ROLE_SETS } from './role-sets.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -36,32 +37,6 @@ const defaults: DebateOptions = {
   thinkingLevel: 'medium' as ThinkingLevel,
   perspectives: 3,
   rounds: 1,
-}
-
-// Pre-built role sets for different numbers of perspectives
-const ROLE_SETS: Record<number, string[]> = {
-  2: [
-    'Optimist — advocate for the most ambitious approach',
-    'Pessimist — identify risks and failure modes',
-  ],
-  3: [
-    'Optimist — advocate the benefits and opportunities',
-    'Pessimist — identify risks, costs, and failure modes',
-    'Pragmatist — focus on practical trade-offs and implementation',
-  ],
-  4: [
-    'Optimist — argue for the best-case potential',
-    'Pessimist — highlight worst-case risks and downsides',
-    'Pragmatist — balance pros/cons with practical constraints',
-    'Innovator — propose creative alternatives and novel approaches',
-  ],
-  5: [
-    'Optimist',
-    'Pessimist',
-    'Pragmatist',
-    'Innovator',
-    'User Advocate — focus on end-user experience and accessibility',
-  ],
 }
 
 // ── Outputs ─────────────────────────────────────────────────────────────────
@@ -112,7 +87,7 @@ async function execute(
   const t0 = Date.now()
   const count = opts.perspectives ?? 3
   const totalRounds = opts.rounds ?? 1
-  const roles = opts.roles ?? ROLE_SETS[count] ?? ROLE_SETS[3] ?? []
+  const roles = opts.roles ?? DEBATE_ROLE_SETS[count] ?? DEBATE_ROLE_SETS[3] ?? []
 
   // Planner model for synthesis, worker model for individual perspectives
   const plannerModel = opts.plannerModel ?? opts.model
@@ -133,12 +108,9 @@ async function execute(
 
   const round1Results = await Promise.allSettled(
     roles.map((role) =>
-      ask(question, {
-        model: workerModel,
-        maxTokens: opts.maxTokens,
-        thinkingLevel: opts.thinkingLevel,
-        system: PERSPECTIVE_SYSTEM(role),
-      }).then((text) => new DebatePerspective(role, text, 1))
+      ask(question, { ...opts, model: workerModel, system: PERSPECTIVE_SYSTEM(role) }).then(
+        (text) => new DebatePerspective(role, text, 1)
+      )
     )
   )
 
@@ -176,9 +148,8 @@ async function execute(
         const prompt = `Question: ${question}\n\nYour previous position:\n${ownText}\n\nCounter-arguments from other perspectives:\n${othersText}\n\nRefine your position. Address the counter-arguments directly. Strengthen your argument with rebuttals.`
 
         return ask(prompt, {
+          ...opts,
           model: workerModel,
-          maxTokens: opts.maxTokens,
-          thinkingLevel: opts.thinkingLevel,
           system: REBUTTAL_SYSTEM(role),
         }).then((text) => new DebatePerspective(role, text, round))
       })
@@ -205,8 +176,8 @@ async function execute(
   const conclusion = await ask(
     `${debateHistory}\n\nSynthesize a balanced conclusion from the full debate above. Weigh the evidence from all rounds.`,
     {
+      ...opts,
       model: plannerModel,
-      maxTokens: opts.maxTokens,
       thinkingLevel: 'high' as ThinkingLevel,
       system: SYNTHESIS_SYSTEM,
     }
@@ -217,41 +188,5 @@ async function execute(
   return new DebateOutput(conclusion, conclusion, allPerspectives, totalRounds, t0, t1)
 }
 
-// ── Tag factory ─────────────────────────────────────────────────────────────
-
-interface DebateFn {
-  (pieces: TemplateStringsArray, ...args: unknown[]): PatternPromise<DebateOutput>
-  (opts: Partial<DebateOptions>): DebateFn
-  quiet: DebateFn
-}
-
-function makeDebate(opts: Partial<DebateOptions> = {}): DebateFn {
-  const merged = { ...defaults, ...opts }
-
-  const fn = ((
-    pieces: TemplateStringsArray | Partial<DebateOptions>,
-    ...args: unknown[]
-  ): PatternPromise<DebateOutput> | DebateFn => {
-    if (!Array.isArray(pieces)) {
-      return makeDebate({ ...merged, ...(pieces as Partial<DebateOptions>) })
-    }
-    return new PatternPromise((resolve, reject) => {
-      execute(pieces as TemplateStringsArray, args, merged).then(resolve, reject)
-    })
-  }) as unknown as DebateFn
-
-  let _quiet: DebateFn | undefined
-  Object.defineProperty(fn, 'quiet', {
-    get(): DebateFn {
-      if (!_quiet) _quiet = makeDebate({ ...merged, quiet: true })
-      return _quiet
-    },
-    enumerable: true,
-    configurable: true,
-  })
-
-  return fn
-}
-
 /** Δ tag — Debate: multiple perspectives converge */
-export const Δ: DebateFn = makeDebate()
+export const Δ = createPatternTag(defaults, execute)

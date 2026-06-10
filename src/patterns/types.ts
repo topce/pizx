@@ -26,6 +26,38 @@ export interface PatternOptions {
   maxTokens?: number
   /** System prompt context */
   system?: string
+  /** Timeout in milliseconds for each LLM call. Default: provider SDK default (typically 10 min). */
+  timeoutMs?: number
+  /** Maximum retry attempts for transient failures (network errors, rate limits). Default: provider SDK default (typically 2). */
+  maxRetries?: number
+}
+
+// ── Execution trace ─────────────────────────────────────────────────────────
+
+/** A single LLM call recorded during pattern execution. */
+export interface CallTrace {
+  /** Auto-indexed call number (1-based) */
+  call: number
+  /** Model id used for this call */
+  modelId: string
+  /** First 200 chars of the prompt */
+  promptPreview: string
+  /** First 200 chars of the output */
+  outputPreview: string
+  /** Input tokens consumed */
+  inputTokens: number
+  /** Output tokens generated */
+  outputTokens: number
+  /** Cache read tokens */
+  cacheReadTokens: number
+  /** Cache write tokens */
+  cacheWriteTokens: number
+  /** Total tokens (input + output) */
+  totalTokens: number
+  /** Cost in USD */
+  cost: number
+  /** Duration of this call in ms */
+  durationMs: number
 }
 
 // ── Base output class ───────────────────────────────────────────────────────
@@ -35,6 +67,9 @@ export interface PatternOptions {
  * Provides common fields and coercion methods like PiOutput/AgentOutput.
  */
 export class PatternOutput {
+  /** Execution trace: one entry per LLM call within this pattern run. Populated by createPatternTag. */
+  public trace: CallTrace[] = []
+
   constructor(
     /** Full text result from the pattern execution */
     public readonly text: string,
@@ -47,6 +82,31 @@ export class PatternOutput {
   /** Duration in milliseconds */
   get duration(): number {
     return this.endTime - this.startTime
+  }
+
+  /** Total input tokens across all calls */
+  get inputTokens(): number {
+    return this.trace.reduce((s, t) => s + t.inputTokens, 0)
+  }
+
+  /** Total output tokens across all calls */
+  get outputTokens(): number {
+    return this.trace.reduce((s, t) => s + t.outputTokens, 0)
+  }
+
+  /** Total tokens (input + output) across all calls */
+  get totalTokens(): number {
+    return this.trace.reduce((s, t) => s + t.totalTokens, 0)
+  }
+
+  /** Total cost in USD across all calls */
+  get totalCost(): number {
+    return this.trace.reduce((s, t) => s + t.cost, 0)
+  }
+
+  /** Number of LLM calls made during this pattern execution */
+  get callCount(): number {
+    return this.trace.length
   }
 
   toString(): string {
@@ -74,6 +134,78 @@ export interface PatternFn<TOptions extends PatternOptions, TOutput extends Patt
 /** A Promise that resolves to a pattern output. */
 export class PatternPromise<TOutput extends PatternOutput> extends Promise<TOutput> {}
 
+// ── Tag factory ────────────────────────────────────────────────────────────
+
+/**
+ * Create a pattern tag with option chaining and .quiet support.
+ *
+ * Every pattern tag (Φ, Σ, Δ, Λ, Ψ, Ω, Ρ, Θ, Μ, Β, Α, Γ, Ν, Χ, Τ)
+ * uses this single factory instead of duplicating the same ~30 lines
+ * of option-chaining boilerplate.
+ */
+// ── Trace accumulator (module-level, managed by createPatternTag) ───────────
+
+let _trace: CallTrace[] | null = null
+
+function beginTrace(): void {
+  _trace = []
+}
+
+function collectTrace(): CallTrace[] {
+  const t = _trace ?? []
+  _trace = null
+  return t
+}
+
+function pushTrace(entry: CallTrace): void {
+  if (_trace) _trace.push(entry)
+}
+
+export function createPatternTag<TOptions extends PatternOptions, TOutput extends PatternOutput>(
+  defaults: TOptions,
+  execute: (pieces: TemplateStringsArray, args: unknown[], opts: TOptions) => Promise<TOutput>
+): PatternFn<TOptions, TOutput> {
+  function make(opts: Partial<TOptions> = {}): PatternFn<TOptions, TOutput> {
+    const merged = { ...defaults, ...opts }
+
+    const fn = ((
+      pieces: TemplateStringsArray | Partial<TOptions>,
+      ...args: unknown[]
+    ): PatternPromise<TOutput> | PatternFn<TOptions, TOutput> => {
+      if (!Array.isArray(pieces)) {
+        return make({ ...merged, ...(pieces as Partial<TOptions>) })
+      }
+      beginTrace()
+      return new PatternPromise((resolve, reject) => {
+        execute(pieces as TemplateStringsArray, args, merged).then(
+          (output) => {
+            output.trace = collectTrace()
+            resolve(output)
+          },
+          (err) => {
+            collectTrace() // discard trace on error
+            reject(err)
+          }
+        )
+      })
+    }) as unknown as PatternFn<TOptions, TOutput>
+
+    let _quiet: PatternFn<TOptions, TOutput> | undefined
+    Object.defineProperty(fn, 'quiet', {
+      get(): PatternFn<TOptions, TOutput> {
+        if (!_quiet) _quiet = make({ ...merged, quiet: true })
+        return _quiet
+      },
+      enumerable: true,
+      configurable: true,
+    })
+
+    return fn
+  }
+
+  return make()
+}
+
 // ── Utility: build template string ─────────────────────────────────────────
 
 /** Build a string from a template literal with interpolated values. */
@@ -88,111 +220,21 @@ export function build(pieces: TemplateStringsArray, args: unknown[]): string {
 
 // ── Helper: make a factory function ─────────────────────────────────────────
 
-import { completeSimple, getEnvApiKey, getModels, getProviders } from '@earendil-works/pi-ai'
+import { completeSimple } from '@earendil-works/pi-ai'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyModel = import('@earendil-works/pi-ai').Model<any>
+import { pickModel } from '../model-picker.ts'
 
-/** Cached Pi settings — loaded lazily. */
-import { isPiInstalled, loadPiSettings, type PiSettings } from '../load-pi-settings.ts'
-
-let _piSettings: PiSettings | undefined
-
-function getPiDefaults(): PiSettings {
-  if (_piSettings === undefined) {
-    _piSettings = isPiInstalled() ? loadPiSettings() : {}
-  }
-  return _piSettings
-}
-
-/** Return all known models from the pi-ai static registry. */
-function allModels(): AnyModel[] {
-  const result: AnyModel[] = []
-  for (const p of getProviders()) {
-    const ms = getModels(p)
-    if (ms && ms.length > 0) result.push(...ms)
-  }
-  return result
-}
-
-function getConfiguredProviders(): string[] {
-  return getProviders().filter((p) => getEnvApiKey(p) !== undefined)
-}
-
-function configuredModels(): AnyModel[] {
-  const configured = new Set<string>(getConfiguredProviders())
-  return allModels().filter((m) => configured.has(m.provider))
-}
-
-function findModelById(id: string): AnyModel | undefined {
-  const all = allModels()
-  if (id.includes('/')) {
-    const [provider, modelId] = id.split('/', 2)
-    return all.find(
-      (m) => m.provider === provider && (m.id === modelId || m.id.endsWith(`/${modelId}`))
-    )
-  }
-  return all.find((m) => m.id === id || m.id.endsWith(`/${id}`))
-}
-
-/**
- * Pick a model based on preferred id, Pi settings, or first available.
- * Mirrors the logic in pi.ts but exported for pattern use.
- */
-export function pickModel(preferred?: string): AnyModel | undefined {
-  if (preferred) {
-    const hit = findModelById(preferred)
-    if (hit) return hit
-  }
-
-  const settings = getPiDefaults()
-
-  if (settings.defaultModel) {
-    const hit = findModelById(settings.defaultModel)
-    if (hit) return hit
-  }
-
-  if (settings.defaultProvider) {
-    const providerModels = (getModels as (p: string) => AnyModel[])(settings.defaultProvider)
-    if (providerModels && providerModels.length > 0) {
-      const configured = new Set<string>(getConfiguredProviders())
-      if (configured.has(settings.defaultProvider as string)) {
-        return providerModels[0]
-      }
-    }
-  }
-
-  const available = configuredModels()
-  if (available.length > 0) {
-    const order = ['claude-sonnet-4-5', 'claude-sonnet-4', 'gemini-2.5-flash', 'gpt-4o-mini']
-    for (const id of order) {
-      const m = available.find((m) => m.id.includes(id))
-      if (m) return m
-    }
-    return available[0]
-  }
-
-  const models = allModels()
-  if (models.length === 0) return undefined
-  const order = ['claude-sonnet-4-5', 'claude-sonnet-4', 'gemini-2.5-flash', 'gpt-4o-mini']
-  for (const id of order) {
-    const m = models.find((m) => m.id.includes(id))
-    if (m) return m
-  }
-  return models[0]
-}
+export { pickModel }
 
 /**
  * Ask a model a simple question (no tools, no streaming).
  * Used internally by patterns for analysis, review, planning.
  */
-export async function ask(
-  prompt: string,
-  opts: { model?: string; maxTokens?: number; thinkingLevel?: ThinkingLevel; system?: string } = {}
-): Promise<string> {
+export async function ask(prompt: string, opts: Partial<PatternOptions> = {}): Promise<string> {
   const model = pickModel(opts.model)
   if (!model) throw new Error('pizx/patterns: No AI models configured. Run `pi auth login` first.')
 
+  const t0 = Date.now()
   const result = await completeSimple(
     model,
     {
@@ -202,13 +244,37 @@ export async function ask(
     {
       maxTokens: opts.maxTokens ?? 4096,
       reasoning: opts.thinkingLevel ?? ('medium' as ThinkingLevel),
+      timeoutMs: opts.timeoutMs,
+      maxRetries: opts.maxRetries,
     }
   )
+  const durationMs = Date.now() - t0
+
+  if (!result.content || !Array.isArray(result.content)) {
+    throw new Error('pizx/patterns: Unexpected response format from AI model.')
+  }
 
   const text = result.content
     .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
     .map((c) => c.text)
     .join('')
+
+  // Collect trace entry
+  if (_trace !== null) {
+    pushTrace({
+      call: _trace.length + 1,
+      modelId: result.model,
+      promptPreview: prompt.slice(0, 200),
+      outputPreview: text.slice(0, 200),
+      inputTokens: result.usage.input,
+      outputTokens: result.usage.output,
+      cacheReadTokens: result.usage.cacheRead,
+      cacheWriteTokens: result.usage.cacheWrite,
+      totalTokens: result.usage.totalTokens,
+      cost: result.usage.cost.total,
+      durationMs,
+    })
+  }
 
   return text.trim()
 }

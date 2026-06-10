@@ -18,6 +18,7 @@ import { chalk, VERSION as zxVersion } from 'zx'
 // Load Pi auth config (reads ~/.pi/agent/auth.json, injects env vars)
 // Must run before any pi-ai/pi-coding-agent code touches getModels()
 import { loadPiAuth } from './load-pi-auth.ts'
+import { getErrorMessage } from './utils.ts'
 
 loadPiAuth()
 
@@ -79,7 +80,7 @@ function parseArgs(argv: string[]) {
         if (argv[i + 1] && !argv[i + 1].startsWith('-')) flags.model = argv[++i]
         break
       case '--system':
-        if (argv[i + 1]) flags.system = argv[++i]
+        if (argv[i + 1] && !argv[i + 1].startsWith('-')) flags.system = argv[++i]
         break
       case '-q':
       case '--quiet':
@@ -169,7 +170,7 @@ async function runPrintMode(flags: ReturnType<typeof parseArgs>['flags'], args: 
       process.stdout.write(`${result.toString()}\n`)
     }
   } catch (err) {
-    console.error('pizx: pi-ai error:', err instanceof Error ? err.message : err)
+    console.error('pizx: pi-ai error:', getErrorMessage(err))
     process.exit(1)
   }
 }
@@ -212,11 +213,7 @@ async function runScriptMode(scriptPath: string) {
   try {
     await import(url.pathToFileURL(absPath).toString())
   } catch (err) {
-    if (err instanceof Error) {
-      console.error('pizx:', err.message)
-    } else {
-      console.error('pizx:', err)
-    }
+    console.error('pizx:', getErrorMessage(err))
     process.exit(1)
   }
 }
@@ -253,6 +250,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('pizx:', err instanceof Error ? err.message : err)
+  console.error('pizx:', getErrorMessage(err))
   process.exit(1)
 })

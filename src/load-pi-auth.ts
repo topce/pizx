@@ -9,6 +9,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { getErrorMessage } from './utils.ts'
 
 export {
   getPiAgentDir,
@@ -80,7 +81,7 @@ export function loadPiAuth(): void {
         }
       }
     } catch (err) {
-      console.warn(`pizx: failed to parse ${path}: ${err instanceof Error ? err.message : err}`)
+      console.warn(`pizx: failed to parse ${path}: ${getErrorMessage(err)}`)
     }
   }
 }

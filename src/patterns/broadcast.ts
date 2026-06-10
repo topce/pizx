@@ -14,7 +14,8 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { BROADCAST_ROLE_SETS } from './role-sets.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -29,31 +30,6 @@ const defaults: BroadcastOptions = {
   maxTokens: 4096,
   thinkingLevel: 'medium' as ThinkingLevel,
   workers: 4,
-}
-
-const ROLE_SETS: Record<number, string[]> = {
-  2: [
-    'Technical Expert — evaluate technical feasibility',
-    'Business Expert — evaluate business viability',
-  ],
-  3: [
-    'Technical Expert — evaluate technical feasibility',
-    'Business Expert — evaluate business viability',
-    'User Expert — evaluate user experience and adoption',
-  ],
-  4: [
-    'Technical Expert',
-    'Business Expert',
-    'User Expert',
-    'Risk Expert — identify risks, compliance, and security concerns',
-  ],
-  5: [
-    'Technical Expert',
-    'Business Expert',
-    'User Expert',
-    'Risk Expert',
-    'Innovation Expert — suggest novel approaches and alternatives',
-  ],
 }
 
 // ── Outputs ─────────────────────────────────────────────────────────────────
@@ -100,7 +76,7 @@ async function execute(
   const question = build(pieces, args)
   const t0 = Date.now()
   const workerCount = opts.workers ?? 4
-  const roles = opts.roles ?? ROLE_SETS[workerCount] ?? ROLE_SETS[4] ?? []
+  const roles = opts.roles ?? BROADCAST_ROLE_SETS[workerCount] ?? BROADCAST_ROLE_SETS[4] ?? []
 
   const plannerModel = opts.plannerModel ?? opts.model
   const workerModel = opts.workerModel ?? opts.model
@@ -118,11 +94,7 @@ async function execute(
   const broadcastResults = await Promise.allSettled(
     roles.map(async (role) => {
       const prompt = WORKER_PROMPT.replace('{role}', role).replace('{question}', question)
-      const text = await ask(prompt, {
-        model: workerModel,
-        maxTokens: opts.maxTokens,
-        thinkingLevel: opts.thinkingLevel,
-      })
+      const text = await ask(prompt, { ...opts, model: workerModel })
       return new BroadcastResponse(role, text, true)
     })
   )
@@ -145,8 +117,8 @@ async function execute(
   const synthesis = await ask(
     `Original question:\n${question}\n\nWorker responses:\n${responsesText}\n\nSynthesize a cohesive, actionable recommendation.`,
     {
+      ...opts,
       model: plannerModel,
-      maxTokens: opts.maxTokens,
       thinkingLevel: 'high' as ThinkingLevel,
       system: SYNTHESIS_SYSTEM,
     }
@@ -163,41 +135,5 @@ async function execute(
   return new BroadcastOutput(summary, synthesis, responses, t0, t1)
 }
 
-// ── Tag factory ─────────────────────────────────────────────────────────────
-
-interface BroadcastFn {
-  (pieces: TemplateStringsArray, ...args: unknown[]): PatternPromise<BroadcastOutput>
-  (opts: Partial<BroadcastOptions>): BroadcastFn
-  quiet: BroadcastFn
-}
-
-function makeBroadcast(opts: Partial<BroadcastOptions> = {}): BroadcastFn {
-  const merged = { ...defaults, ...opts }
-
-  const fn = ((
-    pieces: TemplateStringsArray | Partial<BroadcastOptions>,
-    ...args: unknown[]
-  ): PatternPromise<BroadcastOutput> | BroadcastFn => {
-    if (!Array.isArray(pieces)) {
-      return makeBroadcast({ ...merged, ...(pieces as Partial<BroadcastOptions>) })
-    }
-    return new PatternPromise((resolve, reject) => {
-      execute(pieces as TemplateStringsArray, args, merged).then(resolve, reject)
-    })
-  }) as unknown as BroadcastFn
-
-  let _quiet: BroadcastFn | undefined
-  Object.defineProperty(fn, 'quiet', {
-    get(): BroadcastFn {
-      if (!_quiet) _quiet = makeBroadcast({ ...merged, quiet: true })
-      return _quiet
-    },
-    enumerable: true,
-    configurable: true,
-  })
-
-  return fn
-}
-
 /** Β tag — Broadcast: one-to-many messaging */
-export const Β: BroadcastFn = makeBroadcast()
+export const Β = createPatternTag(defaults, execute)

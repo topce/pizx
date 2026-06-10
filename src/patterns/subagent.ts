@@ -20,7 +20,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -79,6 +79,7 @@ async function decomposeTask(task: string, opts: SubagentOptions): Promise<strin
   const result = await ask(
     `Decompose this task into ${opts.maxSubTasks ?? 4} independent sub-tasks that can be worked on in parallel:\n\n${task}\n\nOutput a JSON array of strings.`,
     {
+      ...opts,
       model: opts.model,
       maxTokens: 1024,
       thinkingLevel: 'medium' as ThinkingLevel,
@@ -152,12 +153,7 @@ async function execute(
     const batch = subTasks.slice(i, i + concurrency)
     const batchResults = await Promise.allSettled(
       batch.map((st) =>
-        ask(st, {
-          model: workerModel,
-          maxTokens: opts.maxTokens,
-          thinkingLevel: opts.thinkingLevel,
-          system: SUBAGENT_SYSTEM,
-        })
+        ask(st, { ...opts, model: workerModel, system: SUBAGENT_SYSTEM })
           .then((text) => new SubagentResult(st, text, true))
           .catch((err) => new SubagentResult(st, String(err), false))
       )
@@ -175,12 +171,7 @@ async function execute(
 
   const synthesis = await ask(
     `Original task:\n${task}\n\nSub-task results:\n${subResultsText}\n\nSynthesize a comprehensive answer.`,
-    {
-      model: plannerModel,
-      maxTokens: opts.maxTokens,
-      thinkingLevel: opts.thinkingLevel,
-      system: SYNTHESIS_SYSTEM,
-    }
+    { ...opts, model: plannerModel, system: SYNTHESIS_SYSTEM }
   )
 
   const t1 = Date.now()
@@ -188,41 +179,5 @@ async function execute(
   return new SubagentOutput(synthesis, synthesis, subResults, t0, t1)
 }
 
-// ── Tag factory ─────────────────────────────────────────────────────────────
-
-interface SubagentFn {
-  (pieces: TemplateStringsArray, ...args: unknown[]): PatternPromise<SubagentOutput>
-  (opts: Partial<SubagentOptions>): SubagentFn
-  quiet: SubagentFn
-}
-
-function makeSubagent(opts: Partial<SubagentOptions> = {}): SubagentFn {
-  const merged = { ...defaults, ...opts }
-
-  const fn = ((
-    pieces: TemplateStringsArray | Partial<SubagentOptions>,
-    ...args: unknown[]
-  ): PatternPromise<SubagentOutput> | SubagentFn => {
-    if (!Array.isArray(pieces)) {
-      return makeSubagent({ ...merged, ...(pieces as Partial<SubagentOptions>) })
-    }
-    return new PatternPromise((resolve, reject) => {
-      execute(pieces as TemplateStringsArray, args, merged).then(resolve, reject)
-    })
-  }) as unknown as SubagentFn
-
-  let _quiet: SubagentFn | undefined
-  Object.defineProperty(fn, 'quiet', {
-    get(): SubagentFn {
-      if (!_quiet) _quiet = makeSubagent({ ...merged, quiet: true })
-      return _quiet
-    },
-    enumerable: true,
-    configurable: true,
-  })
-
-  return fn
-}
-
 /** Σ tag — Subagents: hierarchical task delegation */
-export const Σ: SubagentFn = makeSubagent()
+export const Σ = createPatternTag(defaults, execute)

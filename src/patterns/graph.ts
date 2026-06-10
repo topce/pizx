@@ -15,7 +15,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -202,12 +202,7 @@ async function execute(
           }
         }
 
-        const text = await ask(context, {
-          model: workerModel,
-          maxTokens: opts.maxTokens,
-          thinkingLevel: opts.thinkingLevel,
-          system: NODE_SYSTEM,
-        })
+        const text = await ask(context, { ...opts, model: workerModel, system: NODE_SYSTEM })
 
         return { nodeId, task: node.task, text, success: true }
       })
@@ -240,41 +235,5 @@ async function execute(
   return new GraphOutput(summary, finalOutput, nodeResults, t0, t1)
 }
 
-// ── Tag factory ─────────────────────────────────────────────────────────────
-
-interface GraphFn {
-  (pieces: TemplateStringsArray, ...args: unknown[]): PatternPromise<GraphOutput>
-  (opts: Partial<GraphOptions>): GraphFn
-  quiet: GraphFn
-}
-
-function makeGraph(opts: Partial<GraphOptions> = {}): GraphFn {
-  const merged = { ...defaults, ...opts }
-
-  const fn = ((
-    pieces: TemplateStringsArray | Partial<GraphOptions>,
-    ...args: unknown[]
-  ): PatternPromise<GraphOutput> | GraphFn => {
-    if (!Array.isArray(pieces)) {
-      return makeGraph({ ...merged, ...(pieces as Partial<GraphOptions>) })
-    }
-    return new PatternPromise((resolve, reject) => {
-      execute(pieces as TemplateStringsArray, args, merged).then(resolve, reject)
-    })
-  }) as unknown as GraphFn
-
-  let _quiet: GraphFn | undefined
-  Object.defineProperty(fn, 'quiet', {
-    get(): GraphFn {
-      if (!_quiet) _quiet = makeGraph({ ...merged, quiet: true })
-      return _quiet
-    },
-    enumerable: true,
-    configurable: true,
-  })
-
-  return fn
-}
-
 /** Γ tag — Graph: DAG-based task execution */
-export const Γ: GraphFn = makeGraph()
+export const Γ = createPatternTag(defaults, execute)

@@ -19,7 +19,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -103,33 +103,22 @@ async function execute(
     // Generate (first round) or improve (subsequent rounds)
     if (r === 0) {
       if (!opts.quiet) process.stderr.write('  → Generating initial content...\n')
-      currentContent = await ask(prompt, {
-        model: workerModel,
-        maxTokens: opts.maxTokens,
-        thinkingLevel: opts.thinkingLevel,
-        system: undefined,
-      })
+      currentContent = await ask(prompt, { ...opts, model: workerModel, system: undefined })
     } else {
       if (!opts.quiet) process.stderr.write(`  → Improving (round ${r + 1})...\n`)
       // Use the previous round's critique from the stored result
       const prevCritique = critiqueRounds[r - 1]?.critique ?? ''
       currentContent = await ask(
         `Original request: ${prompt}\n\nCritique:\n${prevCritique}\n\nContent to improve:\n${currentContent}\n\nRevise the content based on the critique.`,
-        {
-          model: workerModel,
-          maxTokens: opts.maxTokens,
-          thinkingLevel: opts.thinkingLevel,
-          system: IMPROVE_SYSTEM,
-        }
+        { ...opts, model: workerModel, system: IMPROVE_SYSTEM }
       )
     }
 
     // Critique
     if (!opts.quiet) process.stderr.write(`  → Critiquing (round ${r + 1})...\n`)
     const critique = await ask(currentContent, {
+      ...opts,
       model: plannerModel,
-      maxTokens: opts.maxTokens,
-      thinkingLevel: opts.thinkingLevel,
       system: CRITIQUE_SYSTEM,
     })
 
@@ -149,41 +138,5 @@ async function execute(
   return new CritiqueOutput(summary, finalContent, critiqueRounds, t0, t1)
 }
 
-// ── Tag factory ─────────────────────────────────────────────────────────────
-
-interface CritiqueFn {
-  (pieces: TemplateStringsArray, ...args: unknown[]): PatternPromise<CritiqueOutput>
-  (opts: Partial<CritiqueOptions>): CritiqueFn
-  quiet: CritiqueFn
-}
-
-function makeCritique(opts: Partial<CritiqueOptions> = {}): CritiqueFn {
-  const merged = { ...defaults, ...opts }
-
-  const fn = ((
-    pieces: TemplateStringsArray | Partial<CritiqueOptions>,
-    ...args: unknown[]
-  ): PatternPromise<CritiqueOutput> | CritiqueFn => {
-    if (!Array.isArray(pieces)) {
-      return makeCritique({ ...merged, ...(pieces as Partial<CritiqueOptions>) })
-    }
-    return new PatternPromise((resolve, reject) => {
-      execute(pieces as TemplateStringsArray, args, merged).then(resolve, reject)
-    })
-  }) as unknown as CritiqueFn
-
-  let _quiet: CritiqueFn | undefined
-  Object.defineProperty(fn, 'quiet', {
-    get(): CritiqueFn {
-      if (!_quiet) _quiet = makeCritique({ ...merged, quiet: true })
-      return _quiet
-    },
-    enumerable: true,
-    configurable: true,
-  })
-
-  return fn
-}
-
 /** Ψ tag — Critique: generate → critique → improve */
-export const Ψ: CritiqueFn = makeCritique()
+export const Ψ = createPatternTag(defaults, execute)

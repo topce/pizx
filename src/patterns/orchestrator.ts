@@ -16,7 +16,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -109,8 +109,8 @@ async function execute(
   // 1. Plan (planner model — high-level orchestration)
   if (!opts.quiet) process.stderr.write('  → Planning...\n')
   const planText = await ask(request, {
+    ...opts,
     model: plannerModel,
-    maxTokens: opts.maxTokens,
     thinkingLevel: 'high' as ThinkingLevel,
     system: PLANNER_SYSTEM.replace('{$workerCount}', String(workerCount)),
   })
@@ -148,12 +148,7 @@ async function execute(
     const batch = tasks.slice(i, i + concurrency)
     const batchResults = await Promise.allSettled(
       batch.map((task) =>
-        ask(task, {
-          model: workerModel,
-          maxTokens: opts.maxTokens,
-          thinkingLevel: opts.thinkingLevel,
-          system: WORKER_SYSTEM,
-        })
+        ask(task, { ...opts, model: workerModel, system: WORKER_SYSTEM })
           .then((text) => new OrchestratorWorkerResult(task, text, true))
           .catch((err) => new OrchestratorWorkerResult(task, String(err), false))
       )
@@ -173,8 +168,8 @@ async function execute(
   const synthesis = await ask(
     `Original request:\n${request}\n\nPlan:\n${planText}\n\nWorker results:\n${workerTexts}\n\nSynthesize a final deliverable.`,
     {
+      ...opts,
       model: plannerModel,
-      maxTokens: opts.maxTokens,
       thinkingLevel: 'high' as ThinkingLevel,
       system: SYNTHESIS_SYSTEM,
     }
@@ -187,41 +182,5 @@ async function execute(
   return new OrchestratorOutput(summary, planText, synthesis, workerResults, t0, t1)
 }
 
-// ── Tag factory ─────────────────────────────────────────────────────────────
-
-interface OrchestratorFn {
-  (pieces: TemplateStringsArray, ...args: unknown[]): PatternPromise<OrchestratorOutput>
-  (opts: Partial<OrchestratorOptions>): OrchestratorFn
-  quiet: OrchestratorFn
-}
-
-function makeOrchestrator(opts: Partial<OrchestratorOptions> = {}): OrchestratorFn {
-  const merged = { ...defaults, ...opts }
-
-  const fn = ((
-    pieces: TemplateStringsArray | Partial<OrchestratorOptions>,
-    ...args: unknown[]
-  ): PatternPromise<OrchestratorOutput> | OrchestratorFn => {
-    if (!Array.isArray(pieces)) {
-      return makeOrchestrator({ ...merged, ...(pieces as Partial<OrchestratorOptions>) })
-    }
-    return new PatternPromise((resolve, reject) => {
-      execute(pieces as TemplateStringsArray, args, merged).then(resolve, reject)
-    })
-  }) as unknown as OrchestratorFn
-
-  let _quiet: OrchestratorFn | undefined
-  Object.defineProperty(fn, 'quiet', {
-    get(): OrchestratorFn {
-      if (!_quiet) _quiet = makeOrchestrator({ ...merged, quiet: true })
-      return _quiet
-    },
-    enumerable: true,
-    configurable: true,
-  })
-
-  return fn
-}
-
 /** Ω tag — Orchestrator: plan → dispatch → synthesize */
-export const Ω: OrchestratorFn = makeOrchestrator()
+export const Ω = createPatternTag(defaults, execute)

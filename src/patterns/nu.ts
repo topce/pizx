@@ -19,7 +19,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -118,6 +118,7 @@ async function negotiateRoles(task: string, opts: NuOptions): Promise<NuRole[]> 
   const prompt = NEGOTIATE_SYSTEM.replace('{min}', String(min)).replace('{max}', String(max))
 
   const response = await ask(`Task: ${task}\n\n${prompt}`, {
+    ...opts,
     model: opts.plannerModel ?? opts.model,
     maxTokens: 2048,
     thinkingLevel: 'high' as ThinkingLevel,
@@ -170,6 +171,7 @@ async function decideWorkflow(
   const response = await ask(
     `Task: ${task}\n\nRoles:\n${rolesText}\n\nDetermine the best execution strategy.`,
     {
+      ...opts,
       model: opts.plannerModel ?? opts.model,
       maxTokens: 512,
       thinkingLevel: 'high' as ThinkingLevel,
@@ -209,9 +211,8 @@ async function executeRoles(
     let context = task
     for (const role of roles) {
       const output = await ask(context, {
+        ...opts,
         model: workerModel,
-        maxTokens: opts.maxTokens,
-        thinkingLevel: opts.thinkingLevel,
         system: EXECUTE_SYSTEM(role),
       })
       results.push({ role: role.name, output })
@@ -221,12 +222,7 @@ async function executeRoles(
     // parallel or mixed: run all in parallel (v1 simplification)
     const parallelResults = await Promise.allSettled(
       roles.map((role) =>
-        ask(task, {
-          model: workerModel,
-          maxTokens: opts.maxTokens,
-          thinkingLevel: opts.thinkingLevel,
-          system: EXECUTE_SYSTEM(role),
-        })
+        ask(task, { ...opts, model: workerModel, system: EXECUTE_SYSTEM(role) })
           .then((text) => ({ role: role.name, output: text }))
           .catch((err) => ({ role: role.name, output: `(failed: ${String(err)})` }))
       )
@@ -251,8 +247,8 @@ async function synthesize(
   return ask(
     `Original task:\n${task}\n\nTeam member outputs:\n${resultsText}\n\nSynthesize a comprehensive final answer.`,
     {
+      ...opts,
       model: opts.plannerModel ?? opts.model,
-      maxTokens: opts.maxTokens,
       thinkingLevel: 'high' as ThinkingLevel,
       system: SYNTHESIS_SYSTEM,
     }
@@ -321,41 +317,5 @@ async function execute(
   return new NuOutput(summary, roles, workflow, reasoning, roleResults, synthesis, t0, t1)
 }
 
-// ── Tag factory ─────────────────────────────────────────────────────────────
-
-interface NuFn {
-  (pieces: TemplateStringsArray, ...args: unknown[]): PatternPromise<NuOutput>
-  (opts: Partial<NuOptions>): NuFn
-  quiet: NuFn
-}
-
-function makeNu(opts: Partial<NuOptions> = {}): NuFn {
-  const merged = { ...defaults, ...opts }
-
-  const fn = ((
-    pieces: TemplateStringsArray | Partial<NuOptions>,
-    ...args: unknown[]
-  ): PatternPromise<NuOutput> | NuFn => {
-    if (!Array.isArray(pieces)) {
-      return makeNu({ ...merged, ...(pieces as Partial<NuOptions>) })
-    }
-    return new PatternPromise((resolve, reject) => {
-      execute(pieces as TemplateStringsArray, args, merged).then(resolve, reject)
-    })
-  }) as unknown as NuFn
-
-  let _quiet: NuFn | undefined
-  Object.defineProperty(fn, 'quiet', {
-    get(): NuFn {
-      if (!_quiet) _quiet = makeNu({ ...merged, quiet: true })
-      return _quiet
-    },
-    enumerable: true,
-    configurable: true,
-  })
-
-  return fn
-}
-
 /** Ν tag — Self-Organizing Teams: auto-negotiate roles and workflow */
-export const Ν: NuFn = makeNu()
+export const Ν = createPatternTag(defaults, execute)

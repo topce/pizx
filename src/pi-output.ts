@@ -3,7 +3,12 @@
  * Patterned after zx's ProcessOutput.
  */
 
+import type { CallTrace } from './patterns/types.ts'
+
 export class PiOutput {
+  /** Trace entry for this single LLM call. Populated by the π tag. */
+  public trace: CallTrace[] = []
+
   constructor(
     /** Full AI response text */
     public readonly text: string,
@@ -20,6 +25,26 @@ export class PiOutput {
   /** Duration in milliseconds */
   get duration(): number {
     return this.endTime - this.startTime
+  }
+
+  /** Total input tokens (convenience accessor) */
+  get inputTokens(): number {
+    return this.trace[0]?.inputTokens ?? 0
+  }
+
+  /** Total output tokens (convenience accessor) */
+  get outputTokens(): number {
+    return this.trace[0]?.outputTokens ?? 0
+  }
+
+  /** Total tokens (convenience accessor) */
+  get totalTokens(): number {
+    return this.trace[0]?.totalTokens ?? 0
+  }
+
+  /** Total cost in USD (convenience accessor) */
+  get totalCost(): number {
+    return this.trace[0]?.cost ?? 0
   }
 
   toString(): string {

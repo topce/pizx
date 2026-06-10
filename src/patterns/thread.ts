@@ -14,7 +14,8 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { THREAD_ROLE_SETS } from './role-sets.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -32,28 +33,6 @@ const defaults: ThreadOptions = {
   thinkingLevel: 'medium' as ThinkingLevel,
   agents: 3,
   turns: 3,
-}
-
-const ROLE_SETS: Record<number, string[]> = {
-  2: ['Proposer — advocate the best approach', 'Critic — identify weaknesses and gaps'],
-  3: [
-    'Proposer — suggest the best approach',
-    'Critic — identify weaknesses, risks, and missing pieces',
-    'Synthesizer — combine the best ideas into a practical plan',
-  ],
-  4: [
-    'Proposer — advocate a bold solution',
-    'Critic — identify risks and weaknesses',
-    'Pragmatist — focus on practical implementation',
-    'Innovator — propose creative alternatives',
-  ],
-  5: [
-    'Proposer',
-    'Critic',
-    'Pragmatist',
-    'Innovator',
-    "Devil's Advocate — challenge every assumption",
-  ],
 }
 
 // ── Outputs ─────────────────────────────────────────────────────────────────
@@ -107,7 +86,7 @@ async function execute(
   const t0 = Date.now()
   const agentCount = opts.agents ?? 3
   const maxTurns = opts.turns ?? 3
-  const roles = opts.roles ?? ROLE_SETS[agentCount] ?? ROLE_SETS[3] ?? []
+  const roles = opts.roles ?? THREAD_ROLE_SETS[agentCount] ?? THREAD_ROLE_SETS[3] ?? []
 
   const plannerModel = opts.plannerModel ?? opts.model
   const workerModel = opts.workerModel ?? opts.model
@@ -128,11 +107,7 @@ async function execute(
       const role = roles[a] ?? `Agent ${a + 1}`
       const prompt = buildThreadPrompt(role, thread)
 
-      const response = await ask(prompt, {
-        model: workerModel,
-        maxTokens: opts.maxTokens,
-        thinkingLevel: opts.thinkingLevel,
-      })
+      const response = await ask(prompt, { ...opts, model: workerModel })
 
       messages.push(new ThreadMessage(role, turn, response))
       thread += `\n[${role}] (Turn ${turn}): ${response}\n`
@@ -145,8 +120,8 @@ async function execute(
   const conclusion = await ask(
     `Topic: ${topic}\n\nConversation thread:\n${thread}\n\nSynthesize a clear, actionable conclusion.`,
     {
+      ...opts,
       model: plannerModel,
-      maxTokens: opts.maxTokens,
       thinkingLevel: 'high' as ThinkingLevel,
       system: SYNTHESIS_SYSTEM,
     }
@@ -164,41 +139,5 @@ async function execute(
   return new ThreadOutput(summary, conclusion, messages, t0, t1)
 }
 
-// ── Tag factory ─────────────────────────────────────────────────────────────
-
-interface ThreadFn {
-  (pieces: TemplateStringsArray, ...args: unknown[]): PatternPromise<ThreadOutput>
-  (opts: Partial<ThreadOptions>): ThreadFn
-  quiet: ThreadFn
-}
-
-function makeThread(opts: Partial<ThreadOptions> = {}): ThreadFn {
-  const merged = { ...defaults, ...opts }
-
-  const fn = ((
-    pieces: TemplateStringsArray | Partial<ThreadOptions>,
-    ...args: unknown[]
-  ): PatternPromise<ThreadOutput> | ThreadFn => {
-    if (!Array.isArray(pieces)) {
-      return makeThread({ ...merged, ...(pieces as Partial<ThreadOptions>) })
-    }
-    return new PatternPromise((resolve, reject) => {
-      execute(pieces as TemplateStringsArray, args, merged).then(resolve, reject)
-    })
-  }) as unknown as ThreadFn
-
-  let _quiet: ThreadFn | undefined
-  Object.defineProperty(fn, 'quiet', {
-    get(): ThreadFn {
-      if (!_quiet) _quiet = makeThread({ ...merged, quiet: true })
-      return _quiet
-    },
-    enumerable: true,
-    configurable: true,
-  })
-
-  return fn
-}
-
 /** Θ tag — Thread: direct agent-to-agent conversation */
-export const Θ: ThreadFn = makeThread()
+export const Θ = createPatternTag(defaults, execute)

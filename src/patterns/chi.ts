@@ -17,7 +17,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, type PatternOptions, PatternOutput, PatternPromise } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -157,12 +157,7 @@ async function execute(
     process.stderr.write(`Χ: Cross-Agent Learning — analyzing ${label}\n`)
   }
 
-  const response = await ask(input, {
-    model: plannerModel,
-    maxTokens: opts.maxTokens,
-    thinkingLevel: opts.thinkingLevel,
-    system: ANALYSIS_SYSTEM,
-  })
+  const response = await ask(input, { ...opts, model: plannerModel, system: ANALYSIS_SYSTEM })
 
   const { insights, summary, suggestedChanges } = parseInsights(response)
 
@@ -183,41 +178,5 @@ async function execute(
   return new ChiOutput(text, insights, summary, suggestedChanges, t0, t1)
 }
 
-// ── Tag factory ─────────────────────────────────────────────────────────────
-
-interface ChiFn {
-  (pieces: TemplateStringsArray, ...args: unknown[]): PatternPromise<ChiOutput>
-  (opts: Partial<ChiOptions>): ChiFn
-  quiet: ChiFn
-}
-
-function makeChi(opts: Partial<ChiOptions> = {}): ChiFn {
-  const merged = { ...defaults, ...opts }
-
-  const fn = ((
-    pieces: TemplateStringsArray | Partial<ChiOptions>,
-    ...args: unknown[]
-  ): PatternPromise<ChiOutput> | ChiFn => {
-    if (!Array.isArray(pieces)) {
-      return makeChi({ ...merged, ...(pieces as Partial<ChiOptions>) })
-    }
-    return new PatternPromise((resolve, reject) => {
-      execute(pieces as TemplateStringsArray, args, merged).then(resolve, reject)
-    })
-  }) as unknown as ChiFn
-
-  let _quiet: ChiFn | undefined
-  Object.defineProperty(fn, 'quiet', {
-    get(): ChiFn {
-      if (!_quiet) _quiet = makeChi({ ...merged, quiet: true })
-      return _quiet
-    },
-    enumerable: true,
-    configurable: true,
-  })
-
-  return fn
-}
-
 /** Χ tag — Cross-Agent Learning: extract patterns and recommendations from traces */
-export const Χ: ChiFn = makeChi()
+export const Χ = createPatternTag(defaults, execute)

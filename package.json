@@ -32,8 +32,10 @@
     "build:dts": "tsc --project tsconfig.build.json",
     "dev": "node scripts/build.mjs --watch",
     "check": "biome check --write src/",
+    "lint:fix": "biome lint --write src/",
     "test": "vitest --run",
     "test:integration": "PIZX_INTEGRATION=1 vitest --run",
+    "test:coverage": "vitest --run --coverage",
     "prepublishOnly": "npm run build",
     "example:hello": "node dist/cli.js examples/hello-pizx.mjs",
     "example:pi": "node dist/cli.js examples/basic-pi.mjs",
@@ -47,8 +49,7 @@
     "example:pattern-pipeline": "node dist/cli.js examples/pattern-pipeline.mjs",
     "example:pattern-critique": "node dist/cli.js examples/pattern-critique.mjs",
     "example:pattern-orchestrator": "node dist/cli.js examples/pattern-orchestrator.mjs",
-    "example:all": "npm run example:hello && npm run example:pi && npm run example:Pi && npm run example:quick && npm run example:ralph && npm run example:pattern-ralph && npm run example:pattern-fleet && npm run example:pattern-subagent && npm run example:pattern-debate && npm run example:pattern-pipeline && npm run example:pattern-critique && npm run example:pattern-orchestrator && npm run example:pattern-thread && npm run example:pattern-memory && npm run example:pattern-broadcast && npm run example:pattern-adaptive && npm run example:pattern-graph && npm run example:pattern-nu && npm run example:pattern-chi && npm run example:pattern-tau && npm run example:five-whys"
-,
+    "example:all": "npm run example:hello && npm run example:pi && npm run example:Pi && npm run example:quick && npm run example:ralph && npm run example:pattern-ralph && npm run example:pattern-fleet && npm run example:pattern-subagent && npm run example:pattern-debate && npm run example:pattern-pipeline && npm run example:pattern-critique && npm run example:pattern-orchestrator && npm run example:pattern-thread && npm run example:pattern-memory && npm run example:pattern-broadcast && npm run example:pattern-adaptive && npm run example:pattern-graph && npm run example:pattern-nu && npm run example:pattern-chi && npm run example:pattern-tau && npm run example:five-whys",
     "example:pattern-thread": "node dist/cli.js examples/pattern-thread.mjs",
     "example:pattern-memory": "node dist/cli.js examples/pattern-memory.mjs",
     "example:pattern-broadcast": "node dist/cli.js examples/pattern-broadcast.mjs",
@@ -58,7 +59,6 @@
     "example:pattern-chi": "node dist/cli.js examples/pattern-chi.mjs",
     "example:pattern-tau": "node dist/cli.js examples/pattern-tau.mjs",
     "example:five-whys": "node dist/cli.js examples/pattern-five-whys.mjs"
-
   },
   "keywords": [
     "zx",
@@ -82,13 +82,14 @@
     "node": ">=22.19.0"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.78.1",
-    "@earendil-works/pi-coding-agent": "0.78.1",
+    "@earendil-works/pi-ai": "0.79.1",
+    "@earendil-works/pi-coding-agent": "0.79.1",
     "zx": "8.8.5"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.16",
     "@types/node": "25.9.2",
+    "@vitest/coverage-v8": "^4.1.8",
     "esbuild": "0.28.0",
     "typescript": "6.0.3",
     "vitest": "4.1.8"
