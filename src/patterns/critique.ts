@@ -19,7 +19,14 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, mergeSystem } from './types.ts'
+import {
+  ask,
+  build,
+  createPatternTag,
+  mergeSystem,
+  type PatternOptions,
+  PatternOutput,
+} from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 

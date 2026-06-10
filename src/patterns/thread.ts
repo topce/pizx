@@ -14,8 +14,17 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
 import { THREAD_ROLE_SETS } from './role-sets.ts'
+import {
+  ask,
+  build,
+  createPatternTag,
+  mergeSystem,
+  type PatternOptions,
+  PatternOutput,
+  type QualityReviewResult,
+  runQualityReview,
+} from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 

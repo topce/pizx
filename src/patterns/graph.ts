@@ -15,7 +15,16 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
+import {
+  ask,
+  build,
+  createPatternTag,
+  mergeSystem,
+  type PatternOptions,
+  PatternOutput,
+  type QualityReviewResult,
+  runQualityReview,
+} from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -206,7 +215,11 @@ async function execute(
           }
         }
 
-        const text = await ask(context, { ...opts, model: workerModel, system: mergeSystem(opts.system, NODE_SYSTEM) })
+        const text = await ask(context, {
+          ...opts,
+          model: workerModel,
+          system: mergeSystem(opts.system, NODE_SYSTEM),
+        })
 
         return { nodeId, task: node.task, text, success: true }
       })

@@ -18,8 +18,17 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem } from './types.ts'
 import { DEBATE_ROLE_SETS } from './role-sets.ts'
+import {
+  ask,
+  build,
+  createPatternTag,
+  mergeSystem,
+  type PatternOptions,
+  PatternOutput,
+  type QualityReviewResult,
+  runQualityReview,
+} from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -112,9 +121,11 @@ async function execute(
 
   const round1Results = await Promise.allSettled(
     roles.map((role) =>
-      ask(question, { ...opts, model: workerModel, system: mergeSystem(opts.system, PERSPECTIVE_SYSTEM(role)) }).then(
-        (text) => new DebatePerspective(role, text, 1)
-      )
+      ask(question, {
+        ...opts,
+        model: workerModel,
+        system: mergeSystem(opts.system, PERSPECTIVE_SYSTEM(role)),
+      }).then((text) => new DebatePerspective(role, text, 1))
     )
   )
 
@@ -193,7 +204,15 @@ async function execute(
 
   const t1 = Date.now()
 
-  return new DebateOutput(conclusion, conclusion, allPerspectives, totalRounds, t0, t1, qualityReview)
+  return new DebateOutput(
+    conclusion,
+    conclusion,
+    allPerspectives,
+    totalRounds,
+    t0,
+    t1,
+    qualityReview
+  )
 }
 
 /** Δ tag — Debate: multiple perspectives converge */

@@ -16,7 +16,18 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, type PhaseEntry, confirmPhase } from './types.ts'
+import {
+  ask,
+  build,
+  confirmPhase,
+  createPatternTag,
+  mergeSystem,
+  type PatternOptions,
+  PatternOutput,
+  type PhaseEntry,
+  type QualityReviewResult,
+  runQualityReview,
+} from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -120,7 +131,12 @@ async function execute(
     thinkingLevel: 'high' as ThinkingLevel,
     system: mergeSystem(opts.system, PLANNER_SYSTEM.replace('{$workerCount}', String(workerCount))),
   })
-  phases.push({ phase: 'plan', durationMs: Date.now() - planStart, description: `Generated plan with ${workerCount} workers`, modelUsed: plannerModel })
+  phases.push({
+    phase: 'plan',
+    durationMs: Date.now() - planStart,
+    description: `Generated plan with ${workerCount} workers`,
+    modelUsed: plannerModel,
+  })
 
   // Extract sub-tasks from the plan
   const subTasks: string[] = []
@@ -148,10 +164,11 @@ async function execute(
   }
 
   // Confirm before dispatch (optional)
-  const planSummary = tasks.length > 0
-    ? `Execute ${tasks.length} sub-task(s) as planned?\n    ${tasks.map((t, i) => `${i + 1}. ${t.slice(0, 80)}`).join('\n    ')}`
-    : `Execute the plan?`
-  if (!await confirmPhase(planSummary, opts)) {
+  const planSummary =
+    tasks.length > 0
+      ? `Execute ${tasks.length} sub-task(s) as planned?\n    ${tasks.map((t, i) => `${i + 1}. ${t.slice(0, 80)}`).join('\n    ')}`
+      : `Execute the plan?`
+  if (!(await confirmPhase(planSummary, opts))) {
     throw new Error('pizx/Ω: Execution cancelled by user.')
   }
 
@@ -174,7 +191,13 @@ async function execute(
     })
   }
   const succeeded = workerResults.filter((w) => w.success).length
-  phases.push({ phase: 'dispatch', durationMs: Date.now() - dispatchStart, description: `Executed ${workerResults.length} worker(s), ${succeeded} succeeded`, modelUsed: workerModel, callCount: workerResults.length })
+  phases.push({
+    phase: 'dispatch',
+    durationMs: Date.now() - dispatchStart,
+    description: `Executed ${workerResults.length} worker(s), ${succeeded} succeeded`,
+    modelUsed: workerModel,
+    callCount: workerResults.length,
+  })
 
   // 3. Synthesize (planner model — high-level synthesis)
   if (!opts.quiet) process.stderr.write('  → Synthesizing results...\n')
@@ -193,14 +216,24 @@ async function execute(
       system: mergeSystem(opts.system, SYNTHESIS_SYSTEM),
     }
   )
-  phases.push({ phase: 'synthesize', durationMs: Date.now() - synthStart, description: 'Synthesized worker results into final deliverable', modelUsed: plannerModel })
+  phases.push({
+    phase: 'synthesize',
+    durationMs: Date.now() - synthStart,
+    description: 'Synthesized worker results into final deliverable',
+    modelUsed: plannerModel,
+  })
 
   // 4. Quality review (optional)
   if (!opts.quiet && opts.qualityCheck) process.stderr.write('  → Quality review...\n')
   const qualityStart = Date.now()
   const qualityReview = await runQualityReview(request, synthesis, opts)
   if (qualityReview) {
-    phases.push({ phase: 'quality-review', durationMs: Date.now() - qualityStart, description: `Score: ${qualityReview.score.toFixed(2)} — ${qualityReview.assessment.slice(0, 60)}`, modelUsed: plannerModel })
+    phases.push({
+      phase: 'quality-review',
+      durationMs: Date.now() - qualityStart,
+      description: `Score: ${qualityReview.score.toFixed(2)} — ${qualityReview.assessment.slice(0, 60)}`,
+      modelUsed: plannerModel,
+    })
   }
 
   const t1 = Date.now()
@@ -211,7 +244,15 @@ async function execute(
 
   const summary = `Plan:\n${planText}\n\nWorkers: ${workerResults.filter((w) => w.success).length}/${workerResults.length} succeeded\n\nSynthesis:\n${synthesis}${reviewSection}`
 
-  const output = new OrchestratorOutput(summary, planText, synthesis, workerResults, t0, t1, qualityReview)
+  const output = new OrchestratorOutput(
+    summary,
+    planText,
+    synthesis,
+    workerResults,
+    t0,
+    t1,
+    qualityReview
+  )
   output.phaseLog = phases
   return output
 }

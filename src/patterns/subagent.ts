@@ -20,7 +20,18 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, type PhaseEntry, confirmPhase } from './types.ts'
+import {
+  ask,
+  build,
+  confirmPhase,
+  createPatternTag,
+  mergeSystem,
+  type PatternOptions,
+  PatternOutput,
+  type PhaseEntry,
+  type QualityReviewResult,
+  runQualityReview,
+} from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -142,7 +153,12 @@ async function execute(
   if (!opts.quiet) process.stderr.write('  → Decomposing task into sub-tasks...\n')
   const decomposeStart = Date.now()
   const subTasks = await decomposeTask(task, { ...opts, model: plannerModel })
-  phases.push({ phase: 'decompose', durationMs: Date.now() - decomposeStart, description: `Decomposed into ${subTasks.length} sub-task(s)`, modelUsed: plannerModel })
+  phases.push({
+    phase: 'decompose',
+    durationMs: Date.now() - decomposeStart,
+    description: `Decomposed into ${subTasks.length} sub-task(s)`,
+    modelUsed: plannerModel,
+  })
 
   if (!opts.quiet) {
     process.stderr.write(`  → ${subTasks.length} sub-task(s) identified:\n`)
@@ -154,7 +170,7 @@ async function execute(
 
   // Confirm before execution (optional)
   const subTaskSummary = `Execute ${subTasks.length} sub-task(s)?\n    ${subTasks.map((st, i) => `${i + 1}. ${st.slice(0, 80)}`).join('\n    ')}`
-  if (!await confirmPhase(subTaskSummary, opts)) {
+  if (!(await confirmPhase(subTaskSummary, opts))) {
     throw new Error('pizx/Σ: Execution cancelled by user.')
   }
 
@@ -177,7 +193,13 @@ async function execute(
     })
   }
   const succeeded = subResults.filter((r) => r.success).length
-  phases.push({ phase: 'execute', durationMs: Date.now() - execStart, description: `Executed ${subResults.length} sub-task(s), ${succeeded} succeeded`, modelUsed: workerModel, callCount: subResults.length })
+  phases.push({
+    phase: 'execute',
+    durationMs: Date.now() - execStart,
+    description: `Executed ${subResults.length} sub-task(s), ${succeeded} succeeded`,
+    modelUsed: workerModel,
+    callCount: subResults.length,
+  })
 
   // 3. Synthesize (planner model — high-level synthesis)
   if (!opts.quiet) process.stderr.write('  → Synthesizing results...\n')
@@ -189,14 +211,24 @@ async function execute(
     `Original task:\n${task}\n\nSub-task results:\n${subResultsText}\n\nSynthesize a comprehensive answer.`,
     { ...opts, model: plannerModel, system: mergeSystem(opts.system, SYNTHESIS_SYSTEM) }
   )
-  phases.push({ phase: 'synthesize', durationMs: Date.now() - synthStart, description: 'Synthesized sub-agent results', modelUsed: plannerModel })
+  phases.push({
+    phase: 'synthesize',
+    durationMs: Date.now() - synthStart,
+    description: 'Synthesized sub-agent results',
+    modelUsed: plannerModel,
+  })
 
   // 4. Quality review (optional)
   if (!opts.quiet && opts.qualityCheck) process.stderr.write('  → Quality review...\n')
   const qStart = Date.now()
   const qualityReview = await runQualityReview(task, synthesis, opts)
   if (qualityReview) {
-    phases.push({ phase: 'quality-review', durationMs: Date.now() - qStart, description: `Score: ${qualityReview.score.toFixed(2)}`, modelUsed: plannerModel })
+    phases.push({
+      phase: 'quality-review',
+      durationMs: Date.now() - qStart,
+      description: `Score: ${qualityReview.score.toFixed(2)}`,
+      modelUsed: plannerModel,
+    })
   }
 
   const t1 = Date.now()

@@ -23,7 +23,13 @@ export const DEBATE_ROLE_SETS: Record<number, string[]> = {
     'Pragmatist — balance pros/cons with practical constraints',
     'Innovator — propose creative alternatives and novel approaches',
   ],
-  5: ['Optimist', 'Pessimist', 'Pragmatist', 'Innovator', 'User Advocate — focus on end-user experience and accessibility'],
+  5: [
+    'Optimist',
+    'Pessimist',
+    'Pragmatist',
+    'Innovator',
+    'User Advocate — focus on end-user experience and accessibility',
+  ],
 }
 
 /** Memory (blackboard) roles: shared analysis contributors */
@@ -34,8 +40,19 @@ export const MEMORY_ROLE_SETS: Record<number, string[]> = {
     'Reviewer — check for gaps, edge cases, and blind spots',
     'Strategist — connect findings to actionable insights',
   ],
-  4: ['Analyst', 'Reviewer', 'Strategist', 'Innovator — propose novel angles and creative solutions'],
-  5: ['Analyst', 'Reviewer', 'Strategist', 'Innovator', 'Skeptic — challenge assumptions and stress-test conclusions'],
+  4: [
+    'Analyst',
+    'Reviewer',
+    'Strategist',
+    'Innovator — propose novel angles and creative solutions',
+  ],
+  5: [
+    'Analyst',
+    'Reviewer',
+    'Strategist',
+    'Innovator',
+    'Skeptic — challenge assumptions and stress-test conclusions',
+  ],
 }
 
 /** Thread (conversation) roles: multi-agent dialogue participants */
@@ -52,7 +69,13 @@ export const THREAD_ROLE_SETS: Record<number, string[]> = {
     'Pragmatist — focus on practical implementation',
     'Innovator — propose creative alternatives',
   ],
-  5: ['Proposer', 'Critic', 'Pragmatist', 'Innovator', "Devil's Advocate — challenge every assumption"],
+  5: [
+    'Proposer',
+    'Critic',
+    'Pragmatist',
+    'Innovator',
+    "Devil's Advocate — challenge every assumption",
+  ],
 }
 
 /** Broadcast roles: specialist experts responding to a question */

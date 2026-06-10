@@ -9,7 +9,7 @@
  * (build, PatternOutput trace, createPatternTag, ask), and load-pi-auth.ts.
  */
 
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ── Mocks (hoisted to top by vitest) ──────────────────────────────────────
 
@@ -57,10 +57,10 @@ vi.mock('./load-pi-settings.ts', async (importOriginal) => {
 
 // ── Imports ───────────────────────────────────────────────────────────────
 
-import { streamSimple, completeSimple } from '@earendil-works/pi-ai'
+import type { Model } from '@earendil-works/pi-ai'
+import { completeSimple, streamSimple } from '@earendil-works/pi-ai'
 import { createAgentSession } from '@earendil-works/pi-coding-agent'
 import { pickModel } from './model-picker.ts'
-import type { Model } from '@earendil-works/pi-ai'
 
 // ── Test helpers ──────────────────────────────────────────────────────────
 
@@ -129,7 +129,7 @@ describe('getErrorMessage', () => {
     class CustomError extends Error {
       constructor(
         msg: string,
-        public code: number,
+        public code: number
       ) {
         super(msg)
       }
@@ -142,8 +142,8 @@ describe('getErrorMessage', () => {
 // pi-output.ts — trace properties (lines 32-47 currently uncovered)
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { PiOutput } from './pi-output.ts'
 import type { CallTrace } from './patterns/types.ts'
+import { PiOutput } from './pi-output.ts'
 
 function fakeTrace(overrides: Partial<CallTrace> = {}): CallTrace {
   return {
@@ -252,12 +252,9 @@ describe('π tag (pi.ts)', () => {
 
     it('stores modelUsed when provided', async () => {
       const { PiPromise } = await import('./pi.ts')
-      const p = new PiPromise(
-        (resolve) => {
-          resolve(new PiOutput('x', 'stored/model'))
-        },
-        'stored/model',
-      )
+      const p = new PiPromise((resolve) => {
+        resolve(new PiOutput('x', 'stored/model'))
+      }, 'stored/model')
       expect(p.modelUsed).toBe('stored/model')
       await p // settle
     })
@@ -315,7 +312,7 @@ describe('π tag (pi.ts)', () => {
           { type: 'text_delta', delta: 'Hello' },
           { type: 'text_delta', delta: ' world' },
           { type: 'done' },
-        ]),
+        ])
       )
 
       const { π } = await import('./pi.ts')
@@ -344,7 +341,7 @@ describe('π tag (pi.ts)', () => {
               },
             },
           },
-        ]),
+        ])
       )
 
       const { π } = await import('./pi.ts')
@@ -363,10 +360,7 @@ describe('π tag (pi.ts)', () => {
       vi.mocked(pickModel).mockReturnValue(fakeModel({ id: 'test/no-usage' }))
 
       vi.mocked(streamSimple).mockReturnValue(
-        makeStream([
-          { type: 'text_delta', delta: 'no usage data' },
-          { type: 'done' },
-        ]),
+        makeStream([{ type: 'text_delta', delta: 'no usage data' }, { type: 'done' }])
       )
 
       const { π } = await import('./pi.ts')
@@ -400,10 +394,7 @@ describe('π tag (pi.ts)', () => {
       vi.mocked(pickModel).mockReturnValue(fakeModel())
 
       vi.mocked(streamSimple).mockReturnValue(
-        makeStream([
-          { type: 'text_delta', delta: 'visible' },
-          { type: 'done' },
-        ]),
+        makeStream([{ type: 'text_delta', delta: 'visible' }, { type: 'done' }])
       )
 
       const { π } = await import('./pi.ts')
@@ -417,28 +408,21 @@ describe('π tag (pi.ts)', () => {
       vi.mocked(pickModel).mockReturnValue(fakeModel())
 
       vi.mocked(streamSimple).mockReturnValue(
-        makeStream([
-          { type: 'text_delta', delta: 'hidden' },
-          { type: 'done' },
-        ]),
+        makeStream([{ type: 'text_delta', delta: 'hidden' }, { type: 'done' }])
       )
 
       const { π } = await import('./pi.ts')
       await π.quiet`test`
 
       // In quiet mode, stdout.write should NOT be called with the delta
-      const deltaCalls = stdoutSpy.mock.calls.filter(
-        (call) => call[0] === 'hidden',
-      )
+      const deltaCalls = stdoutSpy.mock.calls.filter((call) => call[0] === 'hidden')
       expect(deltaCalls).toHaveLength(0)
     })
 
     it('handles empty streaming output', async () => {
       vi.mocked(pickModel).mockReturnValue(fakeModel())
 
-      vi.mocked(streamSimple).mockReturnValue(
-        makeStream([{ type: 'done' }]),
-      )
+      vi.mocked(streamSimple).mockReturnValue(makeStream([{ type: 'done' }]))
 
       const { π } = await import('./pi.ts')
       const result = await π`test`
@@ -454,7 +438,7 @@ describe('π tag (pi.ts)', () => {
           { type: 'text_delta', delta: 'chunk1' },
           { type: 'text_delta', delta: 'chunk2' },
           { type: 'done' },
-        ]),
+        ])
       )
 
       const { π } = await import('./pi.ts')
@@ -471,7 +455,9 @@ describe('π tag (pi.ts)', () => {
       const { π } = await import('./pi.ts')
       const gen = (π as any).stream`test`
       await expect(async () => {
-        for await (const _ of gen) { void _ }
+        for await (const _ of gen) {
+          void _
+        }
       }).rejects.toThrow('No AI models configured')
     })
   })
@@ -689,7 +675,7 @@ describe('Π tag (pi-agent.ts)', () => {
           messages: [
             { role: 'user', content: 'hello' },
             { role: 'assistant', content: null }, // neither string nor array
-            { role: 'assistant', content: 42 },   // number
+            { role: 'assistant', content: 42 }, // number
           ],
         },
       } as any)
@@ -708,9 +694,7 @@ describe('Π tag (pi-agent.ts)', () => {
 
   describe('session error handling', () => {
     it('handles createAgentSession errors', async () => {
-      vi.mocked(createAgentSession).mockRejectedValue(
-        new Error('Auth failed'),
-      )
+      vi.mocked(createAgentSession).mockRejectedValue(new Error('Auth failed'))
 
       const { Π } = await import('./pi-agent.ts')
       const p = Π({ model: 'test/model' })`test`
@@ -720,9 +704,7 @@ describe('Π tag (pi-agent.ts)', () => {
     it('catches sendUserMessage errors and returns error output', async () => {
       vi.mocked(createAgentSession).mockResolvedValue({
         session: {
-          sendUserMessage: vi
-            .fn()
-            .mockRejectedValue(new Error('API timeout')),
+          sendUserMessage: vi.fn().mockRejectedValue(new Error('API timeout')),
           dispose: vi.fn(),
           messages: [],
         },
@@ -772,9 +754,7 @@ describe('Π tag (pi-agent.ts)', () => {
       await Π.quiet({ model: 'test/model' })`test`
 
       // In quiet mode, stderr should not have the prompt info
-      const promptCalls = stderrSpy.mock.calls.filter((call) =>
-        String(call[0]).includes('Π:'),
-      )
+      const promptCalls = stderrSpy.mock.calls.filter((call) => String(call[0]).includes('Π:'))
       expect(promptCalls).toHaveLength(0)
     })
   })
@@ -825,11 +805,7 @@ describe('Π tag (pi-agent.ts)', () => {
 // patterns/types.ts — build, PatternOutput trace, createPatternTag, ask
 // ═══════════════════════════════════════════════════════════════════════════
 
-import {
-  PatternOutput,
-  createPatternTag,
-  type PatternOptions,
-} from './patterns/types.ts'
+import { createPatternTag, type PatternOptions, PatternOutput } from './patterns/types.ts'
 
 describe('build (template literal builder)', () => {
   it('builds simple template without args', async () => {
@@ -844,17 +820,14 @@ describe('build (template literal builder)', () => {
     const { build } = await import('./patterns/types.ts')
     const result = build(
       ['Hello ', ', you have ', ' messages'] as unknown as TemplateStringsArray,
-      ['Alice', 5],
+      ['Alice', 5]
     )
     expect(result).toBe('Hello Alice, you have 5 messages')
   })
 
   it('trims whitespace', async () => {
     const { build } = await import('./patterns/types.ts')
-    const result = build(
-      ['  hello  '] as unknown as TemplateStringsArray,
-      [],
-    )
+    const result = build(['  hello  '] as unknown as TemplateStringsArray, [])
     expect(result).toBe('hello')
   })
 
@@ -866,19 +839,13 @@ describe('build (template literal builder)', () => {
 
   it('interpolates undefined as "undefined"', async () => {
     const { build } = await import('./patterns/types.ts')
-    const result = build(
-      ['value: '] as unknown as TemplateStringsArray,
-      [undefined],
-    )
+    const result = build(['value: '] as unknown as TemplateStringsArray, [undefined])
     expect(result).toBe('value: undefined')
   })
 
   it('interpolates null as "null"', async () => {
     const { build } = await import('./patterns/types.ts')
-    const result = build(
-      ['value: '] as unknown as TemplateStringsArray,
-      [null],
-    )
+    const result = build(['value: '] as unknown as TemplateStringsArray, [null])
     expect(result).toBe('value: null')
   })
 })
@@ -887,8 +854,32 @@ describe('PatternOutput trace properties', () => {
   it('inputTokens sums across all trace entries', () => {
     const out = new PatternOutput('text')
     out.trace = [
-      { call: 1, modelId: 'a', promptPreview: '', outputPreview: '', inputTokens: 100, outputTokens: 50, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 150, cost: 0.01, durationMs: 100 },
-      { call: 2, modelId: 'b', promptPreview: '', outputPreview: '', inputTokens: 200, outputTokens: 100, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 300, cost: 0.02, durationMs: 200 },
+      {
+        call: 1,
+        modelId: 'a',
+        promptPreview: '',
+        outputPreview: '',
+        inputTokens: 100,
+        outputTokens: 50,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        totalTokens: 150,
+        cost: 0.01,
+        durationMs: 100,
+      },
+      {
+        call: 2,
+        modelId: 'b',
+        promptPreview: '',
+        outputPreview: '',
+        inputTokens: 200,
+        outputTokens: 100,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        totalTokens: 300,
+        cost: 0.02,
+        durationMs: 200,
+      },
     ]
     expect(out.inputTokens).toBe(300)
     expect(out.outputTokens).toBe(150)
@@ -923,23 +914,20 @@ describe('createPatternTag', () => {
   it('creates a tag function', () => {
     const tag = createPatternTag(
       { maxTokens: 100 } as PatternOptions,
-      async () => new PatternOutput('result'),
+      async () => new PatternOutput('result')
     )
     expect(typeof tag).toBe('function')
   })
 
   it('tag has quiet property', () => {
-    const tag = createPatternTag(
-      {} as PatternOptions,
-      async () => new PatternOutput('result'),
-    )
+    const tag = createPatternTag({} as PatternOptions, async () => new PatternOutput('result'))
     expect(typeof (tag as any).quiet).toBe('function')
   })
 
   it('tag({ option }) returns a new tag', () => {
     const tag = createPatternTag(
       { maxTokens: 100 } as PatternOptions,
-      async () => new PatternOutput('result'),
+      async () => new PatternOutput('result')
     )
     const chained = tag({ maxTokens: 200 })
     expect(typeof chained).toBe('function')
@@ -947,10 +935,7 @@ describe('createPatternTag', () => {
 
   it('execution function receives merged defaults', async () => {
     const executeSpy = vi.fn().mockResolvedValue(new PatternOutput('ok'))
-    const tag = createPatternTag(
-      { maxTokens: 500, quiet: false } as PatternOptions,
-      executeSpy,
-    )
+    const tag = createPatternTag({ maxTokens: 500, quiet: false } as PatternOptions, executeSpy)
 
     await tag`test`
     expect(executeSpy).toHaveBeenCalledTimes(1)
@@ -961,10 +946,7 @@ describe('createPatternTag', () => {
 
   it('chained options override defaults', async () => {
     const executeSpy = vi.fn().mockResolvedValue(new PatternOutput('ok'))
-    const tag = createPatternTag(
-      { maxTokens: 500 } as PatternOptions,
-      executeSpy,
-    )
+    const tag = createPatternTag({ maxTokens: 500 } as PatternOptions, executeSpy)
 
     const chained = tag({ maxTokens: 1000 })
     await chained`test`
@@ -974,10 +956,7 @@ describe('createPatternTag', () => {
 
   it('quiet variant propagates quiet=true', async () => {
     const executeSpy = vi.fn().mockResolvedValue(new PatternOutput('ok'))
-    const tag = createPatternTag(
-      { quiet: false } as PatternOptions,
-      executeSpy,
-    )
+    const tag = createPatternTag({ quiet: false } as PatternOptions, executeSpy)
 
     await (tag as any).quiet`test`
     const callOpts = executeSpy.mock.calls[0][2]
@@ -988,22 +967,16 @@ describe('createPatternTag', () => {
     // The trace is managed by createPatternTag's internal beginTrace/collectTrace
     // When the execute function uses `ask()`, trace entries are pushed.
     // Here we just verify no trace on direct PatternOutput (ask wasn't called).
-    const tag = createPatternTag(
-      {} as PatternOptions,
-      async () => new PatternOutput('result'),
-    )
+    const tag = createPatternTag({} as PatternOptions, async () => new PatternOutput('result'))
 
     const result = await tag`test`
     expect(result.trace).toEqual([])
   })
 
   it('rejects and cleans up trace on error', async () => {
-    const tag = createPatternTag(
-      {} as PatternOptions,
-      async () => {
-        throw new Error('execution failed')
-      },
-    )
+    const tag = createPatternTag({} as PatternOptions, async () => {
+      throw new Error('execution failed')
+    })
 
     await expect(tag`test`).rejects.toThrow('execution failed')
   })
@@ -1140,13 +1113,10 @@ describe('ask (patterns/types.ts)', () => {
 
     const { ask, createPatternTag } = await import('./patterns/types.ts')
 
-    const tag = createPatternTag(
-      {} as PatternOptions,
-      async (_pieces, _args, _opts) => {
-        const result = await ask('sub-task')
-        return new PatternOutput(result)
-      },
-    )
+    const tag = createPatternTag({} as PatternOptions, async (_pieces, _args, _opts) => {
+      const result = await ask('sub-task')
+      return new PatternOutput(result)
+    })
 
     const output = await tag`test`
     expect(output.trace).toHaveLength(1)
@@ -1162,7 +1132,7 @@ describe('ask (patterns/types.ts)', () => {
 // load-pi-auth.ts — loadPiAuth
 // ═══════════════════════════════════════════════════════════════════════════
 
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -1199,7 +1169,7 @@ describe('loadPiAuth', () => {
       JSON.stringify({
         anthropic: { type: 'api_key', key: 'sk-ant-test123' },
         openai: { type: 'api_key', key: 'sk-openai-test456' },
-      }),
+      })
     )
 
     // Clear any pre-existing env vars
@@ -1220,7 +1190,7 @@ describe('loadPiAuth', () => {
       join(mockPiAgentDir, 'auth.json'),
       JSON.stringify({
         anthropic: { type: 'api_key', key: 'sk-ant-new' },
-      }),
+      })
     )
 
     const existingKey = 'sk-ant-existing'
@@ -1244,7 +1214,7 @@ describe('loadPiAuth', () => {
         apiKeys: {
           deepseek: 'sk-deepseek-legacy',
         },
-      }),
+      })
     )
 
     delete process.env.DEEPSEEK_API_KEY
@@ -1263,7 +1233,7 @@ describe('loadPiAuth', () => {
       join(mockPiAgentDir, 'api-keys.json'),
       JSON.stringify({
         deepseek: { type: 'api_key', key: 'sk-api-keys-file' },
-      }),
+      })
     )
 
     delete process.env.DEEPSEEK_API_KEY
@@ -1284,9 +1254,7 @@ describe('loadPiAuth', () => {
 
     const { loadPiAuth } = await import('./load-pi-auth.ts')
     expect(() => loadPiAuth()).not.toThrow()
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('failed to parse'),
-    )
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('failed to parse'))
 
     warnSpy.mockRestore()
   })
@@ -1298,7 +1266,7 @@ describe('loadPiAuth', () => {
       join(mockPiAgentDir, 'auth.json'),
       JSON.stringify({
         unknown_provider: { type: 'api_key', key: 'sk-unknown' },
-      }),
+      })
     )
 
     const { loadPiAuth } = await import('./load-pi-auth.ts')

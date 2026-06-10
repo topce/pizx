@@ -6,7 +6,7 @@
  * branching paths without real API calls.
  */
 
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
@@ -28,7 +28,7 @@ vi.mock('./load-pi-settings.ts', () => ({
 
 // ── Imports ────────────────────────────────────────────────────────────────
 
-import { getProviders, getModels, getEnvApiKey } from '@earendil-works/pi-ai'
+import { getEnvApiKey, getModels, getProviders } from '@earendil-works/pi-ai'
 import { isPiInstalled, loadPiSettings } from './load-pi-settings.ts'
 import { pickModel } from './model-picker.ts'
 
@@ -71,18 +71,14 @@ describe('pickModel', () => {
 
   it('returns exact match by full id (provider/model)', () => {
     vi.mocked(getProviders).mockReturnValue(['anthropic'])
-    vi.mocked(getModels).mockReturnValue([
-      fakeModel('anthropic/claude-sonnet-4-5', 'anthropic'),
-    ])
+    vi.mocked(getModels).mockReturnValue([fakeModel('anthropic/claude-sonnet-4-5', 'anthropic')])
     const result = pickModel('anthropic/claude-sonnet-4-5')
     expect(result?.id).toBe('anthropic/claude-sonnet-4-5')
   })
 
   it('returns match by modelId only (provider omitted)', () => {
     vi.mocked(getProviders).mockReturnValue(['anthropic'])
-    vi.mocked(getModels).mockReturnValue([
-      fakeModel('anthropic/claude-sonnet-4-5', 'anthropic'),
-    ])
+    vi.mocked(getModels).mockReturnValue([fakeModel('anthropic/claude-sonnet-4-5', 'anthropic')])
     const result = pickModel('claude-sonnet-4-5')
     expect(result?.id).toBe('anthropic/claude-sonnet-4-5')
   })
@@ -96,9 +92,7 @@ describe('pickModel', () => {
 
   it('falls through to best available when preferred model not found', () => {
     vi.mocked(getProviders).mockReturnValue(['anthropic'])
-    vi.mocked(getModels).mockReturnValue([
-      fakeModel('anthropic/claude-sonnet-4-5', 'anthropic'),
-    ])
+    vi.mocked(getModels).mockReturnValue([fakeModel('anthropic/claude-sonnet-4-5', 'anthropic')])
     // No API key configured → falls to registry fallback
     const result = pickModel('nonexistent/model')
     expect(result?.id).toBe('anthropic/claude-sonnet-4-5')
@@ -122,9 +116,7 @@ describe('pickModel', () => {
       defaultModel: 'claude-sonnet-4-5',
     })
     vi.mocked(getProviders).mockReturnValue(['anthropic'])
-    vi.mocked(getModels).mockReturnValue([
-      fakeModel('anthropic/claude-sonnet-4-5', 'anthropic'),
-    ])
+    vi.mocked(getModels).mockReturnValue([fakeModel('anthropic/claude-sonnet-4-5', 'anthropic')])
     const result = pickModel()
     expect(result?.id).toBe('anthropic/claude-sonnet-4-5')
   })
@@ -135,9 +127,7 @@ describe('pickModel', () => {
       defaultModel: 'nonexistent-model',
     })
     vi.mocked(getProviders).mockReturnValue(['anthropic'])
-    vi.mocked(getModels).mockReturnValue([
-      fakeModel('anthropic/claude-sonnet-4-5', 'anthropic'),
-    ])
+    vi.mocked(getModels).mockReturnValue([fakeModel('anthropic/claude-sonnet-4-5', 'anthropic')])
     vi.mocked(getEnvApiKey).mockReturnValue('sk-test') // make it configured
     const result = pickModel()
     // Falls through to first configured model
@@ -153,8 +143,7 @@ describe('pickModel', () => {
     })
     vi.mocked(getProviders).mockReturnValue(['anthropic', 'openai'])
     vi.mocked(getModels).mockImplementation((provider) => {
-      if (provider === 'openai')
-        return [fakeModel('openai/gpt-4o', 'openai')]
+      if (provider === 'openai') return [fakeModel('openai/gpt-4o', 'openai')]
       return []
     })
     vi.mocked(getEnvApiKey).mockImplementation((provider) => {
@@ -171,10 +160,8 @@ describe('pickModel', () => {
     })
     vi.mocked(getProviders).mockReturnValue(['openai', 'anthropic'])
     vi.mocked(getModels).mockImplementation((provider) => {
-      if (provider === 'openai')
-        return [fakeModel('openai/gpt-4o', 'openai')]
-      if (provider === 'anthropic')
-        return [fakeModel('anthropic/claude-sonnet-4-5', 'anthropic')]
+      if (provider === 'openai') return [fakeModel('openai/gpt-4o', 'openai')]
+      if (provider === 'anthropic') return [fakeModel('anthropic/claude-sonnet-4-5', 'anthropic')]
       return []
     })
     // No API key for openai, but anthropic has one
@@ -193,8 +180,7 @@ describe('pickModel', () => {
     })
     vi.mocked(getProviders).mockReturnValue(['anthropic'])
     vi.mocked(getModels).mockImplementation((provider) => {
-      if (provider === 'anthropic')
-        return [fakeModel('anthropic/claude-sonnet-4-5', 'anthropic')]
+      if (provider === 'anthropic') return [fakeModel('anthropic/claude-sonnet-4-5', 'anthropic')]
       return []
     })
     vi.mocked(getEnvApiKey).mockReturnValue('sk-test')
@@ -225,9 +211,7 @@ describe('pickModel', () => {
 
   it('falls back through preference order when top picks unavailable', () => {
     vi.mocked(getProviders).mockReturnValue(['openai'])
-    vi.mocked(getModels).mockReturnValue([
-      fakeModel('openai/gpt-4o-mini', 'openai'),
-    ])
+    vi.mocked(getModels).mockReturnValue([fakeModel('openai/gpt-4o-mini', 'openai')])
     vi.mocked(getEnvApiKey).mockReturnValue('sk-test')
     const result = pickModel()
     // gpt-4o-mini is last in preference order but only model available
@@ -236,9 +220,7 @@ describe('pickModel', () => {
 
   it('returns first configured model when no preference match', () => {
     vi.mocked(getProviders).mockReturnValue(['mistral'])
-    vi.mocked(getModels).mockReturnValue([
-      fakeModel('mistral/mistral-large', 'mistral'),
-    ])
+    vi.mocked(getModels).mockReturnValue([fakeModel('mistral/mistral-large', 'mistral')])
     vi.mocked(getEnvApiKey).mockReturnValue('sk-test')
     const result = pickModel()
     expect(result?.id).toBe('mistral/mistral-large')
@@ -248,9 +230,7 @@ describe('pickModel', () => {
 
   it('falls back to full registry when no configured providers', () => {
     vi.mocked(getProviders).mockReturnValue(['anthropic'])
-    vi.mocked(getModels).mockReturnValue([
-      fakeModel('anthropic/claude-sonnet-4-5', 'anthropic'),
-    ])
+    vi.mocked(getModels).mockReturnValue([fakeModel('anthropic/claude-sonnet-4-5', 'anthropic')])
     // No API keys configured
     vi.mocked(getEnvApiKey).mockReturnValue(undefined)
     const result = pickModel()
@@ -275,9 +255,7 @@ describe('pickModel', () => {
 
   it('returns first fallback model when no preference matches', () => {
     vi.mocked(getProviders).mockReturnValue(['mistral'])
-    vi.mocked(getModels).mockReturnValue([
-      fakeModel('mistral/mistral-large', 'mistral'),
-    ])
+    vi.mocked(getModels).mockReturnValue([fakeModel('mistral/mistral-large', 'mistral')])
     vi.mocked(getEnvApiKey).mockReturnValue(undefined)
     const result = pickModel()
     expect(result?.id).toBe('mistral/mistral-large')
@@ -288,9 +266,7 @@ describe('pickModel', () => {
   it('skips settings when Pi not installed', () => {
     vi.mocked(isPiInstalled).mockReturnValue(false)
     vi.mocked(getProviders).mockReturnValue(['anthropic'])
-    vi.mocked(getModels).mockReturnValue([
-      fakeModel('anthropic/claude-sonnet-4-5', 'anthropic'),
-    ])
+    vi.mocked(getModels).mockReturnValue([fakeModel('anthropic/claude-sonnet-4-5', 'anthropic')])
     vi.mocked(getEnvApiKey).mockReturnValue('sk-test')
 
     pickModel()
@@ -308,10 +284,8 @@ describe('pickModel', () => {
     })
     vi.mocked(getProviders).mockReturnValue(['anthropic', 'openai'])
     vi.mocked(getModels).mockImplementation((provider) => {
-      if (provider === 'anthropic')
-        return [fakeModel('anthropic/claude-sonnet-4-5', 'anthropic')]
-      if (provider === 'openai')
-        return [fakeModel('openai/gpt-4o-mini', 'openai')]
+      if (provider === 'anthropic') return [fakeModel('anthropic/claude-sonnet-4-5', 'anthropic')]
+      if (provider === 'openai') return [fakeModel('openai/gpt-4o-mini', 'openai')]
       return []
     })
     vi.mocked(getEnvApiKey).mockReturnValue('sk-test')
@@ -327,10 +301,8 @@ describe('pickModel', () => {
     })
     vi.mocked(getProviders).mockReturnValue(['anthropic', 'openai'])
     vi.mocked(getModels).mockImplementation((provider) => {
-      if (provider === 'anthropic')
-        return [fakeModel('anthropic/claude-sonnet-4-5', 'anthropic')]
-      if (provider === 'openai')
-        return [fakeModel('openai/gpt-4o', 'openai')]
+      if (provider === 'anthropic') return [fakeModel('anthropic/claude-sonnet-4-5', 'anthropic')]
+      if (provider === 'openai') return [fakeModel('openai/gpt-4o', 'openai')]
       return []
     })
     vi.mocked(getEnvApiKey).mockReturnValue('sk-test')

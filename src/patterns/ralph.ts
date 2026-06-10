@@ -22,9 +22,9 @@ import {
   ask,
   build,
   createPatternTag,
+  mergeSystem,
   type PatternOptions,
   PatternOutput,
-  mergeSystem,
   pickModel,
 } from './types.ts'
 

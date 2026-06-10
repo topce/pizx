@@ -31,7 +31,18 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, confirmPhase, type TaskDescriptor } from './types.ts'
+import {
+  ask,
+  build,
+  confirmPhase,
+  createPatternTag,
+  mergeSystem,
+  type PatternOptions,
+  PatternOutput,
+  type QualityReviewResult,
+  runQualityReview,
+  type TaskDescriptor,
+} from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -90,7 +101,11 @@ export class PipelineOutput extends PatternOutput {
 
 // ── Stage parsing ───────────────────────────────────────────────────────────
 
-function parseStages(template: string, explicitStages?: TaskDescriptor[], separator?: string): TaskDescriptor[] {
+function parseStages(
+  template: string,
+  explicitStages?: TaskDescriptor[],
+  separator?: string
+): TaskDescriptor[] {
   if (explicitStages && explicitStages.length > 0) return explicitStages
 
   const sep = separator ?? '→'
@@ -160,7 +175,7 @@ async function execute(
 
   // Confirm before pipeline execution (optional)
   const stageSummary = `Run ${stages.length} pipeline stage(s)?\n    ${stages.map((s, i) => `${i + 1}. ${describeStage(s)}`).join('\n    ')}`
-  if (!await confirmPhase(stageSummary, opts)) {
+  if (!(await confirmPhase(stageSummary, opts))) {
     throw new Error('pizx/Λ: Execution cancelled by user.')
   }
 
@@ -188,7 +203,11 @@ async function execute(
           ? `You are a specialist executing stage ${i + 1}: ${stage}. Focus only on this stage's output.`
           : `You are a specialist executing stage ${i + 1}: ${stage}. Process the previous stage's output according to your instructions. Maintain all important information from previous stages.`
 
-      output = await ask(prompt, { ...opts, model: workerModel, system: mergeSystem(opts.system, systemMessage) })
+      output = await ask(prompt, {
+        ...opts,
+        model: workerModel,
+        system: mergeSystem(opts.system, systemMessage),
+      })
     }
 
     stageResults.push(new PipelineStageResult(stageLabel, output, i))

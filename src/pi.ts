@@ -18,8 +18,8 @@ import { PiOutput } from './pi-output.ts'
 export { PiOutput }
 
 import { pickModel } from './model-picker.ts'
-import { build } from './patterns/types.ts'
 import type { CallTrace } from './patterns/types.ts'
+import { build } from './patterns/types.ts'
 import { getErrorMessage } from './utils.ts'
 
 export interface PiOptions {

@@ -9,22 +9,9 @@
  *   // now π, Π, Ρ, Φ, Σ, Δ, Λ, Ψ, Ω are available
  */
 
-import {
-  Α,
-  Β,
-  Γ,
-  Δ,
-  Θ,
-  Λ,
-  Μ,
-  Ρ,
-  Σ,
-  Φ,
-  Ψ,
-  Ω,
-} from './patterns/index.ts'
-import { π, configurePi } from './pi.ts'
-import { Π, closeAgent, configureAgent } from './pi-agent.ts'
+import { Α, Β, Γ, Δ, Θ, Λ, Μ, Ν, Ρ, Σ, Τ, Φ, Χ, Ψ, Ω } from './patterns/index.ts'
+import { configurePi, π } from './pi.ts'
+import { closeAgent, configureAgent, Π } from './pi-agent.ts'
 
 const g = globalThis as Record<string, unknown>
 
@@ -41,6 +28,9 @@ g.Λ = Λ // Lambda — Pipeline
 g.Ψ = Ψ // Psi — Critique
 g.Ω = Ω // Omega — Orchestrator
 
+// Agent patterns (cont.)
+g.Ν = Ν // Nu — Self-Organizing Teams
+
 // Communication patterns
 g.Θ = Θ // Theta — Thread
 g.Μ = Μ // Mu — Memory
@@ -49,6 +39,8 @@ g.Β = Β // Beta — Broadcast
 // Orchestration topologies
 g.Α = Α // Alpha — Adaptive
 g.Γ = Γ // Gamma — Graph
+g.Χ = Χ // Chi — Cross-Agent Learning
+g.Τ = Τ // Tau — Tool-Mediated Orchestration
 
 // Helpers
 g.configurePi = configurePi
@@ -57,6 +49,9 @@ g.closeAgent = closeAgent
 
 // Named exports for explicit import
 export {
+  closeAgent,
+  configureAgent,
+  configurePi,
   Α,
   Β,
   Γ,
@@ -64,14 +59,14 @@ export {
   Θ,
   Λ,
   Μ,
+  Ν,
   Π,
-  π,
   Ρ,
   Σ,
+  Τ,
   Φ,
+  Χ,
   Ψ,
   Ω,
-  closeAgent,
-  configureAgent,
-  configurePi,
+  π,
 }

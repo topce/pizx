@@ -31,8 +31,19 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult, mergeSystem, confirmPhase, type TaskDescriptor } from './types.ts'
 import { getErrorMessage } from '../utils.ts'
+import {
+  ask,
+  build,
+  confirmPhase,
+  createPatternTag,
+  mergeSystem,
+  type PatternOptions,
+  PatternOutput,
+  type QualityReviewResult,
+  runQualityReview,
+  type TaskDescriptor,
+} from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -176,7 +187,7 @@ async function execute(
 
   // Confirm before execution (optional)
   const taskSummary = `Execute ${tasks.length} fleet task(s)?\n    ${tasks.map((t, i) => `${i + 1}. ${describeTask(t).slice(0, 80)}`).join('\n    ')}`
-  if (!await confirmPhase(taskSummary, opts)) {
+  if (!(await confirmPhase(taskSummary, opts))) {
     throw new Error('pizx/Φ: Execution cancelled by user.')
   }
 
@@ -193,7 +204,9 @@ async function execute(
       if (r.status === 'fulfilled') {
         results.push(r.value)
       } else {
-        results.push(new FleetMemberOutput(describeTask(batch[idx]), '', false, r.reason?.toString()))
+        results.push(
+          new FleetMemberOutput(describeTask(batch[idx]), '', false, r.reason?.toString())
+        )
       }
     })
   }

@@ -258,7 +258,10 @@ import { createInterface } from 'node:readline'
  * If opts.confirm is true, pause and prompt the user for confirmation.
  * Returns true if execution should continue, false to abort.
  */
-export async function confirmPhase(description: string, opts: { confirm?: boolean; quiet?: boolean }): Promise<boolean> {
+export async function confirmPhase(
+  description: string,
+  opts: { confirm?: boolean; quiet?: boolean }
+): Promise<boolean> {
   if (!opts.confirm) return true
   if (!opts.quiet) {
     process.stderr.write(`\n  ── Confirm ──\n  ${description}\n  Proceed? [Y/n] `)
@@ -360,7 +363,15 @@ RECOMMENDATION: (1 sentence — what would improve this output?)`
 export async function runQualityReview(
   originalRequest: string,
   finalOutput: string,
-  opts: { qualityCheck?: boolean; quiet?: boolean; plannerModel?: string; model?: string; maxTokens?: number; timeoutMs?: number; maxRetries?: number }
+  opts: {
+    qualityCheck?: boolean
+    quiet?: boolean
+    plannerModel?: string
+    model?: string
+    maxTokens?: number
+    timeoutMs?: number
+    maxRetries?: number
+  }
 ): Promise<QualityReviewResult | undefined> {
   if (!opts.qualityCheck) return undefined
 

@@ -31,9 +31,12 @@ import {
   Θ as _Θ,
   Λ as _Λ,
   Μ as _Μ,
+  Ν as _Ν,
   Ρ as _Ρ,
   Σ as _Σ,
+  Τ as _Τ,
   Φ as _Φ,
+  Χ as _Χ,
   Ψ as _Ψ,
   Ω as _Ω,
 } from './patterns/index.ts'
@@ -126,6 +129,7 @@ function printHelp() {
    \`Λ\`   Pipeline — sequential agent chain
    \`Ψ\`   Critique — generate, critique, improve
    \`Ω\`   Orchestrator — plan, dispatch, synthesize
+   \`Ν\`   Nu — Self-Organizing Teams
 
  ${chalk.bold('Communication Patterns')}
    \`Θ\`   Thread — multi-agent conversation
@@ -135,6 +139,8 @@ function printHelp() {
  ${chalk.bold('Orchestration Topologies')}
    \`Α\`   Adaptive — self-adjusting orchestration
    \`Γ\`   Graph — DAG-based task execution
+   \`Χ\`   Chi — Cross-Agent Learning
+   \`Τ\`   Tau — Tool-Mediated Orchestration
 
  ${chalk.bold('Example Script')}
    #!/usr/bin/env pizx
@@ -198,6 +204,9 @@ async function runScriptMode(scriptPath: string) {
   g.Ω = _Ω
   g.Θ = _Θ
   g.Μ = _Μ
+  g.Ν = _Ν
+  g.Τ = _Τ
+  g.Χ = _Χ
   g.Β = _Β
   g.Α = _Α
   g.Γ = _Γ

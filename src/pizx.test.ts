@@ -250,7 +250,6 @@ describe('Pi detection', () => {
 // ── Pattern Outputs ─────────────────────────────────────────────────────────
 
 import {
-  type CallTrace,
   CritiqueOutput,
   CritiqueRound,
   DebateOutput,
@@ -259,8 +258,8 @@ import {
   FleetOutput,
   OrchestratorOutput,
   OrchestratorWorkerResult,
-  type PhaseEntry,
   PatternOutput,
+  type PhaseEntry,
   PipelineOutput,
   PipelineStageResult,
   type QualityReviewResult,
@@ -296,7 +295,12 @@ describe('PatternOutput', () => {
   it('stores phase log entries', () => {
     const out = new PatternOutput('result', 1000, 1200)
     expect(out.phaseLog).toEqual([])
-    const phase: PhaseEntry = { phase: 'plan', durationMs: 200, description: 'Generated plan', modelUsed: 'test-model' }
+    const phase: PhaseEntry = {
+      phase: 'plan',
+      durationMs: 200,
+      description: 'Generated plan',
+      modelUsed: 'test-model',
+    }
     out.phaseLog.push(phase)
     expect(out.phaseLog.length).toBe(1)
     expect(out.phaseLog[0].phase).toBe('plan')
@@ -328,7 +332,9 @@ describe('FleetOutput', () => {
   })
   it('stores quality review when provided', () => {
     const out = new FleetOutput('summary', [], 1000, 1200, {
-      score: 0.75, assessment: 'Mixed results', recommendation: 'Retry failed tasks',
+      score: 0.75,
+      assessment: 'Mixed results',
+      recommendation: 'Retry failed tasks',
     })
     expect(out.qualityReview?.score).toBe(0.75)
   })
@@ -377,7 +383,11 @@ describe('DebateOutput', () => {
   })
 
   it('stores quality review when provided', () => {
-    const qr: QualityReviewResult = { score: 0.91, assessment: 'Well-reasoned', recommendation: 'Add data' }
+    const qr: QualityReviewResult = {
+      score: 0.91,
+      assessment: 'Well-reasoned',
+      recommendation: 'Add data',
+    }
     const out = new DebateOutput('conclusion', 'conclusion', [], 1, 1000, 1200, qr)
     expect(out.qualityReview?.score).toBe(0.91)
     expect(out.qualityReview?.assessment).toBe('Well-reasoned')
@@ -400,7 +410,9 @@ describe('PipelineOutput', () => {
   })
   it('stores quality review when provided', () => {
     const out = new PipelineOutput('summary', 'final', [], 1000, 1200, {
-      score: 0.86, assessment: 'Pipeline output is clear', recommendation: 'Add more stages',
+      score: 0.86,
+      assessment: 'Pipeline output is clear',
+      recommendation: 'Add more stages',
     })
     expect(out.qualityReview?.score).toBe(0.86)
   })
@@ -462,10 +474,11 @@ describe('NuOutput', () => {
     expect(role.expertise).toBe('data analysis')
   })
   it('stores quality review when provided', () => {
-    const out = new NuOutput(
-      'summary', [], 'parallel', 'no deps', [], 'synth', 1000, 1200,
-      { score: 0.84, assessment: 'Team organized well', recommendation: 'Add more roles' }
-    )
+    const out = new NuOutput('summary', [], 'parallel', 'no deps', [], 'synth', 1000, 1200, {
+      score: 0.84,
+      assessment: 'Team organized well',
+      recommendation: 'Add more roles',
+    })
     expect(out.qualityReview?.score).toBe(0.84)
   })
 })
@@ -492,9 +505,11 @@ describe('ChiOutput', () => {
   })
   it('stores quality review when provided', () => {
     const out = new ChiOutput('text', [], 'summary', 'changes', 1000, 1200, {
-      score: 0.90, assessment: 'Insights are actionable', recommendation: 'Prioritize top 3',
+      score: 0.9,
+      assessment: 'Insights are actionable',
+      recommendation: 'Prioritize top 3',
     })
-    expect(out.qualityReview?.score).toBe(0.90)
+    expect(out.qualityReview?.score).toBe(0.9)
   })
 })
 
@@ -517,7 +532,9 @@ describe('TauOutput', () => {
   })
   it('stores quality review when provided', () => {
     const out = new TauOutput('summary', [], {}, 'synth', 1000, 1200, {
-      score: 0.87, assessment: 'Store well-structured', recommendation: 'Add cross-references',
+      score: 0.87,
+      assessment: 'Store well-structured',
+      recommendation: 'Add cross-references',
     })
     expect(out.qualityReview?.score).toBe(0.87)
   })
@@ -549,7 +566,9 @@ describe('ThreadOutput', () => {
   })
   it('stores quality review when provided', () => {
     const out = new ThreadOutput('summary', 'conclusion', [], 1000, 1200, {
-      score: 0.82, assessment: 'Good synthesis', recommendation: 'Add citations',
+      score: 0.82,
+      assessment: 'Good synthesis',
+      recommendation: 'Add citations',
     })
     expect(out.qualityReview?.score).toBe(0.82)
   })
@@ -565,7 +584,9 @@ describe('MemoryOutput', () => {
   })
   it('stores quality review when provided', () => {
     const out = new MemoryOutput('summary', 'synth', [], 1000, 1200, {
-      score: 0.79, assessment: 'Adequate coverage', recommendation: 'Deepen analysis',
+      score: 0.79,
+      assessment: 'Adequate coverage',
+      recommendation: 'Deepen analysis',
     })
     expect(out.qualityReview?.score).toBe(0.79)
   })
@@ -581,7 +602,9 @@ describe('BroadcastOutput', () => {
   })
   it('stores quality review when provided', () => {
     const out = new BroadcastOutput('summary', 'synth', [], 1000, 1200, {
-      score: 0.93, assessment: 'Excellent synthesis', recommendation: 'None',
+      score: 0.93,
+      assessment: 'Excellent synthesis',
+      recommendation: 'None',
     })
     expect(out.qualityReview?.score).toBe(0.93)
   })
@@ -608,7 +631,9 @@ describe('GraphOutput', () => {
   })
   it('stores quality review when provided', () => {
     const out = new GraphOutput('summary', 'final', [], 1000, 1200, {
-      score: 0.81, assessment: 'Graph executed well', recommendation: 'Add error handling',
+      score: 0.81,
+      assessment: 'Graph executed well',
+      recommendation: 'Add error handling',
     })
     expect(out.qualityReview?.score).toBe(0.81)
   })

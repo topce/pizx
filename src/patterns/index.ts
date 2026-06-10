@@ -49,7 +49,9 @@ export { ThreadMessage, type ThreadOptions, ThreadOutput, Θ } from './thread.ts
 
 export {
   type CallTrace,
+  confirmPhase,
   createPatternTag,
+  mergeSystem,
   type PatternFn,
   type PatternOptions,
   PatternOutput,
@@ -57,7 +59,5 @@ export {
   type PhaseEntry,
   type QualityReviewResult,
   runQualityReview,
-  mergeSystem,
-  confirmPhase,
   type TaskDescriptor,
 } from './types.ts'
