@@ -58,7 +58,12 @@
     "example:pattern-nu": "node dist/cli.js examples/pattern-nu.mjs",
     "example:pattern-chi": "node dist/cli.js examples/pattern-chi.mjs",
     "example:pattern-tau": "node dist/cli.js examples/pattern-tau.mjs",
-    "example:five-whys": "node dist/cli.js examples/pattern-five-whys.mjs"
+    "example:five-whys": "node dist/cli.js examples/pattern-five-whys.mjs",
+    "test:quality": "node dist/cli.js examples/test-quality.mjs",
+    "test:confirm": "node dist/cli.js examples/test-confirm.mjs",
+    "test:composition-fleet": "node dist/cli.js examples/test-composition-fleet.mjs",
+    "test:composition-pipeline": "node dist/cli.js examples/test-composition-pipeline.mjs",
+    "test:new-features": "npm run test:quality && npm run test:confirm && npm run test:composition-fleet && npm run test:composition-pipeline"
   },
   "keywords": [
     "zx",
