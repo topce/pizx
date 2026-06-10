@@ -14,7 +14,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
 import { BROADCAST_ROLE_SETS } from './role-sets.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
@@ -24,6 +24,8 @@ export interface BroadcastOptions extends PatternOptions {
   workers?: number
   /** Custom worker roles. Auto-generated if not provided. */
   roles?: string[]
+  /** Run a quality review on the final synthesis. Default: false */
+  qualityCheck?: boolean
 }
 
 const defaults: BroadcastOptions = {
@@ -49,7 +51,9 @@ export class BroadcastOutput extends PatternOutput {
     public readonly synthesis: string,
     public readonly responses: BroadcastResponse[],
     startTime: number,
-    endTime: number
+    endTime: number,
+    /** Quality review, if qualityCheck was enabled */
+    public readonly qualityReview?: QualityReviewResult
   ) {
     super(text, startTime, endTime)
   }
@@ -124,6 +128,10 @@ async function execute(
     }
   )
 
+  // Quality review (optional)
+  if (!opts.quiet && opts.qualityCheck) process.stderr.write('  → Quality review...\n')
+  const qualityReview = await runQualityReview(question, synthesis, opts)
+
   const t1 = Date.now()
 
   const summary = responses
@@ -132,7 +140,7 @@ async function execute(
     )
     .join('\n')
 
-  return new BroadcastOutput(summary, synthesis, responses, t0, t1)
+  return new BroadcastOutput(summary, synthesis, responses, t0, t1, qualityReview)
 }
 
 /** Β tag — Broadcast: one-to-many messaging */

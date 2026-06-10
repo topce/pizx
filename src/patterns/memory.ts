@@ -14,7 +14,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
 import { MEMORY_ROLE_SETS } from './role-sets.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
@@ -26,6 +26,8 @@ export interface MemoryOptions extends PatternOptions {
   rounds?: number
   /** Custom agent roles. Auto-generated if not provided. */
   roles?: string[]
+  /** Run a quality review on the final synthesis. Default: false */
+  qualityCheck?: boolean
 }
 
 const defaults: MemoryOptions = {
@@ -51,7 +53,9 @@ export class MemoryOutput extends PatternOutput {
     public readonly synthesis: string,
     public readonly entries: MemoryEntry[],
     startTime: number,
-    endTime: number
+    endTime: number,
+    /** Quality review, if qualityCheck was enabled */
+    public readonly qualityReview?: QualityReviewResult
   ) {
     super(text, startTime, endTime)
   }
@@ -133,6 +137,10 @@ async function execute(
     }
   )
 
+  // Quality review (optional)
+  if (!opts.quiet && opts.qualityCheck) process.stderr.write('  → Quality review...\n')
+  const qualityReview = await runQualityReview(topic, synthesis, opts)
+
   const t1 = Date.now()
 
   const summary = entries
@@ -142,7 +150,7 @@ async function execute(
     )
     .join('\n')
 
-  return new MemoryOutput(summary, synthesis, entries, t0, t1)
+  return new MemoryOutput(summary, synthesis, entries, t0, t1, qualityReview)
 }
 
 /** Μ tag — Memory: shared blackboard pattern */

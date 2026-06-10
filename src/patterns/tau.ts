@@ -21,7 +21,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -32,6 +32,8 @@ export interface TauOptions extends PatternOptions {
   rounds?: number
   /** Custom agent roles. Auto-generated if not provided. */
   roles?: string[]
+  /** Run a quality review on the final synthesis. Default: false */
+  qualityCheck?: boolean
 }
 
 const defaults: TauOptions = {
@@ -68,7 +70,9 @@ export class TauOutput extends PatternOutput {
     /** Consolidated synthesis */
     public readonly synthesis: string,
     startTime: number,
-    endTime: number
+    endTime: number,
+    /** Quality review, if qualityCheck was enabled */
+    public readonly qualityReview?: QualityReviewResult
   ) {
     super(text, startTime, endTime)
   }
@@ -337,6 +341,10 @@ async function execute(
   if (!opts.quiet) process.stderr.write('  → Consolidating store...\n')
   const synthesis = await consolidateStore(task, store, { ...opts, plannerModel })
 
+  // Quality review (optional)
+  if (!opts.quiet && opts.qualityCheck) process.stderr.write('  → Quality review...\n')
+  const qualityReview = await runQualityReview(task, synthesis, opts)
+
   const t1 = Date.now()
 
   const summary = [
@@ -347,7 +355,7 @@ async function execute(
     `Synthesis: ${synthesis}`,
   ].join('\n\n')
 
-  return new TauOutput(summary, allEntries, store, synthesis, t0, t1)
+  return new TauOutput(summary, allEntries, store, synthesis, t0, t1, qualityReview)
 }
 
 /** Τ tag — Tool-Mediated Orchestration: shared structured key-value store */

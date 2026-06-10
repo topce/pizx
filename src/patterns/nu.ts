@@ -19,7 +19,7 @@
  */
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import { ask, build, createPatternTag, type PatternOptions, PatternOutput } from './types.ts'
+import { ask, build, createPatternTag, type PatternOptions, PatternOutput, runQualityReview, type QualityReviewResult } from './types.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -30,6 +30,8 @@ export interface NuOptions extends PatternOptions {
   maxAgents?: number
   /** Explicit roles (skip negotiation when provided). */
   roles?: NuRole[]
+  /** Run a quality review on the final synthesis. Default: false */
+  qualityCheck?: boolean
 }
 
 const defaults: NuOptions = {
@@ -66,7 +68,9 @@ export class NuOutput extends PatternOutput {
     /** Synthesized final answer */
     public readonly synthesis: string,
     startTime: number,
-    endTime: number
+    endTime: number,
+    /** Quality review, if qualityCheck was enabled */
+    public readonly qualityReview?: QualityReviewResult
   ) {
     super(text, startTime, endTime)
   }
@@ -305,6 +309,10 @@ async function execute(
   if (!opts.quiet) process.stderr.write('  → Synthesizing...\n')
   const synthesis = await synthesize(task, roleResults, { ...opts, plannerModel })
 
+  // Quality review (optional)
+  if (!opts.quiet && opts.qualityCheck) process.stderr.write('  → Quality review...\n')
+  const qualityReview = await runQualityReview(task, synthesis, opts)
+
   const t1 = Date.now()
 
   const summary = [
@@ -314,7 +322,7 @@ async function execute(
     `Synthesis: ${synthesis}`,
   ].join('\n\n')
 
-  return new NuOutput(summary, roles, workflow, reasoning, roleResults, synthesis, t0, t1)
+  return new NuOutput(summary, roles, workflow, reasoning, roleResults, synthesis, t0, t1, qualityReview)
 }
 
 /** Ν tag — Self-Organizing Teams: auto-negotiate roles and workflow */
