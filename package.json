@@ -34,7 +34,7 @@
     "check": "biome check --write src/",
     "lint:fix": "biome lint --write src/",
     "test": "vitest --run",
-    "test:integration": "PIZX_INTEGRATION=1 vitest --run",
+    "test:integration": "PIZX_INTEGRATION=1 vitest --run src/patterns.integration.test.ts",
     "test:coverage": "vitest --run --coverage",
     "prepublishOnly": "npm run build",
     "example:hello": "node dist/cli.js examples/hello-pizx.mjs",

@@ -36,6 +36,8 @@ export interface PatternOptions {
   skills?: string[]
   /** If true, pause before the first major execution phase and ask for confirmation via stdin. Default: false */
   confirm?: boolean
+  /** API key to use for the provider (bypasses environment variable lookup). */
+  apiKey?: string
 }
 
 // ── Execution trace ─────────────────────────────────────────────────────────
@@ -324,6 +326,7 @@ export async function ask(prompt: string, opts: Partial<PatternOptions> = {}): P
       thinkingBudgets: opts.thinkingBudgets,
       timeoutMs: opts.timeoutMs,
       maxRetries: opts.maxRetries,
+      apiKey: opts.apiKey,
     }
   )
   const durationMs = Date.now() - t0

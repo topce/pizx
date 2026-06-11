@@ -37,6 +37,8 @@ export interface PiOptions {
   timeoutMs?: number
   /** Maximum retry attempts for transient failures. Default: provider SDK default (typically 2). */
   maxRetries?: number
+  /** API key to use for the provider (bypasses environment variable lookup). */
+  apiKey?: string
 }
 
 const defaults: PiOptions = {
@@ -68,6 +70,7 @@ function makeOpts(opts: PiOptions): SimpleStreamOptions {
     thinkingBudgets: opts.thinkingBudgets,
     timeoutMs: opts.timeoutMs,
     maxRetries: opts.maxRetries,
+    apiKey: opts.apiKey,
   }
 }
 
