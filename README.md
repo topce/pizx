@@ -48,7 +48,7 @@ npm install @topce/pizx
 
 **Prerequisites:**
 - Node.js >= 22.19.0
-- [Pi AI](https://github.com/earendil-works/pi-ai) installed and configured (`pi auth login`)
+- [Pi AI](https://github.com/earendil-works/pi) installed and configured (`pi auth login`)
 - Shell commands from [zx](https://github.com/google/zx) (`$`, `cd`, `echo`, `fetch`, etc.)
 
 ## Writing Scripts
