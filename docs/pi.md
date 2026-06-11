@@ -4,7 +4,7 @@ Small pi: call pi-ai for text generation as a zx-style template tag.
 
 ## Behavior
 
-Sends a prompt to a configured AI model via [pi-ai](https://github.com/earendil-works/pi-ai) and streams the response to stdout/stderr. Returns a `PiOutput` with the full text, model used, timing, and token stats.
+Sends a prompt to a configured AI model via [pi-ai](https://github.com/earendil-works/pi) and streams the response to stdout/stderr. Returns a `PiOutput` with the full text, model used, timing, and token stats.
 
 ## Usage
 

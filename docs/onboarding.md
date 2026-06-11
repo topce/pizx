@@ -21,7 +21,7 @@ pizx is a [zx](https://github.com/google/zx) fork with native AI integration. Th
 ### Prerequisites
 
 - Node.js >= 22.19.0
-- [Pi AI](https://github.com/earendil-works/pi-ai) installed: `npm install -g @earendil-works/pi-ai`
+- [Pi AI](https://github.com/earendil-works/pi) installed: `npm install -g @earendil-works/pi-ai`
 
 ### Install
 
@@ -36,7 +36,7 @@ pi auth login           # One-time: authenticate with an AI provider
 pi models               # See available models
 ```
 
-Pi supports multiple providers: Anthropic, OpenAI, Google, DeepSeek, and more. See the [Pi AI docs](https://github.com/earendil-works/pi-ai) for setup.
+Pi supports multiple providers: Anthropic, OpenAI, Google, DeepSeek, and more. See the [Pi AI docs](https://github.com/earendil-works/pi) for setup.
 
 ---
 
