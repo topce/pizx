@@ -4,7 +4,7 @@
 
 ![pizx — zx fork with native Pi AI integration](github-social-banner.png)
 
-> **zx fork with native Pi AI integration** — 15 template tags for shell scripting, AI text generation, coding agents, agentic patterns, communication, and orchestration topologies.
+> **zx fork with native Pi AI integration** — 15 agent pattern tags (plus shell and AI core) for shell scripting, AI text generation, coding agents, agentic patterns, multi-agent communication, and orchestration topologies.
 
 ## Quick Start
 
@@ -86,6 +86,27 @@ await fleet`review all files in src/`
 > **English word aliases**: Every Greek letter tag has an English alternative.
 > `pi` (alias for `π`), `Pi` (alias for `Π`), `fleet` (alias for `Φ`), `ralph` (alias for `Ρ`),
 > `pipeline` (alias for `Λ`), etc. — use whichever style you prefer. See [full mapping](#english-aliases) below.
+
+### Global Access (pizx/globals)
+
+Import the `pizx/globals` module to make **all tags and English aliases** available without explicit imports — matching the `#!/usr/bin/env pizx` shebang experience inside scripts loaded via `import()`:
+
+```js
+import '@topce/pizx/globals'
+
+// All Greek tags are available without imports:
+const answer = await π`explain async/await`
+await Π`fix the lint issues`
+await Φ`review all files`
+
+// English aliases too:
+const docs = await fleet`check all .ts files`
+const plan = await orchestrator`design the architecture`
+
+// Helpers:
+configurePi({ model: 'anthropic/claude-sonnet-4-5' })
+closeAgent()
+```
 
 ### CLI Quick Queries
 
@@ -193,7 +214,10 @@ await Ω({ system: 'You are a senior security architect.' })`design an auth syst
 
 ### Quality Validation
 
-All 15 patterns support an optional `qualityCheck` flag. When enabled, the pattern runs a post-execution LLM review that scores the final output (0.0–1.0), provides an assessment, and recommends improvements:
+12 patterns support an optional `qualityCheck` flag. When enabled, the pattern runs a post-execution LLM review that scores the final output (0.0–1.0), provides an assessment, and recommends improvements:
+
+Supported by: `Ω` (Orchestrator), `Φ` (Fleet), `Σ` (Subagents), `Δ` (Debate), `Λ` (Pipeline), `Θ` (Thread), `Μ` (Memory), `Β` (Broadcast), `Γ` (Graph), `Ν` (Nu/Team), `Χ` (Chi/Learn), `Τ` (Tau/Store).
+Not applicable to: `Ρ` (Ralph Loop — has its own review phase), `Α` (Adaptive), `Ψ` (Critique).
 
 ```js
 const result = await Ω({ qualityCheck: true })`design the system architecture`
@@ -219,11 +243,11 @@ await Ω({ confirm: true })`design the system`
 // → "Proceed? [Y/n] "
 ```
 
-Supported by: `Ω`, `Σ`, `Φ`, `Λ` (more patterns coming).
+Supported by: `Ω`, `Σ`, `Φ`, `Λ`.
 
 ### Agent Mode (File Tools for Any Pattern)
 
-By default, all patterns (except `Pi` and `ralph`) use **text generation** — they can read files only if you pass content in via template interpolation.
+By default, all patterns (except `Pi` and `ralph`) use **text generation** — they can read files only if you pass content in via template interpolation. `ralph` already uses coding agent tools when `useTools: true` (default).
 
 Set `mode: 'agent'` to give every subtask the same **coding agent tools** as `Pi`:
 
@@ -259,7 +283,7 @@ await Θ({ agents: 4, turns: 3 })`debate the architecture`
 await Γ({ graph: { nodes: [...], edges: [...] } })`execute workflow`
 ```
 
-### Timeout & Retry
+### Timeout, Retry & API Key
 
 All tags accept `timeoutMs` and `maxRetries` to control LLM call resilience. When unset, the provider SDK defaults apply (typically 10 min timeout, 2 retries).
 
@@ -272,6 +296,23 @@ await π({ timeoutMs: 15000 })`summarize this document`
 
 // Global defaults
 configurePi({ timeoutMs: 60000, maxRetries: 3 })
+```
+
+Use `apiKey` to specify a provider API key directly, bypassing environment variable lookup:
+
+```js
+await π({ apiKey: 'sk-...' })`analyze this data`
+await Ω({ apiKey: 'sk-...' })`design the system`
+```
+
+### Streaming (π.stream)
+
+For real-time streaming, use `π.stream` as an async generator:
+
+```js
+for await (const chunk of π.stream`tell me a long story`) {
+  process.stdout.write(chunk)
+}
 ```
 
 ### Token, Cost & Phase Tracking
@@ -351,11 +392,23 @@ All tags accept `system` (replaces default) and `appendSystemPrompt` (appended a
 // π: custom system prompt
 await π({ system: 'You are a security auditor' })`review this code`
 
+// π: with appendSystemPrompt
+await π({ appendSystemPrompt: 'Respond in JSON format' })`list all .ts files`
+
 // Π: set system prompt and append extra instructions
 await Π({ system: 'You are a test engineer', appendSystemPrompt: 'Write tests first' })`add tests for auth`
 
 // Patterns: inject system context via mergeSystem
 await Ω({ system: 'Prioritize security over performance' })`design login flow`
+```
+
+### closeAgent()
+
+Dispose the shared Pi coding agent session (`Π`). Useful in long-running scripts or tests to reset state:
+
+```js
+import { closeAgent } from '@topce/pizx'
+await closeAgent()  // dispose shared agent session
 ```
 
 ### Thinking Budgets
@@ -406,15 +459,15 @@ pizx --help                   # Print help
 **Options:**
 - `-p, --prompt <text>` — Run a quick pi-ai query (no script needed)
 - `-m, --model <id>` — Specify AI model to use
-- `--quiet` — Suppress output except errors
-- `--shell <path>` — Shell to use (default: auto-detect)
+- `-q, --quiet` — Suppress status output
+- `--system <text>` — System context for pi-ai (print mode only)
 
 ## Commands
 
 ```bash
 npm run build                  # Build (JS + DTS)
 npm run check                  # Lint and format with Biome
-npm test                       # 223 unit tests (no network)
+npm test                       # 311 unit tests (no network)
 npm run test:integration       # Integration tests (requires Pi credentials)
 npm run test:quality           # Run qualityCheck example
 npm run test:confirm           # Run confirm gate example
@@ -434,10 +487,40 @@ See [`examples/`](examples/) for runnable examples of every pattern and feature:
 - [`hello-pizx.mjs`](examples/hello-pizx.mjs) — Basic script with shell + AI
 - [`basic-pi.mjs`](examples/basic-pi.mjs) — π text generation
 - [`basic-capital-pi.mjs`](examples/basic-capital-pi.mjs) — Π coding agent
-- [`pattern-ralph.mjs`](examples/pattern-ralph.mjs) — Ralph Loop
+- [`quick-ask.mjs`](examples/quick-ask.mjs) — Quick π query
+- [`ralph-loop.mjs`](examples/ralph-loop.mjs) — Ralph Loop (detailed)
+- [`pattern-ralph.mjs`](examples/pattern-ralph.mjs) — Ralph Loop (concise)
 - [`pattern-fleet.mjs`](examples/pattern-fleet.mjs) — Fleet parallel execution
+- [`pattern-subagent.mjs`](examples/pattern-subagent.mjs) — Subagents delegation
 - [`pattern-debate.mjs`](examples/pattern-debate.mjs) — Multi-perspective debate
-- ... and more for every pattern
+- [`pattern-orchestrator.mjs`](examples/pattern-orchestrator.mjs) — Orchestrator
+- [`pattern-pipeline.mjs`](examples/pattern-pipeline.mjs) — Pipeline chain
+- [`pattern-critique.mjs`](examples/pattern-critique.mjs) — Critique loop
+- [`pattern-thread.mjs`](examples/pattern-thread.mjs) — Thread conversation
+- [`pattern-memory.mjs`](examples/pattern-memory.mjs) — Memory blackboard
+- [`pattern-broadcast.mjs`](examples/pattern-broadcast.mjs) — Broadcast messaging
+- [`pattern-adaptive.mjs`](examples/pattern-adaptive.mjs) — Adaptive workflow
+- [`pattern-graph.mjs`](examples/pattern-graph.mjs) — DAG execution
+- [`pattern-nu.mjs`](examples/pattern-nu.mjs) — Self-organizing teams
+- [`pattern-chi.mjs`](examples/pattern-chi.mjs) — Cross-agent learning
+- [`pattern-tau.mjs`](examples/pattern-tau.mjs) — Tool-mediated store
+- [`pattern-five-whys.mjs`](examples/pattern-five-whys.mjs) — Five Whys analysis
+- [`pattern-tracking.mjs`](examples/pattern-tracking.mjs) — Token/cost tracking
+- [`pattern-quality.mjs`](examples/pattern-quality.mjs) — Quality check demo
+- [`pattern-timeout-retry.mjs`](examples/pattern-timeout-retry.mjs) — Timeout & retry demo
+- [`pattern-system-propagation.mjs`](examples/pattern-system-propagation.mjs) — System prompt propagation
+
+### English Aliases Examples
+
+See [`english-examples/`](english-examples/) for runnable examples using all English aliases:
+
+- [`english-hello.mjs`](english-examples/english-hello.mjs) — Hello world with English aliases
+- [`english-fleet.mjs`](english-examples/english-fleet.mjs) — Fleet via English aliases
+- [`english-debate.mjs`](english-examples/english-debate.mjs) — Debate via English aliases
+- [`english-orchestrator.mjs`](english-examples/english-orchestrator.mjs) — Orchestrator via English aliases
+- [`english-pipeline.mjs`](english-examples/english-pipeline.mjs) — Pipeline via English aliases
+- [`english-all-patterns.mjs`](english-examples/english-all-patterns.mjs) — All patterns via English aliases
+- [`english-import-verify.mjs`](english-examples/english-import-verify.mjs) — Verify all imports
 
 ### New Feature Demos
 
