@@ -2,6 +2,17 @@
 
 All notable changes to pizx are documented here.
 
+## [0.5.0] — 2025-06-13
+
+### Added
+
+- **English Word Aliases** — All 15 pattern tags now have English word alternatives alongside their Greek letter counterparts:
+  - `π` → `pi`, `Π` → `Pi` (core tags)
+  - `Ρ` → `ralph`, `Φ` → `fleet`, `Σ` → `subagent`, `Δ` → `debate`, `Λ` → `pipeline`, `Ψ` → `critique`, `Ω` → `orchestrator`, `Ν` → `team` (agent patterns)
+  - `Θ` → `thread`, `Μ` → `memory`, `Β` → `broadcast` (communication patterns)
+  - `Α` → `adaptive`, `Γ` → `graph`, `Χ` → `learn`, `Τ` → `store` (orchestration topologies)
+- Aliases available everywhere Greek letters work: named imports, shebang globals, and `pizx/globals`
+- **English Examples** — 6 new example scripts in `english-examples/` demonstrating all aliases
 
 ## [0.4.0] — 2025-06-10
 
@@ -66,5 +77,7 @@ All notable changes to pizx are documented here.
 - `pizx/globals` module for script mode.
 - Build pipeline with esbuild + TypeScript declarations.
 
+[0.5.0]: https://github.com/topce/pizx/releases/tag/v0.5.0
+[0.4.0]: https://github.com/topce/pizx/releases/tag/v0.4.0
 [0.3.0]: https://github.com/topce/pizx/releases/tag/v0.3.0
 [0.1.0]: https://github.com/topce/pizx/releases/tag/v0.1.0

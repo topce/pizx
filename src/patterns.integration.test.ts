@@ -11,7 +11,7 @@
  *   - omlx provider configured in pi (~/.pi/agent/models.json)
  *   - gemma-4-26B-A4B-it-MLX-4bit model available via omlx at
  *     http://Slobodans-Mac-mini.local:8000/v1
- * 
+ *
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -41,9 +41,6 @@ vi.mock('./model-picker.ts', () => ({
 }))
 
 // ── Imports ──────────────────────────────────────────────────────────────
-
-import { completeSimple as realCompleteSimple } from '@earendil-works/pi-ai'
-import { pickModel } from './model-picker.ts'
 
 /** Check if integration mode is enabled */
 function isIntegrationEnabled(): boolean {
@@ -82,7 +79,11 @@ afterEach(() => {
 describe('π — Basic LLM (local model)', () => {
   integrationTest('generates a short response', async () => {
     const { π } = await import('./pi.ts')
-    const result = await π({ model: LOCAL_MODEL, quiet: true, apiKey: 'gaga' })`Say "hello" and nothing else.`
+    const result = await π({
+      model: LOCAL_MODEL,
+      quiet: true,
+      apiKey: 'gaga',
+    })`Say "hello" and nothing else.`
     expect(result.text).toBeTruthy()
     expect(result.text.length).toBeGreaterThan(0)
   })
@@ -150,7 +151,10 @@ describe('Σ — Subagents (local model)', () => {
       const result = await Σ.quiet({
         model: LOCAL_MODEL,
         apiKey: 'gaga',
-        subdomains: ['List 1 benefit of TypeScript. Keep brief.', 'List 1 drawback of TypeScript. Keep brief.'],
+        subdomains: [
+          'List 1 benefit of TypeScript. Keep brief.',
+          'List 1 drawback of TypeScript. Keep brief.',
+        ],
       })`Analyze TypeScript.`
 
       expect(result.subResults.length).toBe(2)
@@ -173,10 +177,7 @@ describe('Λ — Pipeline (local model)', () => {
       const result = await Λ.quiet({
         model: LOCAL_MODEL,
         apiKey: 'gaga',
-        stages: [
-          'Write 1 sentence about testing.',
-          'Summarize that sentence in 3 words.',
-        ],
+        stages: ['Write 1 sentence about testing.', 'Summarize that sentence in 3 words.'],
       })`ignored`
 
       expect(result.stages.length).toBe(2)

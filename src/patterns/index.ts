@@ -61,3 +61,53 @@ export {
   runQualityReview,
   type TaskDescriptor,
 } from './types.ts'
+
+// ── English word aliases ────────────────────────────────────────────────────
+// Use these instead of Greek letters for improved readability and accessibility.
+//   ralph       → Ρ (Ralph Loop)
+//   fleet       → Φ (Fleet)
+//   subagent    → Σ (Subagents)
+//   debate      → Δ (Debate)
+//   pipeline    → Λ (Pipeline)
+//   critique    → Ψ (Critique)
+//   orchestrator→ Ω (Orchestrator)
+//   thread      → Θ (Thread)
+//   memory      → Μ (Memory)
+//   broadcast   → Β (Broadcast)
+//   adaptive    → Α (Adaptive)
+//   graph       → Γ (Graph)
+//   team        → Ν (Nu — Self-Organizing Teams)
+//   learn       → Χ (Chi — Cross-Agent Learning)
+//   store       → Τ (Tau — Tool-Mediated Orchestration)
+
+import { Α as _Α } from './adaptive.ts'
+import { Β as _Β } from './broadcast.ts'
+import { Χ as _Χ } from './chi.ts'
+import { Ψ as _Ψ } from './critique.ts'
+import { Δ as _Δ } from './debate.ts'
+import { Φ as _Φ } from './fleet.ts'
+import { Γ as _Γ } from './graph.ts'
+import { Μ as _Μ } from './memory.ts'
+import { Ν as _Ν } from './nu.ts'
+import { Ω as _Ω } from './orchestrator.ts'
+import { Λ as _Λ } from './pipeline.ts'
+import { Ρ as _Ρ } from './ralph.ts'
+import { Σ as _Σ } from './subagent.ts'
+import { Τ as _Τ } from './tau.ts'
+import { Θ as _Θ } from './thread.ts'
+
+export const ralph = _Ρ
+export const fleet = _Φ
+export const subagent = _Σ
+export const debate = _Δ
+export const pipeline = _Λ
+export const critique = _Ψ
+export const orchestrator = _Ω
+export const thread = _Θ
+export const memory = _Μ
+export const broadcast = _Β
+export const adaptive = _Α
+export const graph = _Γ
+export const team = _Ν
+export const learn = _Χ
+export const store = _Τ

@@ -9,7 +9,38 @@
  *   // now π, Π, Ρ, Φ, Σ, Δ, Λ, Ψ, Ω are available
  */
 
-import { Α, Β, Γ, Δ, Θ, Λ, Μ, Ν, Ρ, Σ, Τ, Φ, Χ, Ψ, Ω } from './patterns/index.ts'
+import {
+  adaptive,
+  broadcast,
+  critique,
+  debate,
+  fleet,
+  graph,
+  learn,
+  memory,
+  orchestrator,
+  pipeline,
+  ralph,
+  store,
+  subagent,
+  team,
+  thread,
+  Α,
+  Β,
+  Γ,
+  Δ,
+  Θ,
+  Λ,
+  Μ,
+  Ν,
+  Ρ,
+  Σ,
+  Τ,
+  Φ,
+  Χ,
+  Ψ,
+  Ω,
+} from './patterns/index.ts'
 import { configurePi, π } from './pi.ts'
 import { closeAgent, configureAgent, Π } from './pi-agent.ts'
 
@@ -42,6 +73,27 @@ g.Γ = Γ // Gamma — Graph
 g.Χ = Χ // Chi — Cross-Agent Learning
 g.Τ = Τ // Tau — Tool-Mediated Orchestration
 
+// English word aliases (also exported as named bindings)
+const pi = π
+const Pi = Π
+g.pi = pi
+g.Pi = Pi
+g.ralph = ralph
+g.fleet = fleet
+g.subagent = subagent
+g.debate = debate
+g.pipeline = pipeline
+g.critique = critique
+g.orchestrator = orchestrator
+g.thread = thread
+g.memory = memory
+g.broadcast = broadcast
+g.adaptive = adaptive
+g.graph = graph
+g.team = team
+g.learn = learn
+g.store = store
+
 // Helpers
 g.configurePi = configurePi
 g.configureAgent = configureAgent
@@ -49,9 +101,25 @@ g.closeAgent = closeAgent
 
 // Named exports for explicit import
 export {
+  // English word aliases
+  adaptive,
+  broadcast,
   closeAgent,
   configureAgent,
   configurePi,
+  critique,
+  debate,
+  fleet,
+  graph,
+  learn,
+  memory,
+  orchestrator,
+  pipeline,
+  ralph,
+  store,
+  subagent,
+  team,
+  thread,
   Α,
   Β,
   Γ,

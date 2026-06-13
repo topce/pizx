@@ -1,6 +1,6 @@
 {
   "name": "@topce/pizx",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "zx fork with native Pi AI integration — π (pi-ai), Π (pi-coding-agent), and agent pattern template tags (Ρ Φ Σ Δ Λ Ψ Ω)",
   "type": "module",
   "main": "./dist/index.js",

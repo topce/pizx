@@ -109,17 +109,25 @@ function setupSmartMock(customMatchers?: Record<string, string>) {
         prompt.includes('independent sub-tasks')
       ) {
         return Promise.resolve(
-          mockResult('["Sub-task 1: Analyze the requirements", "Sub-task 2: Design the solution", "Sub-task 3: Implement the changes"]')
+          mockResult(
+            '["Sub-task 1: Analyze the requirements", "Sub-task 2: Design the solution", "Sub-task 3: Implement the changes"]'
+          )
         )
       }
 
       if (prompt.includes('Synthesize') || prompt.includes('synthesize')) {
-        return Promise.resolve(mockResult('This is the synthesized conclusion from all perspectives. The optimal approach combines elements from each view.'))
+        return Promise.resolve(
+          mockResult(
+            'This is the synthesized conclusion from all perspectives. The optimal approach combines elements from each view.'
+          )
+        )
       }
 
       if (prompt.includes('SCORE:') || prompt.includes('Evaluate') || prompt.includes('evaluate')) {
         return Promise.resolve(
-          mockResult('SCORE: 0.85\nASSESSMENT: Good quality output with clear reasoning.\nADAPTATION: CONTINUE')
+          mockResult(
+            'SCORE: 0.85\nASSESSMENT: Good quality output with clear reasoning.\nADAPTATION: CONTINUE'
+          )
         )
       }
 
@@ -132,7 +140,9 @@ function setupSmartMock(customMatchers?: Record<string, string>) {
       }
 
       if (prompt.includes('Generate an implementation plan') || prompt.includes('PLAN SYSTEM')) {
-        return Promise.resolve(mockResult('1. Refactor the main module\n2. Add error handling\n3. Write tests'))
+        return Promise.resolve(
+          mockResult('1. Refactor the main module\n2. Add error handling\n3. Write tests')
+        )
       }
 
       if (prompt.includes('CATEGORY:') || prompt.includes('CATEGORY')) {
@@ -145,20 +155,35 @@ function setupSmartMock(customMatchers?: Record<string, string>) {
 
       if (prompt.includes('PLAN:')) {
         return Promise.resolve(
-          mockResult('PLAN:\n1. Analyze requirements\n2. Design architecture\n3. Implement solution')
+          mockResult(
+            'PLAN:\n1. Analyze requirements\n2. Design architecture\n3. Implement solution'
+          )
         )
       }
 
       if (prompt.includes('Critique') || prompt.includes('critique')) {
-        return Promise.resolve(mockResult('Strengths: Good structure. Weaknesses: Could add more detail. Suggestion: Expand the introduction.'))
+        return Promise.resolve(
+          mockResult(
+            'Strengths: Good structure. Weaknesses: Could add more detail. Suggestion: Expand the introduction.'
+          )
+        )
       }
 
-      if (prompt.includes('improve') && (prompt.includes('Content to improve') || prompt.includes('Improving'))) {
-        return Promise.resolve(mockResult('Improved content with more detail and better structure.'))
+      if (
+        prompt.includes('improve') &&
+        (prompt.includes('Content to improve') || prompt.includes('Improving'))
+      ) {
+        return Promise.resolve(
+          mockResult('Improved content with more detail and better structure.')
+        )
       }
 
       if (prompt.includes('Topic:') || prompt.includes('topic:') || prompt.includes('topic')) {
-        return Promise.resolve(mockResult('Analysis from the perspective of a specialist. Key findings include several important observations.'))
+        return Promise.resolve(
+          mockResult(
+            'Analysis from the perspective of a specialist. Key findings include several important observations.'
+          )
+        )
       }
 
       // Check for role-specific prompts
@@ -167,7 +192,11 @@ function setupSmartMock(customMatchers?: Record<string, string>) {
       }
 
       if (prompt.includes('Original request') || prompt.includes('Original question')) {
-        return Promise.resolve(mockResult('The synthesized final answer combines all inputs into a comprehensive result.'))
+        return Promise.resolve(
+          mockResult(
+            'The synthesized final answer combines all inputs into a comprehensive result.'
+          )
+        )
       }
 
       if (prompt.includes('Task:') && !prompt.includes('SUB-TASKS')) {
@@ -179,7 +208,9 @@ function setupSmartMock(customMatchers?: Record<string, string>) {
       }
 
       if (prompt.includes('Goal:') || prompt.includes('goal:')) {
-        return Promise.resolve(mockResult('Analysis completed. Found several areas for improvement.'))
+        return Promise.resolve(
+          mockResult('Analysis completed. Found several areas for improvement.')
+        )
       }
 
       if (prompt.includes('Original task:')) {
@@ -187,7 +218,11 @@ function setupSmartMock(customMatchers?: Record<string, string>) {
       }
 
       if (prompt.includes('Conversation thread') || prompt.includes('conversation so far')) {
-        return Promise.resolve(mockResult('This is my response in the conversation thread, building on previous messages.'))
+        return Promise.resolve(
+          mockResult(
+            'This is my response in the conversation thread, building on previous messages.'
+          )
+        )
       }
 
       // Generic fallback
@@ -210,7 +245,6 @@ function setupAgentSessionMock() {
   } as any)
 }
 
-
 // ═══════════════════════════════════════════════════════════════════════════
 // Δ (Delta) — Debate
 // ═══════════════════════════════════════════════════════════════════════════
@@ -231,7 +265,10 @@ describe('Δ (Delta) — Debate', () => {
   it('executes multi-round debate with rebuttals', async () => {
     setupSmartMock()
     const { Δ } = await import('./patterns/debate.ts')
-    const result = await Δ.quiet({ rounds: 2, perspectives: 2 })`Is microservices or monolith better?`
+    const result = await Δ.quiet({
+      rounds: 2,
+      perspectives: 2,
+    })`Is microservices or monolith better?`
 
     expect(result.rounds).toBe(2)
     expect(result.perspectives.length).toBeGreaterThanOrEqual(2)
@@ -241,7 +278,9 @@ describe('Δ (Delta) — Debate', () => {
   it('supports custom roles', async () => {
     setupSmartMock()
     const { Δ } = await import('./patterns/debate.ts')
-    const result = await Δ.quiet({ roles: ['Engineer', 'Manager', 'Designer'] })`Discuss a new feature.`
+    const result = await Δ.quiet({
+      roles: ['Engineer', 'Manager', 'Designer'],
+    })`Discuss a new feature.`
 
     expect(result.perspectives.length).toBe(3)
     const roles = result.perspectives.map((p) => p.role)
@@ -253,7 +292,7 @@ describe('Δ (Delta) — Debate', () => {
     // First perspective call fails, rest succeed
     let callCount = 0
     vi.mocked(completeSimple).mockImplementation(
-      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+      (_model: any, _ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         callCount++
         // First perspective call fails; synthesis (last call) succeeds normally
         if (callCount === 1) {
@@ -317,9 +356,7 @@ describe('Ρ (Rho) — Ralph Loop', () => {
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('Review')) {
-          return Promise.resolve(
-            mockResult('Fully implemented. Quality is good.\nFINAL: DONE')
-          )
+          return Promise.resolve(mockResult('Fully implemented. Quality is good.\nFINAL: DONE'))
         }
         return Promise.resolve(mockResult('Analysis and implementation completed.'))
       }
@@ -344,13 +381,9 @@ describe('Ρ (Rho) — Ralph Loop', () => {
         if (prompt.includes('Review')) {
           // First two reviews say ITERATE, third says DONE
           if (callCount < 6) {
-            return Promise.resolve(
-              mockResult('Needs improvement.\nFINAL: ITERATE')
-            )
+            return Promise.resolve(mockResult('Needs improvement.\nFINAL: ITERATE'))
           }
-          return Promise.resolve(
-            mockResult('Good enough.\nFINAL: DONE')
-          )
+          return Promise.resolve(mockResult('Good enough.\nFINAL: DONE'))
         }
         return Promise.resolve(mockResult('Analysis and implementation completed.'))
       }
@@ -369,9 +402,7 @@ describe('Ρ (Rho) — Ralph Loop', () => {
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('Review')) {
-          return Promise.resolve(
-            mockResult('Still needs work.\nFINAL: ITERATE')
-          )
+          return Promise.resolve(mockResult('Still needs work.\nFINAL: ITERATE'))
         }
         return Promise.resolve(mockResult('Analysis and implementation completed.'))
       }
@@ -444,10 +475,7 @@ describe('Φ (Phi) — Fleet', () => {
     setupSmartMock()
     const { Φ } = await import('./patterns/fleet.ts')
     const result = await Φ.quiet({
-      tasks: [
-        'plain task',
-        () => Promise.resolve('composed pattern result'),
-      ],
+      tasks: ['plain task', () => Promise.resolve('composed pattern result')],
     })`test`
 
     expect(result.members.length).toBe(2)
@@ -524,9 +552,7 @@ describe('Σ (Sigma) — Subagents', () => {
         callCount++
         // First call is decompose (returns JSON)
         if (prompt.includes('Decompose') || prompt.includes('independent sub-tasks')) {
-          return Promise.resolve(
-            mockResult('["Sub A", "Sub B", "Sub C"]')
-          )
+          return Promise.resolve(mockResult('["Sub A", "Sub B", "Sub C"]'))
         }
         // Make the second execution call fail
         if (callCount === 2) {
@@ -572,10 +598,7 @@ describe('Λ (Lambda) — Pipeline', () => {
   it('executes composed pattern stages (functions)', async () => {
     const { Λ } = await import('./patterns/pipeline.ts')
     const result = await Λ.quiet({
-      stages: [
-        'First stage',
-        (prev: string) => Promise.resolve(`processed: ${prev}`),
-      ],
+      stages: ['First stage', (prev: string) => Promise.resolve(`processed: ${prev}`)],
     })`test`
 
     expect(result.stages.length).toBe(2)
@@ -630,8 +653,7 @@ describe('Ψ (Psi) — Critique', () => {
   })
 
   it('caps rounds at maximum of 3', async () => {
-    const { CritiqueOptions } = await import('./patterns/critique.ts')
-    const opts: CritiqueOptions = { rounds: 5 }
+    const opts = { rounds: 5 }
     // The cap is applied internally: Math.min(opts.rounds ?? 1, 3)
     const cappedRounds = Math.min(opts.rounds ?? 1, 3)
     expect(cappedRounds).toBe(3)
@@ -696,9 +718,7 @@ describe('Ω (Omega) — Orchestrator', () => {
 
         // Planning call
         if (prompt.includes('SUB-TASKS') || prompt.includes('senior architect')) {
-          return Promise.resolve(
-            mockResult('SUB-TASKS:\n1. Task A\n2. Task B\n3. Task C')
-          )
+          return Promise.resolve(mockResult('SUB-TASKS:\n1. Task A\n2. Task B\n3. Task C'))
         }
 
         // Second execution call fails
@@ -881,9 +901,7 @@ describe('Α (Alpha) — Adaptive', () => {
               mockResult('SCORE: 0.5\nASSESSMENT: Needs improvement.\nADAPTATION: SKIP_NEXT')
             )
           }
-          return Promise.resolve(
-            mockResult('SCORE: 0.85\nASSESSMENT: Good.\nADAPTATION: CONTINUE')
-          )
+          return Promise.resolve(mockResult('SCORE: 0.85\nASSESSMENT: Good.\nADAPTATION: CONTINUE'))
         }
         if (prompt.includes('PLAN:')) {
           return Promise.resolve(mockResult('PLAN:\n1. Step one\n2. Step two\n3. Step three'))
@@ -908,12 +926,12 @@ describe('Α (Alpha) — Adaptive', () => {
           evalCount++
           if (evalCount === 1) {
             return Promise.resolve(
-              mockResult('SCORE: 0.5\nASSESSMENT: Missing validation step.\nADAPTATION: ADD Validate the results')
+              mockResult(
+                'SCORE: 0.5\nASSESSMENT: Missing validation step.\nADAPTATION: ADD Validate the results'
+              )
             )
           }
-          return Promise.resolve(
-            mockResult('SCORE: 0.85\nASSESSMENT: Good.\nADAPTATION: CONTINUE')
-          )
+          return Promise.resolve(mockResult('SCORE: 0.85\nASSESSMENT: Good.\nADAPTATION: CONTINUE'))
         }
         if (prompt.includes('PLAN:')) {
           return Promise.resolve(mockResult('PLAN:\n1. First step\n2. Second step'))
@@ -1015,7 +1033,9 @@ describe('Ν (Nu) — Self-Organizing Teams', () => {
         }
         // Synthesis phase
         if (prompt.includes('synthesize') || prompt.includes('Synthesize')) {
-          return Promise.resolve(mockResult('Synthesized final output combining all role contributions.'))
+          return Promise.resolve(
+            mockResult('Synthesized final output combining all role contributions.')
+          )
         }
 
         return Promise.resolve(mockResult('Role execution output.'))
@@ -1063,7 +1083,7 @@ describe('Χ (Chi) — Cross-Agent Learning', () => {
   /** Helper: set up mock to return CATEGORY-formatted response for Chi analysis */
   function setupChiMock() {
     vi.mocked(completeSimple).mockImplementation(
-      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+      (_model: any, _ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         // Chi sends the input as the user prompt; the response must contain
         // CATEGORY blocks for parseInsights to extract them
         return Promise.resolve(
@@ -1114,7 +1134,12 @@ describe('Χ (Chi) — Cross-Agent Learning', () => {
 
   it('LearningInsight stores all fields', async () => {
     const { LearningInsight } = await import('./patterns/chi.ts')
-    const ins = new LearningInsight('communication', 'redundant messages', 'use shared context', 0.85)
+    const ins = new LearningInsight(
+      'communication',
+      'redundant messages',
+      'use shared context',
+      0.85
+    )
     expect(ins.category).toBe('communication')
     expect(ins.pattern).toBe('redundant messages')
     expect(ins.confidence).toBe(0.85)
@@ -1135,12 +1160,20 @@ describe('Τ (Tau) — Tool-Mediated Orchestration', () => {
         // Schema definition
         if (prompt.includes('schema') || prompt.includes('keys')) {
           return Promise.resolve(
-            mockResult('{"keys": {"Market": "Competitive landscape", "Tech": "Technology stack", "Risks": "Potential risks"}, "roles": ["Market Analyst", "Tech Lead", "Risk Manager"]}')
+            mockResult(
+              '{"keys": {"Market": "Competitive landscape", "Tech": "Technology stack", "Risks": "Potential risks"}, "roles": ["Market Analyst", "Tech Lead", "Risk Manager"]}'
+            )
           )
         }
         // Final consolidation
-        if (prompt.includes('consolidat') || prompt.includes('current store state') || prompt.includes('Final synthesis')) {
-          return Promise.resolve(mockResult('Consolidated final analysis combining all store entries.'))
+        if (
+          prompt.includes('consolidat') ||
+          prompt.includes('current store state') ||
+          prompt.includes('Final synthesis')
+        ) {
+          return Promise.resolve(
+            mockResult('Consolidated final analysis combining all store entries.')
+          )
         }
 
         return Promise.resolve(mockResult('Agent wrote findings to the shared store.'))
@@ -1158,10 +1191,17 @@ describe('Τ (Tau) — Tool-Mediated Orchestration', () => {
   it('TauOutput stores entries and final state', async () => {
     const { TauOutput, ToolMediatedEntry } = await import('./patterns/tau.ts')
     const entry = new ToolMediatedEntry('Analyst', 1, 'write', 'Market', 'market is competitive')
-    const out = new TauOutput('summary', [entry], { Market: 'competitive' }, 'synthesis', 1000, 1500)
+    const out = new TauOutput(
+      'summary',
+      [entry],
+      { Market: 'competitive' },
+      'synthesis',
+      1000,
+      1500
+    )
     expect(out.entries.length).toBe(1)
     expect(out.entries[0].agent).toBe('Analyst')
-    expect(out.finalState['Market']).toBe('competitive')
+    expect(out.finalState.Market).toBe('competitive')
     expect(out.synthesis).toBe('synthesis')
     expect(out.duration).toBe(500)
   })
@@ -1175,7 +1215,11 @@ describe('Pattern option chaining', () => {
   it('Δ supports model overrides', async () => {
     setupSmartMock()
     const { Δ } = await import('./patterns/debate.ts')
-    const tag = Δ({ model: 'test/provider', plannerModel: 'test/planner', workerModel: 'test/worker' })
+    const tag = Δ({
+      model: 'test/provider',
+      plannerModel: 'test/planner',
+      workerModel: 'test/worker',
+    })
     expect(typeof tag).toBe('function')
   })
 
@@ -1233,7 +1277,9 @@ describe('Quality check integration', () => {
 
         if (prompt.includes('Evaluate') || prompt.includes('SCORE') || callCount > 6) {
           return Promise.resolve(
-            mockResult('SCORE: 0.88\nASSESSMENT: Good quality with clear reasoning.\nRECOMMENDATION: Add more examples.')
+            mockResult(
+              'SCORE: 0.88\nASSESSMENT: Good quality with clear reasoning.\nRECOMMENDATION: Add more examples.'
+            )
           )
         }
         if (prompt.includes('neutral moderator') || prompt.includes('synthesize')) {
@@ -1337,5 +1383,74 @@ describe('Pattern trace collection', () => {
 
     const expectedCost = result.trace.length * 0.001
     expect(result.totalCost).toBe(expectedCost)
+  })
+})
+
+// ── English Word Aliases ───────────────────────────────────────────────────
+
+describe('English word aliases', () => {
+  it('all 15 pattern aliases are callable functions', async () => {
+    const {
+      adaptive,
+      broadcast,
+      critique,
+      debate,
+      fleet,
+      graph,
+      learn,
+      memory,
+      orchestrator,
+      pipeline,
+      ralph,
+      store,
+      subagent,
+      team,
+      thread,
+    } = await import('./patterns/index.ts')
+
+    const aliases = {
+      adaptive,
+      broadcast,
+      critique,
+      debate,
+      fleet,
+      graph,
+      learn,
+      memory,
+      orchestrator,
+      pipeline,
+      ralph,
+      store,
+      subagent,
+      team,
+      thread,
+    }
+
+    for (const [_name, tag] of Object.entries(aliases)) {
+      expect(typeof tag).toBe('function')
+    }
+  })
+
+  it('pi and Pi aliases are callable', async () => {
+    const { π } = await import('./pi.ts')
+    const { Π } = await import('./pi-agent.ts')
+    const { pi, Pi } = await import('./index.ts')
+
+    expect(typeof pi).toBe('function')
+    expect(typeof Pi).toBe('function')
+    // Verify they're the same objects as the Greek originals
+    expect(pi).toBe(π)
+    expect(Pi).toBe(Π)
+  })
+
+  it('English aliases have the same option chaining as Greek originals', async () => {
+    const { fleet } = await import('./patterns/index.ts')
+
+    // .quiet should exist
+    expect(typeof fleet.quiet).toBe('function')
+
+    // Option chaining should work
+    const tag = fleet({ concurrency: 2 })
+    expect(typeof tag).toBe('function')
   })
 })

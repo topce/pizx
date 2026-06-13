@@ -24,6 +24,22 @@ loadPiAuth()
 
 // Agent patterns — loaded so they can be injected as globals
 import {
+  // English word aliases — imported from patterns/index.ts
+  adaptive as _adaptive,
+  broadcast as _broadcast,
+  critique as _critique,
+  debate as _debate,
+  fleet as _fleet,
+  graph as _graph,
+  learn as _learn,
+  memory as _memory,
+  orchestrator as _orchestrator,
+  pipeline as _pipeline,
+  ralph as _ralph,
+  store as _store,
+  subagent as _subagent,
+  team as _team,
+  thread as _thread,
   Α as _Α,
   Β as _Β,
   Γ as _Γ,
@@ -210,6 +226,25 @@ async function runScriptMode(scriptPath: string) {
   g.Β = _Β
   g.Α = _Α
   g.Γ = _Γ
+
+  // English word aliases
+  g.pi = _pi
+  g.Pi = _pi_agent
+  g.ralph = _ralph
+  g.fleet = _fleet
+  g.subagent = _subagent
+  g.debate = _debate
+  g.pipeline = _pipeline
+  g.critique = _critique
+  g.orchestrator = _orchestrator
+  g.thread = _thread
+  g.memory = _memory
+  g.broadcast = _broadcast
+  g.adaptive = _adaptive
+  g.graph = _graph
+  g.team = _team
+  g.learn = _learn
+  g.store = _store
 
   // Inject __filename, __dirname, require for CommonJS compat
   const { createRequire } = await import('node:module')

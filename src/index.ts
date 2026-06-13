@@ -58,31 +58,41 @@ export {
   type AdaptiveOptions,
   AdaptiveOutput,
   AdaptiveStep,
+  // English word aliases
+  adaptive,
   type BroadcastOptions,
   BroadcastOutput,
   BroadcastResponse,
+  broadcast,
   type CallTrace,
   type CritiqueOptions,
   CritiqueOutput,
   CritiqueRound,
   createPatternTag,
+  critique,
   type DebateOptions,
   DebateOutput,
   DebatePerspective,
+  debate,
   FleetMemberOutput,
   type FleetOptions,
   FleetOutput,
+  fleet,
   type GraphEdge,
   type GraphNode,
   GraphNodeResult,
   type GraphOptions,
   GraphOutput,
+  graph,
+  learn,
   MemoryEntry,
   type MemoryOptions,
   MemoryOutput,
+  memory,
   type OrchestratorOptions,
   OrchestratorOutput,
   OrchestratorWorkerResult,
+  orchestrator,
   type PatternFn,
   type PatternOptions,
   PatternOutput,
@@ -91,17 +101,23 @@ export {
   type PipelineOptions,
   PipelineOutput,
   PipelineStageResult,
+  pipeline,
   type QualityReviewResult,
   type RalphIterationSummary,
   type RalphOptions,
   RalphOutput,
+  ralph,
   type SubagentOptions,
   SubagentOutput,
   SubagentResult,
+  store,
+  subagent,
   type TaskDescriptor,
   ThreadMessage,
   type ThreadOptions,
   ThreadOutput,
+  team,
+  thread,
   // Orchestration topologies
   Α,
   Β,
@@ -118,21 +134,18 @@ export {
   Ψ,
   Ω,
 } from './patterns/index.ts'
-export {
-  configurePi,
-  type PiOptions,
-  PiOutput,
-  PiPromise,
-  // π — pi-ai text generation
-  π,
-} from './pi.ts'
+
+import { π } from './pi.ts'
+
+export { configurePi, type PiOptions, PiOutput, type PiPromise } from './pi.ts'
 export {
   type AgentOptions,
   AgentOutput,
   AgentPromise,
   closeAgent,
   configureAgent,
-  // Π — pi-coding-agent with tools
   Π,
+  Π as Pi,
 } from './pi-agent.ts'
 export { loadSkillContent, loadSkillContents, SKILL_PATHS } from './skill-loader.ts'
+export { π, π as pi }

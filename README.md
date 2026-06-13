@@ -68,15 +68,24 @@ echo(intro)
 ```js
 import { $, π, Π, Ρ, Φ, Σ } from '@topce/pizx'
 
+// Greek letters work everywhere...
 const output = await $`ls src/ | grep '.ts'`
 console.log(output.stdout)
 
 const review = await π`review this code for issues:\n${output.stdout}`
 console.log(review.text)
 
-// Use the coding agent to fix issues
-await Π`fix the TypeScript errors in src/`
+// ...and so do English word aliases:
+import { pi, Pi, ralph, fleet, subagent } from '@topce/pizx'
+
+const answer = await pi`explain async/await`
+await Pi`fix the TypeScript errors in src/`
+await fleet`review all files in src/`
 ```
+
+> **English word aliases**: Every Greek letter tag has an English alternative.
+> `pi` (alias for `π`), `Pi` (alias for `Π`), `fleet` (alias for `Φ`), `ralph` (alias for `Ρ`),
+> `pipeline` (alias for `Λ`), etc. — use whichever style you prefer. See [full mapping](#english-aliases) below.
 
 ### CLI Quick Queries
 
@@ -127,6 +136,24 @@ Each tag has detailed documentation in [`docs/`](docs/):
 | `Γ` | Graph | DAG-based execution | [docs/graph.md](docs/graph.md) |
 | `Χ` | Chi | Analyze traces → extract patterns | [docs/chi.md](docs/chi.md) |
 | `Τ` | Tau | Define schema → write → refine → consolidate | [docs/tau.md](docs/tau.md) |
+
+### English Aliases
+
+Every Greek letter tag has an equivalent English word. They're interchangeable — use whichever style you prefer.
+
+| Greek | English | Greek | English |
+|-------|---------|-------|---------|
+| `π` | `pi` | `Π` | `Pi` |
+| `Ρ` | `ralph` | `Φ` | `fleet` |
+| `Σ` | `subagent` | `Δ` | `debate` |
+| `Λ` | `pipeline` | `Ψ` | `critique` |
+| `Ω` | `orchestrator` | `Ν` | `team` |
+| `Θ` | `thread` | `Μ` | `memory` |
+| `Β` | `broadcast` | `Α` | `adaptive` |
+| `Γ` | `graph` | `Χ` | `learn` |
+| `Τ` | `store` | | |
+
+See [`english-examples/`](english-examples/) for runnable examples using all English aliases.
 
 ## Architecture
 
