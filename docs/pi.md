@@ -30,21 +30,32 @@ for await (const chunk of π.stream`tell me a short story`) {
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `model` | `string` | Pi default | Model ID (e.g. `'deepseek/deepseek-chat'`) |
-| `thinkingLevel` | `ThinkingLevel` | `'medium'` | Reasoning depth: `'low'`, `'medium'`, `'high'` |
+| `thinkingLevel` | `ThinkingLevel` | `'medium'` | Reasoning depth: `'off'`, `'minimal'`, `'low'`, `'medium'`, `'high'`, `'xhigh'` |
+| `thinkingBudgets` | `ThinkingBudgets` | — | Token budgets per thinking level (token-based providers only) |
 | `quiet` | `boolean` | `false` | Suppress stdout output |
 | `system` | `string` | — | System prompt |
+| `appendSystemPrompt` | `string` | — | Text appended after the system prompt |
 | `maxTokens` | `number` | `4096` | Maximum tokens per call |
+| `timeoutMs` | `number` | SDK default | Timeout in ms for each LLM call |
+| `maxRetries` | `number` | SDK default | Max retries for transient failures |
+| `apiKey` | `string` | — | Provider API key (bypasses env lookup) |
 
 ## Output
 
 ```ts
 class PiOutput {
   text: string           // The full response text
-  modelId: string        // Model used
-  tokens: TokenUsage[]   // Token usage stats
+  modelUsed: string      // Model that produced this output
+  trace: CallTrace[]     // Execution trace (token usage, cost, timing)
   startTime: number      // ms timestamp
   endTime: number        // ms timestamp
   duration: number       // ms
+  inputTokens: number    // Total input tokens (convenience)
+  outputTokens: number   // Total output tokens (convenience)
+  totalTokens: number    // Total tokens (convenience)
+  totalCost: number      // Total cost in USD (convenience)
+  length: number         // Character count
+  lines: number          // Line count
   toString(): string     // Returns text
   valueOf(): string      // Returns text
 }

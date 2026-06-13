@@ -193,6 +193,29 @@ await Ω({
 
 If only `model` is set, it's used for both.
 
+### Agent Mode for Patterns
+
+By default, patterns use **text generation** (LLM-only). Set `mode: 'agent'` to give each subtask coding agent tools (read, bash, edit, write):
+
+```js
+// Fleet workers can read files
+await fleet({ mode: 'agent' })`read package.json and analyze the project`
+
+// Pipeline stages can edit code
+await pipeline({ mode: 'agent' })`read src/ and refactor the error handling`
+```
+
+### Thinking Level
+
+Control reasoning depth on supported models:
+
+```js
+await π({ thinkingLevel: 'high' })`solve a complex problem`
+await Ω({ thinkingLevel: 'high' })`design the system`
+```
+
+Values: `'off'` | `'minimal'` | `'low'` | `'medium'` (default) | `'high'` | `'xhigh'`.
+
 ### Quiet Mode
 
 Suppress streaming output:
@@ -216,19 +239,35 @@ const result = await tag`design the system`
 
 ```bash
 # Basic examples
-npm run example:hello           # First script
-npm run example:pi              # π text generation
+npm run example:hello             # First script
+npm run example:pi                # π text generation
+npm run example:Pi                # Π coding agent
 
 # Pattern examples
-npm run example:pattern-fleet   # Fleet parallel execution
-npm run example:pattern-debate  # Multi-perspective debate
-npm run example:pattern-all     # All patterns
+npm run example:pattern-fleet     # Fleet parallel execution
+npm run example:pattern-debate    # Multi-perspective debate
+npm run example:pattern-subagent  # Hierarchical delegation
+npm run example:pattern-pipeline  # Sequential chain
+npm run example:pattern-critique  # Generate → critique → improve
+npm run example:pattern-orchestrator  # Plan → dispatch → synthesize
+npm run example:pattern-ralph     # Ralph iterative improvement
 
-# New feature demos
-npm run test:quality            # Quality validation demo
-npm run test:confirm            # Human-in-the-loop demo
-npm run test:composition-fleet  # Pattern composition in Fleet
-npm run test:new-features       # All feature demos
+# Orchestration topology examples
+npm run example:pattern-adaptive  # Self-adjusting workflow
+npm run example:pattern-graph     # DAG-based execution
+npm run example:pattern-thread    # Multi-agent conversation
+npm run example:pattern-memory    # Shared blackboard
+npm run example:pattern-broadcast # One-to-many messaging
+npm run example:pattern-nu        # Self-organizing teams
+npm run example:pattern-chi       # Cross-agent learning
+npm run example:pattern-tau       # Tool-mediated KV store
+
+# Feature demos
+npm run example:pattern-quality   # Quality validation
+npm run example:pattern-timeout-retry  # Timeout & retry
+npm run example:pattern-system-propagation  # System prompts
+npm run example:pattern-tracking  # Token & cost tracking
+npm run example:pattern-agent-with-skill  # Skill integration
 ```
 
 ---

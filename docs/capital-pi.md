@@ -32,10 +32,14 @@ await closeAgent()
 | `cwd` | `string` | `process.cwd()` | Working directory for the agent |
 | `model` | `string` | Pi default | Model ID |
 | `thinkingLevel` | `ThinkingLevel` | — | Reasoning depth |
+| `thinkingBudgets` | `ThinkingBudgets` | — | Token budgets per thinking level (token-based providers only) |
 | `quiet` | `boolean` | `false` | Suppress stderr output |
 | `maxTurns` | `number` | `10` | Maximum tool-use turns the agent can take |
 | `tools` | `string[]` | all | Specific tools to enable |
 | `excludeTools` | `string[]` | — | Tools to disable |
+| `system` | `string` | — | Custom system prompt (replaces Pi default) |
+| `appendSystemPrompt` | `string` | — | Text appended after the system prompt |
+| `skills` | `string[]` | — | Skill names to load (e.g. `['code-simplification']`) |
 
 ## Output
 
@@ -47,14 +51,20 @@ class AgentOutput {
   endTime: number        // ms timestamp
   duration: number       // ms
   toString(): string
+  valueOf(): string
 }
 ```
 
 ## Global Configuration
 
 ```js
-import { configureAgent } from 'pizx'
+import { configureAgent, closeAgent } from 'pizx'
+
+// Set global defaults for all Π calls
 configureAgent({ maxTurns: 5, tools: ['read', 'bash', 'edit'] })
+
+// Close the shared agent session between calls
+await closeAgent()
 ```
 
 ## When to Use
