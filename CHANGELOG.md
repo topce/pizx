@@ -93,6 +93,7 @@ All notable changes to pizx are documented here.
 - `pizx/globals` module for script mode.
 - Build pipeline with esbuild + TypeScript declarations.
 
+[0.6.0]: https://github.com/topce/pizx/releases/tag/v0.6.0
 [0.5.0]: https://github.com/topce/pizx/releases/tag/v0.5.0
 [0.4.0]: https://github.com/topce/pizx/releases/tag/v0.4.0
 [0.3.0]: https://github.com/topce/pizx/releases/tag/v0.3.0
