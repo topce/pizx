@@ -16,9 +16,9 @@
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import { MEMORY_ROLE_SETS } from './role-sets.ts'
 import {
-  ask,
   build,
   createPatternTag,
+  executeTask,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -120,7 +120,7 @@ async function execute(
     const roundResults = await Promise.allSettled(
       roles.map(async (role) => {
         const prompt = buildWriterPrompt(role, topic, blackboard)
-        const text = await ask(prompt, { ...opts, model: workerModel })
+        const text = await executeTask(prompt, { ...opts, model: workerModel })
         return { role, text }
       })
     )
@@ -136,7 +136,7 @@ async function execute(
   // Consolidate (planner model)
   if (!opts.quiet) process.stderr.write('  → Consolidating findings...\n')
 
-  const synthesis = await ask(
+  const synthesis = await executeTask(
     `Topic: ${topic}\n\nBlackboard findings:\n${blackboard}\n\nConsolidate into a comprehensive, structured synthesis.`,
     {
       ...opts,

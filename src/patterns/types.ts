@@ -38,6 +38,10 @@ export interface PatternOptions {
   confirm?: boolean
   /** API key to use for the provider (bypasses environment variable lookup). */
   apiKey?: string
+  /** Execution mode: 'text' (default) uses text generation, 'agent' uses coding agent with tools. */
+  mode?: 'text' | 'agent'
+  /** Maximum agent turns when mode is 'agent'. Default: 10 */
+  maxAgentTurns?: number
 }
 
 // ── Execution trace ─────────────────────────────────────────────────────────
@@ -285,6 +289,7 @@ export async function confirmPhase(
 // ── Helper: make a factory function ─────────────────────────────────────────
 
 import { completeSimple } from '@earendil-works/pi-ai'
+import { createAgentSession } from '@earendil-works/pi-coding-agent'
 
 import { pickModel } from '../model-picker.ts'
 import { loadSkillContents } from '../skill-loader.ts'
@@ -358,6 +363,58 @@ export async function ask(prompt: string, opts: Partial<PatternOptions> = {}): P
   }
 
   return text.trim()
+}
+
+// ── Task execution helper (text mode vs agent mode) ────────────────────────
+
+/**
+ * Execute a task using either text generation (ask) or the coding agent (with tools).
+ * Controlled via opts.mode: 'text' (default) or 'agent'.
+ */
+export async function executeTask(
+  prompt: string,
+  opts: Partial<PatternOptions> & { system?: string } = {}
+): Promise<string> {
+  if (opts.mode === 'agent') {
+    return runAgentTask(prompt, opts)
+  }
+  return ask(prompt, opts)
+}
+
+async function runAgentTask(
+  prompt: string,
+  opts: Partial<PatternOptions> & { system?: string }
+): Promise<string> {
+  const model = pickModel(opts.model)
+  if (!model) throw new Error('pizx/patterns: No AI models configured. Run `pi auth login` first.')
+
+  const tools = ['read', 'bash', 'edit', 'write', 'grep', 'ls']
+  const { session } = await createAgentSession({
+    tools,
+    ...(model ? { model } : {}),
+  })
+  try {
+    await session.sendUserMessage(prompt)
+    const messages = session.messages
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i]
+      if (msg?.role !== 'assistant') continue
+      const c = 'content' in msg ? (msg as { content: unknown }).content : undefined
+      if (typeof c === 'string') return c.trim()
+      if (Array.isArray(c)) {
+        const texts = c
+          .filter(
+            (block: unknown): block is { type: string; text: string } =>
+              typeof block === 'object' && block !== null && 'type' in block && 'text' in block
+          )
+          .map((block) => block.text)
+        if (texts.length > 0) return texts.join('\n').trim()
+      }
+    }
+    return ''
+  } finally {
+    session.dispose()
+  }
 }
 
 // ── Quality Review Helper ──────────────────────────────────────────────────

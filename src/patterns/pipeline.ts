@@ -32,10 +32,10 @@
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import {
-  ask,
   build,
   confirmPhase,
   createPatternTag,
+  executeTask,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -203,7 +203,7 @@ async function execute(
           ? `You are a specialist executing stage ${i + 1}: ${stage}. Focus only on this stage's output.`
           : `You are a specialist executing stage ${i + 1}: ${stage}. Process the previous stage's output according to your instructions. Maintain all important information from previous stages.`
 
-      output = await ask(prompt, {
+      output = await executeTask(prompt, {
         ...opts,
         model: workerModel,
         system: mergeSystem(opts.system, systemMessage),

@@ -23,6 +23,7 @@ import {
   ask,
   build,
   createPatternTag,
+  executeTask,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -188,7 +189,7 @@ async function execute(
   // ── Synthesize with full debate history ──
   if (!opts.quiet) process.stderr.write('  → Synthesizing perspectives...\n')
 
-  const conclusion = await ask(
+  const conclusion = await executeTask(
     `${debateHistory}\n\nSynthesize a balanced conclusion from the full debate above. Weigh the evidence from all rounds.`,
     {
       ...opts,

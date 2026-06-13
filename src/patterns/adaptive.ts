@@ -16,9 +16,9 @@
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import {
-  ask,
   build,
   createPatternTag,
+  executeTask,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -106,7 +106,7 @@ async function execute(
 
   // 1. Generate initial plan (planner model)
   if (!opts.quiet) process.stderr.write('  → Planning...\n')
-  const planText = await ask(goal, {
+  const planText = await executeTask(goal, {
     ...opts,
     model: plannerModel,
     thinkingLevel: 'high' as ThinkingLevel,
@@ -145,14 +145,14 @@ async function execute(
       process.stderr.write(`  → Step ${executionStep}: ${currentStep.slice(0, 60)}...\n`)
 
     // Execute current step (worker model)
-    const result = await ask(currentStep, {
+    const result = await executeTask(currentStep, {
       ...opts,
       model: workerModel,
       system: mergeSystem(opts.system, EXECUTE_SYSTEM),
     })
 
     // Evaluate (planner model)
-    const evaluation = await ask(
+    const evaluation = await executeTask(
       `Goal: ${goal}\nStep executed: ${currentStep}\nResult: ${result}\n\nEvaluate the result.`,
       {
         ...opts,

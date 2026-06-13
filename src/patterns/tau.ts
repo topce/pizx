@@ -25,6 +25,7 @@ import {
   ask,
   build,
   createPatternTag,
+  executeTask,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -152,7 +153,7 @@ async function defineSchema(
 
   const prompt = SCHEMA_SYSTEM.replace('{agentCount}', String(agentCount))
 
-  const response = await ask(`Task: ${task}\n\n${prompt}`, {
+  const response = await executeTask(`Task: ${task}\n\n${prompt}`, {
     ...opts,
     model: opts.plannerModel ?? opts.model,
     maxTokens: 1024,
@@ -237,7 +238,7 @@ async function executeRound(
         ? `Write your initial findings to your assigned keys: ${keysStr}`
         : `Review the shared context and update your entries for keys: ${keysStr}`
 
-      const response = await ask(task, {
+      const response = await executeTask(task, {
         ...opts,
         model: workerModel,
         system: mergeSystem(opts.system, systemPrompt),

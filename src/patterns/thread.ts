@@ -16,9 +16,9 @@
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import { THREAD_ROLE_SETS } from './role-sets.ts'
 import {
-  ask,
   build,
   createPatternTag,
+  executeTask,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -120,7 +120,7 @@ async function execute(
       const role = roles[a] ?? `Agent ${a + 1}`
       const prompt = buildThreadPrompt(role, thread)
 
-      const response = await ask(prompt, { ...opts, model: workerModel })
+      const response = await executeTask(prompt, { ...opts, model: workerModel })
 
       messages.push(new ThreadMessage(role, turn, response))
       thread += `\n[${role}] (Turn ${turn}): ${response}\n`
@@ -130,7 +130,7 @@ async function execute(
   // Synthesize conclusion (planner model)
   if (!opts.quiet) process.stderr.write('  → Synthesizing conclusion...\n')
 
-  const conclusion = await ask(
+  const conclusion = await executeTask(
     `Topic: ${topic}\n\nConversation thread:\n${thread}\n\nSynthesize a clear, actionable conclusion.`,
     {
       ...opts,

@@ -23,6 +23,7 @@ console.log(chalk.dim(` Worker model: ${WORKER_MODEL}\n`))
 const result = await fleet({
   workerModel: WORKER_MODEL,
   concurrency: 5,
+  mode:'agent'
 })`
 Explain what this project does by analyzing package.json
 List the key exports from src/index.ts
@@ -35,7 +36,7 @@ for (const member of result.members) {
   const icon = member.success ? chalk.green('✓') : chalk.red('✗')
   console.log(` ${icon} ${chalk.bold(member.task)}`)
   if (member.success) {
-    console.log(chalk.dim(`   ${member.text.slice(0, 300)}${member.text.length > 300 ? '...' : ''}`))
+    console.log(chalk.white(`   ${member.text}`))
   } else {
     console.log(chalk.red(`   Error: ${member.error}`))
   }

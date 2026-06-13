@@ -18,9 +18,9 @@
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import {
-  ask,
   build,
   createPatternTag,
+  executeTask,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -170,7 +170,7 @@ async function execute(
     process.stderr.write(`Χ: Cross-Agent Learning — analyzing ${label}\n`)
   }
 
-  const response = await ask(input, {
+  const response = await executeTask(input, {
     ...opts,
     model: plannerModel,
     system: mergeSystem(opts.system, ANALYSIS_SYSTEM),

@@ -16,9 +16,9 @@
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import { BROADCAST_ROLE_SETS } from './role-sets.ts'
 import {
-  ask,
   build,
   createPatternTag,
+  executeTask,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -107,7 +107,7 @@ async function execute(
   const broadcastResults = await Promise.allSettled(
     roles.map(async (role) => {
       const prompt = WORKER_PROMPT.replace('{role}', role).replace('{question}', question)
-      const text = await ask(prompt, { ...opts, model: workerModel })
+      const text = await executeTask(prompt, { ...opts, model: workerModel })
       return new BroadcastResponse(role, text, true)
     })
   )
@@ -127,7 +127,7 @@ async function execute(
 
   const responsesText = responses.map((wr) => `--- ${wr.role} ---\n${wr.response}`).join('\n\n')
 
-  const synthesis = await ask(
+  const synthesis = await executeTask(
     `Original question:\n${question}\n\nWorker responses:\n${responsesText}\n\nSynthesize a cohesive, actionable recommendation.`,
     {
       ...opts,

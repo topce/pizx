@@ -23,6 +23,7 @@ import {
   ask,
   build,
   createPatternTag,
+  executeTask,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -130,7 +131,7 @@ async function negotiateRoles(task: string, opts: NuOptions): Promise<NuRole[]> 
 
   const prompt = NEGOTIATE_SYSTEM.replace('{min}', String(min)).replace('{max}', String(max))
 
-  const response = await ask(`Task: ${task}\n\n${prompt}`, {
+  const response = await executeTask(`Task: ${task}\n\n${prompt}`, {
     ...opts,
     model: opts.plannerModel ?? opts.model,
     maxTokens: 2048,
@@ -181,7 +182,7 @@ async function decideWorkflow(
 
   const rolesText = roles.map((r, i) => `${i + 1}. ${r.name}: ${r.goal}`).join('\n')
 
-  const response = await ask(
+  const response = await executeTask(
     `Task: ${task}\n\nRoles:\n${rolesText}\n\nDetermine the best execution strategy.`,
     {
       ...opts,
@@ -223,7 +224,7 @@ async function executeRoles(
     // Chain: each role gets previous output as context
     let context = task
     for (const role of roles) {
-      const output = await ask(context, {
+      const output = await executeTask(context, {
         ...opts,
         model: workerModel,
         system: mergeSystem(opts.system, EXECUTE_SYSTEM(role)),

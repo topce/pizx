@@ -20,9 +20,9 @@
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import {
-  ask,
   build,
   createPatternTag,
+  executeTask,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -110,12 +110,16 @@ async function execute(
     // Generate (first round) or improve (subsequent rounds)
     if (r === 0) {
       if (!opts.quiet) process.stderr.write('  → Generating initial content...\n')
-      currentContent = await ask(prompt, { ...opts, model: workerModel, system: opts.system })
+      currentContent = await executeTask(prompt, {
+        ...opts,
+        model: workerModel,
+        system: opts.system,
+      })
     } else {
       if (!opts.quiet) process.stderr.write(`  → Improving (round ${r + 1})...\n`)
       // Use the previous round's critique from the stored result
       const prevCritique = critiqueRounds[r - 1]?.critique ?? ''
-      currentContent = await ask(
+      currentContent = await executeTask(
         `Original request: ${prompt}\n\nCritique:\n${prevCritique}\n\nContent to improve:\n${currentContent}\n\nRevise the content based on the critique.`,
         { ...opts, model: workerModel, system: mergeSystem(opts.system, IMPROVE_SYSTEM) }
       )
@@ -123,7 +127,7 @@ async function execute(
 
     // Critique
     if (!opts.quiet) process.stderr.write(`  → Critiquing (round ${r + 1})...\n`)
-    const critique = await ask(currentContent, {
+    const critique = await executeTask(currentContent, {
       ...opts,
       model: plannerModel,
       system: mergeSystem(opts.system, CRITIQUE_SYSTEM),

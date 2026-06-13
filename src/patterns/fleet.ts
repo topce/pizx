@@ -33,10 +33,10 @@
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import { getErrorMessage } from '../utils.ts'
 import {
-  ask,
   build,
   confirmPhase,
   createPatternTag,
+  executeTask,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -137,7 +137,7 @@ function describeTask(task: TaskDescriptor): string {
 
 const FLEET_SYSTEM = `You are a focused task specialist. Complete the assigned task concisely and accurately. Output only the result — no commentary about being an AI.`
 
-async function executeTask(
+async function executeFleetTask(
   task: TaskDescriptor,
   opts: FleetOptions,
   workerModel?: string
@@ -154,7 +154,7 @@ async function executeTask(
   // String task: normal LLM call
   const model = workerModel ?? opts.model
   try {
-    const text = await ask(task, {
+    const text = await executeTask(task, {
       ...opts,
       model,
       system: mergeSystem(opts.system, FLEET_SYSTEM),
@@ -198,7 +198,7 @@ async function execute(
   for (let i = 0; i < tasks.length; i += concurrency) {
     const batch = tasks.slice(i, i + concurrency)
     const batchResults = await Promise.allSettled(
-      batch.map((task) => executeTask(task, opts, workerModel))
+      batch.map((task) => executeFleetTask(task, opts, workerModel))
     )
     batchResults.forEach((r, idx) => {
       if (r.status === 'fulfilled') {

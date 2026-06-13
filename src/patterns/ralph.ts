@@ -19,9 +19,9 @@
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import { createAgentSession } from '@earendil-works/pi-coding-agent'
 import {
-  ask,
   build,
   createPatternTag,
+  executeTask,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -151,7 +151,7 @@ async function execute(
 
     // 1. Analyze (planner model — high-level reasoning)
     if (!opts.quiet) process.stderr.write('  → Analyzing...\n')
-    const analysis = await ask(currentGoal, {
+    const analysis = await executeTask(currentGoal, {
       ...opts,
       model: plannerModel,
       system: mergeSystem(opts.system, ANALYSIS_SYSTEM),
@@ -159,7 +159,7 @@ async function execute(
 
     // 2. Plan (planner model — high-level reasoning)
     if (!opts.quiet) process.stderr.write('  → Planning...\n')
-    const plan = await ask(
+    const plan = await executeTask(
       `Goal: ${currentGoal}\n\nAnalysis: ${analysis}\n\nGenerate an implementation plan.`,
       { ...opts, model: plannerModel, system: mergeSystem(opts.system, PLAN_SYSTEM) }
     )
@@ -171,20 +171,23 @@ async function execute(
           ...opts,
           model: workerModel,
         })
-      : await ask(`Implement this plan:\n${plan}\n\nGoal: ${currentGoal}`, {
+      : await executeTask(`Implement this plan:\n${plan}\n\nGoal: ${currentGoal}`, {
           ...opts,
           model: workerModel,
         })
 
     // 4. Review (planner model — high-level quality check)
     if (!opts.quiet) process.stderr.write('  → Reviewing...\n')
-    const review = await ask(`Plan:\n${plan}\n\nResult:\n${result}\n\nReview the implementation.`, {
-      ...opts,
-      model: plannerModel,
-      maxTokens: 1024,
-      thinkingLevel: 'high' as ThinkingLevel,
-      system: mergeSystem(opts.system, REVIEW_SYSTEM),
-    })
+    const review = await executeTask(
+      `Plan:\n${plan}\n\nResult:\n${result}\n\nReview the implementation.`,
+      {
+        ...opts,
+        model: plannerModel,
+        maxTokens: 1024,
+        thinkingLevel: 'high' as ThinkingLevel,
+        system: mergeSystem(opts.system, REVIEW_SYSTEM),
+      }
+    )
 
     const shouldContinue = review.includes('ITERATE') && !review.includes('DONE')
 

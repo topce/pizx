@@ -25,6 +25,7 @@ import {
   build,
   confirmPhase,
   createPatternTag,
+  executeTask,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -91,7 +92,7 @@ const SYNTHESIS_SYSTEM = `You are a synthesis specialist. Combine the results fr
 async function decomposeTask(task: string, opts: SubagentOptions): Promise<string[]> {
   if (opts.subdomains && opts.subdomains.length > 0) return opts.subdomains
 
-  const result = await ask(
+  const result = await executeTask(
     `Decompose this task into ${opts.maxSubTasks ?? 4} independent sub-tasks that can be worked on in parallel:\n\n${task}\n\nOutput a JSON array of strings.`,
     {
       ...opts,
@@ -207,7 +208,7 @@ async function execute(
     .map((sr, i) => `Sub-task ${i + 1}: ${sr.subTask}\nResult: ${sr.text}`)
     .join('\n\n')
   const synthStart = Date.now()
-  const synthesis = await ask(
+  const synthesis = await executeTask(
     `Original task:\n${task}\n\nSub-task results:\n${subResultsText}\n\nSynthesize a comprehensive answer.`,
     { ...opts, model: plannerModel, system: mergeSystem(opts.system, SYNTHESIS_SYSTEM) }
   )

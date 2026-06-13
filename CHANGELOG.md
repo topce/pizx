@@ -2,6 +2,22 @@
 
 All notable changes to pizx are documented here.
 
+## [0.6.0] — 2025-06-13
+
+### Added
+
+- **Agent Mode for All Patterns** — New `mode: 'text' | 'agent'` option on all 15 pattern tags.
+  - In `'text'` mode (default), patterns use text generation via `ask()`.
+  - In `'agent'` mode, patterns use the Pi coding agent with tools (`read`, `bash`, `edit`, `write`, `grep`, `ls`).
+  - Controlled by the shared `executeTask()` / `runAgentTask()` helpers in `src/patterns/types.ts`.
+- **`maxAgentTurns` option** — Limits agent iterations when `mode: 'agent'` (default: 10).
+- **README** — New "Agent Mode" section documenting the feature across all patterns.
+- **English example updated** — `english-fleet.mjs` now uses `mode: 'agent'` with full output display.
+
+### Changed
+
+- All 15 pattern implementations (`Ρ`, `Φ`, `Σ`, `Δ`, `Λ`, `Ψ`, `Ω`, `Θ`, `Μ`, `Β`, `Α`, `Γ`, `Ν`, `Χ`, `Τ`) now use `executeTask()` instead of `ask()` for core LLM calls, enabling transparent agent mode.
+
 ## [0.5.0] — 2025-06-13
 
 ### Added

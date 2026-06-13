@@ -21,6 +21,7 @@ import {
   build,
   confirmPhase,
   createPatternTag,
+  executeTask,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -125,7 +126,7 @@ async function execute(
   // 1. Plan (planner model — high-level orchestration)
   if (!opts.quiet) process.stderr.write('  → Planning...\n')
   const planStart = Date.now()
-  const planText = await ask(request, {
+  const planText = await executeTask(request, {
     ...opts,
     model: plannerModel,
     thinkingLevel: 'high' as ThinkingLevel,
@@ -207,7 +208,7 @@ async function execute(
     .join('\n\n')
 
   const synthStart = Date.now()
-  const synthesis = await ask(
+  const synthesis = await executeTask(
     `Original request:\n${request}\n\nPlan:\n${planText}\n\nWorker results:\n${workerTexts}\n\nSynthesize a final deliverable.`,
     {
       ...opts,

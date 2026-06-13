@@ -16,9 +16,9 @@
 
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import {
-  ask,
   build,
   createPatternTag,
+  executeTask,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -215,7 +215,7 @@ async function execute(
           }
         }
 
-        const text = await ask(context, {
+        const text = await executeTask(context, {
           ...opts,
           model: workerModel,
           system: mergeSystem(opts.system, NODE_SYSTEM),

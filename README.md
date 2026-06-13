@@ -221,6 +221,31 @@ await Ω({ confirm: true })`design the system`
 
 Supported by: `Ω`, `Σ`, `Φ`, `Λ` (more patterns coming).
 
+### Agent Mode (File Tools for Any Pattern)
+
+By default, all patterns (except `Pi` and `ralph`) use **text generation** — they can read files only if you pass content in via template interpolation.
+
+Set `mode: 'agent'` to give every subtask the same **coding agent tools** as `Pi`:
+
+```js
+// Fleet workers can read files
+await fleet({ mode: 'agent' })`read package.json and analyze the project`
+
+// Pipeline stages can edit code
+await pipeline({ mode: 'agent' })`read src/ and refactor the error handling`
+
+// Orchestrator workers can run commands
+await orchestrator({ mode: 'agent' })`check the test coverage and report gaps`
+
+// Debate perspectives can research the codebase
+await debate({ mode: 'agent' })`read the architecture docs and debate the design`
+```
+
+Available tools: `read`, `bash`, `edit`, `write`, `grep`, `ls`.
+
+Supported by: all patterns (`fleet`, `orchestrator`, `pipeline`, `debate`, `subagent`, `critique`, `thread`, `memory`, `broadcast`, `adaptive`, `graph`, `team`, `learn`, `store`).
+Not applicable to: `pi`/`π` (always text), `Pi`/`Π` and `ralph` (already use coding agent).
+
 ### Option Chaining & Quiet Mode
 
 All tags support option chaining and `.quiet` mode to suppress output:
