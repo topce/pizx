@@ -249,6 +249,14 @@ Supported by: `Ω`, `Σ`, `Φ`, `Λ`.
 
 By default, all patterns (except `Pi` and `ralph`) use **text generation** — they can read files only if you pass content in via template interpolation. `ralph` already uses coding agent tools when `useTools: true` (default).
 
+Ralph Loop options:
+
+```js
+await Ρ({ maxIterations: 3 })`refactor the auth module`        // limit improvement cycles
+await Ρ({ useTools: false })`analyze the design`                // text-only mode (no file tools)
+await Ρ({ maxAgentTurns: 15 })`implement the feature`           // agent turns per execution phase
+```
+
 Set `mode: 'agent'` to give every subtask the same **coding agent tools** as `Pi`:
 
 ```js
@@ -270,6 +278,49 @@ Available tools: `read`, `bash`, `edit`, `write`, `grep`, `ls`.
 Supported by: all patterns (`fleet`, `orchestrator`, `pipeline`, `debate`, `subagent`, `critique`, `thread`, `memory`, `broadcast`, `adaptive`, `graph`, `team`, `learn`, `store`).
 Not applicable to: `pi`/`π` (always text), `Pi`/`Π` and `ralph` (already use coding agent).
 
+### Per-Pattern Specific Options
+
+Each pattern accepts options beyond the shared set. Quick reference:
+
+| Pattern | Option | Type | Default | Description |
+|---------|--------|------|---------|-------------|
+| `Ρ` Ralph | `maxIterations` | number | 5 | Max improvement cycles |
+| `Ρ` Ralph | `useTools` | boolean | true | Use coding agent to read/write files |
+| `Ρ` Ralph | `maxAgentTurns` | number | 10 | Agent turns per execution phase |
+| `Φ` Fleet | `tasks` | `TaskDescriptor[]` | auto | Explicit task list (supports pattern composition) |
+| `Φ` Fleet | `concurrency` | number | 5 | Max parallel workers |
+| `Σ` Subagent | `subdomains` | string[] | auto | Explicit sub-task list |
+| `Σ` Subagent | `maxSubTasks` | number | 4 | Auto-generated sub-tasks |
+| `Σ` Subagent | `concurrency` | number | 4 | Max parallel sub-agents |
+| `Δ` Debate | `perspectives` | number | 3 | Number of perspectives |
+| `Δ` Debate | `rounds` | number | 1 | Rebuttal rounds (2+ for counter-arguments) |
+| `Δ` Debate | `roles` | string[] | auto | Custom perspective roles |
+| `Λ` Pipeline | `stages` | `TaskDescriptor[]` | auto | Explicit stage list (supports pattern composition) |
+| `Λ` Pipeline | `stagePrompts` | string[] | auto | Per-stage custom prompts |
+| `Ψ` Critique | `rounds` | number | 1 | Critique-improve cycles (max 3) |
+| `Ω` Orchestrator | `workers` | number | 3 | Sub-task count |
+| `Ω` Orchestrator | `concurrency` | number | 3 | Max parallel workers |
+| `Θ` Thread | `agents` | number | 3 | Conversation participants |
+| `Θ` Thread | `turns` | number | 3 | Speaking turns per agent |
+| `Θ` Thread | `roles` | string[] | auto | Custom agent roles |
+| `Μ` Memory | `agents` | number | 3 | Blackboard contributors |
+| `Μ` Memory | `rounds` | number | 1 | Write rounds (each agent refines after seeing others) |
+| `Μ` Memory | `roles` | string[] | auto | Custom contributor roles |
+| `Β` Broadcast | `workers` | number | 4 | Recipient agents |
+| `Β` Broadcast | `roles` | string[] | auto | Custom specialist roles |
+| `Α` Adaptive | `maxSteps` | number | 5 | Max adaptation cycles |
+| `Α` Adaptive | `qualityThreshold` | 0.8 | 0.0–1.0 | Early-stop quality level |
+| `Γ` Graph | `graph` | `{nodes, edges}` | auto | Explicit DAG definition |
+| `Γ` Graph | `separator` | string | `→` | Template parsing separator |
+| `Ν` Nu/Team | `minAgents` | number | 2 | Minimum auto-negotiated agents |
+| `Ν` Nu/Team | `maxAgents` | number | 5 | Maximum auto-negotiated agents |
+| `Ν` Nu/Team | `roles` | `NuRole[]` | auto | Explicit roles (skip negotiation) |
+| `Χ` Chi/Learn | `source` | `PatternOutput` | — | Output from another pattern to analyze |
+| `Χ` Chi/Learn | `trace` | string | — | Explicit trace text to learn from |
+| `Τ` Tau/Store | `agents` | number | 3 | Worker agents |
+| `Τ` Tau/Store | `rounds` | number | 1 | Read/write refinement rounds |
+| `Τ` Tau/Store | `roles` | string[] | auto | Custom agent roles |
+
 ### Option Chaining & Quiet Mode
 
 All tags support option chaining and `.quiet` mode to suppress output:
@@ -282,6 +333,22 @@ await Σ.quiet`analyze security across the codebase`
 await Θ({ agents: 4, turns: 3 })`debate the architecture`
 await Γ({ graph: { nodes: [...], edges: [...] } })`execute workflow`
 ```
+
+### Thinking Level
+
+All tags accept `thinkingLevel` to control reasoning effort on supported models:
+
+```js
+await π({ thinkingLevel: 'high' })`solve this complex math problem`
+await Ω({ thinkingLevel: 'high' })`design the system architecture`
+
+// Per-phase control (patterns only)
+await Φ({ plannerModel: '...', workerModel: '...' })`...`
+```
+
+Values: `'off'` | `'minimal'` | `'low'` | `'medium'` (default) | `'high'` | `'xhigh'`.
+
+For token-budget based providers, use `thinkingBudgets` instead (see [Thinking Budgets](#thinking-budgets)).
 
 ### Timeout, Retry & API Key
 
@@ -304,6 +371,18 @@ Use `apiKey` to specify a provider API key directly, bypassing environment varia
 await π({ apiKey: 'sk-...' })`analyze this data`
 await Ω({ apiKey: 'sk-...' })`design the system`
 ```
+
+### Concurrency & Workers
+
+Fleet, Orchestrator, and Subagents accept `concurrency` to control parallel execution. Orchestrator and Broadcast accept `workers` to set the number of sub-tasks.
+
+```js
+await Φ({ concurrency: 10 })`review all files`            // max 10 parallel
+await Ω({ workers: 5, concurrency: 3 })`design the system` // 5 tasks, 3 at a time
+await Σ({ maxSubTasks: 6, concurrency: 6 })`analyze`       // 6 sub-tasks, all parallel
+```
+
+Defaults: concurrency = 5 (Fleet), 3 (Orchestrator), 4 (Subagents). Workers: 3 (Orchestrator), 4 (Broadcast).
 
 ### Streaming (π.stream)
 
@@ -384,6 +463,24 @@ configurePi({ model: 'anthropic/claude-sonnet-4-5', maxTokens: 8000, timeoutMs: 
 configureAgent({ maxTurns: 5, excludeTools: ['write'] })
 ```
 
+### Capital Pi (Π) Agent Options
+
+`Π` / `Pi` accepts options to control the coding agent session:
+
+```js
+// Agent tools: read, bash, edit, write, grep, ls
+await Π({ tools: ['read', 'bash'] })`read-only analysis`          // restrict available tools
+await Π({ excludeTools: ['write'] })`review and suggest fixes`     // exclude specific tools
+await Π({ cwd: '/path/to/project' })`refactor this module`         // working directory
+await Π({ maxTurns: 5 })`quick fix`                                // limit agent turns
+await Π({ skills: ['code-simplification'] })`clean up this code`   // load skills
+await Π({ system: 'You are a security auditor' })`audit the auth`  // custom system prompt
+
+// Session management
+import { closeAgent } from '@topce/pizx'
+await closeAgent()  // dispose shared Π session (resets state between scripts/tests)
+```
+
 ### System Prompt Overrides
 
 All tags accept `system` (replaces default) and `appendSystemPrompt` (appended after system).
@@ -400,15 +497,6 @@ await Π({ system: 'You are a test engineer', appendSystemPrompt: 'Write tests f
 
 // Patterns: inject system context via mergeSystem
 await Ω({ system: 'Prioritize security over performance' })`design login flow`
-```
-
-### closeAgent()
-
-Dispose the shared Pi coding agent session (`Π`). Useful in long-running scripts or tests to reset state:
-
-```js
-import { closeAgent } from '@topce/pizx'
-await closeAgent()  // dispose shared agent session
 ```
 
 ### Thinking Budgets
@@ -442,10 +530,25 @@ if (codeStyle) {
 // Load multiple skills
 const skills = await loadSkillContents(['test-driven-development', 'spec-driven-development'])
 
-// Π and all patterns accept skills option
+// Π accepts skills option — loads and registers skill directories
 await Π({ skills: ['code-simplification'] })`clean up this file`
+
+// All patterns accept skills option — injects skills as system context
 await Ω({ skills: ['spec-driven-development', 'incremental-implementation'] })`build the feature`
+await Φ({ skills: ['test-driven-development'] })`review and add tests`
 ```
+
+#### Shell Skill Helper
+
+Use `skill.sh` in shell/pizx scripts for quick skill-powered queries without JavaScript:
+
+```bash
+source ./node_modules/@topce/pizx/src/skill.sh
+pizx_use_skill code-simplification "refactor the main module"
+pizx_list_skills  # show all available skills
+```
+
+See [`src/skill.sh`](src/skill.sh) for details.
 
 ## CLI Reference
 
@@ -461,6 +564,8 @@ pizx --help                   # Print help
 - `-m, --model <id>` — Specify AI model to use
 - `-q, --quiet` — Suppress status output
 - `--system <text>` — System context for pi-ai (print mode only)
+- `-v, --version` — Print version (pizx / zx / node)
+- `-h, --help` — Print CLI help with all tag reference
 
 ## Commands
 
@@ -505,6 +610,7 @@ See [`examples/`](examples/) for runnable examples of every pattern and feature:
 - [`pattern-chi.mjs`](examples/pattern-chi.mjs) — Cross-agent learning
 - [`pattern-tau.mjs`](examples/pattern-tau.mjs) — Tool-mediated store
 - [`pattern-five-whys.mjs`](examples/pattern-five-whys.mjs) — Five Whys analysis
+- [`pattern-agent-with-skill.mjs`](examples/pattern-agent-with-skill.mjs) — Using loaded skills with patterns
 - [`pattern-tracking.mjs`](examples/pattern-tracking.mjs) — Token/cost tracking
 - [`pattern-quality.mjs`](examples/pattern-quality.mjs) — Quality check demo
 - [`pattern-timeout-retry.mjs`](examples/pattern-timeout-retry.mjs) — Timeout & retry demo
