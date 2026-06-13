@@ -620,13 +620,13 @@ See [`examples/`](examples/) for runnable examples of every pattern and feature:
 
 See [`english-examples/`](english-examples/) for runnable examples using all English aliases:
 
-- [`english-hello.mjs`](english-examples/english-hello.mjs) — Hello world with English aliases
-- [`english-fleet.mjs`](english-examples/english-fleet.mjs) — Fleet via English aliases
-- [`english-debate.mjs`](english-examples/english-debate.mjs) — Debate via English aliases
-- [`english-orchestrator.mjs`](english-examples/english-orchestrator.mjs) — Orchestrator via English aliases
-- [`english-pipeline.mjs`](english-examples/english-pipeline.mjs) — Pipeline via English aliases
-- [`english-all-patterns.mjs`](english-examples/english-all-patterns.mjs) — All patterns via English aliases
-- [`english-import-verify.mjs`](english-examples/english-import-verify.mjs) — Verify all imports
+- [`hello.mjs`](english-examples/hello.mjs) — Hello world with English aliases
+- [`fleet.mjs`](english-examples/fleet.mjs) — Fleet via English aliases
+- [`debate.mjs`](english-examples/debate.mjs) — Debate via English aliases
+- [`orchestrator.mjs`](english-examples/orchestrator.mjs) — Orchestrator via English aliases
+- [`pipeline.mjs`](english-examples/pipeline.mjs) — Pipeline via English aliases
+- [`all-patterns.mjs`](english-examples/all-patterns.mjs) — All patterns via English aliases
+- [`import-verify.mjs`](english-examples/import-verify.mjs) — Verify all imports
 
 ### New Feature Demos
 

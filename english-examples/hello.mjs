@@ -1,10 +1,10 @@
 #!/usr/bin/env pizx
-// ─── english-hello.mjs — Basic pizx demo using English word aliases ─────────
+// ─── hello.mjs — Basic pizx demo using English word aliases ─────────
 //
 // Same as examples/hello-pizx.mjs but using pi, Pi instead of π, Π.
 // All Greek letter tags have English aliases (pi, Pi, fleet, ralph, etc.)
 //
-// Run:   pizx english-examples/english-hello.mjs
+// Run:   pizx english-examples/hello.mjs
 
 import { chalk } from 'zx'
 
@@ -48,4 +48,4 @@ const quiet = await pi.quiet({ model: MODEL })`what is 2 + 2. respond with JUST 
 console.log(`  pi.quiet math      → ${chalk.yellow(quiet)}`)
 console.log(`    model: ${chalk.dim(quiet.modelUsed)}  duration: ${chalk.dim(quiet.duration + 'ms')}`)
 
-console.log(chalk.dim('\n  All Greek letters have English word aliases. See english-all-patterns.mjs\n'))
+console.log(chalk.dim('\n  All Greek letters have English word aliases. See all-patterns.mjs\n'))

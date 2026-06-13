@@ -1,6 +1,6 @@
 #!/usr/bin/env pizx
 /**
- * ─── english-all-patterns.mjs — All 15 pattern tags with English word aliases
+ * ─── all-patterns.mjs — All 15 pattern tags with English word aliases
  *
  * Demonstrates every English word alias available in pizx:
  *
@@ -11,7 +11,7 @@
  *   Topologies:   adaptive (Α), graph (Γ), learn (Χ), store (Τ)
  *
  * Run:
- *   pizx english-examples/english-all-patterns.mjs
+ *   pizx english-examples/all-patterns.mjs
  */
 
 import { chalk } from 'zx'

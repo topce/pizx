@@ -1,12 +1,12 @@
 #!/usr/bin/env pizx
 /**
- * ─── english-pipeline.mjs — pipeline (alias for Λ Pipeline) ────────────────
+ * ─── pipeline.mjs — pipeline (alias for Λ Pipeline) ────────────────
  *
  * Sequential chain of agents, each receiving the previous stage's output.
  * Uses the English word "pipeline" instead of the Greek letter Λ.
  *
  * Run:
- *   pizx english-examples/english-pipeline.mjs
+ *   pizx english-examples/pipeline.mjs
  */
 
 import { chalk } from 'zx'

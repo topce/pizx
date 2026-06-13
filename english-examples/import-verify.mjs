@@ -1,12 +1,12 @@
 #!/usr/bin/env pizx
 /**
- * ─── english-import-verify.mjs — Verify all English aliases import correctly ─
+ * ─── import-verify.mjs — Verify all English aliases import correctly ─
  *
  * Quick no-network test: imports all English aliases and checks they're
  * callable functions. No LLM calls — just verifies the module exports work.
  *
  * Run:
- *   pizx english-examples/english-import-verify.mjs
+ *   pizx english-examples/import-verify.mjs
  */
 
 import { chalk } from 'zx'

@@ -1,13 +1,13 @@
 #!/usr/bin/env pizx
 /**
- * ─── english-fleet.mjs — fleet (alias for Φ Fleet) ─────────────────────────
+ * ─── fleet.mjs — fleet (alias for Φ Fleet) ─────────────────────────
  *
  * Runs multiple independent tasks in parallel. Each line or bullet point
  * becomes a separate parallel agent call. Uses the English word "fleet"
  * instead of the Greek letter Φ.
  *
  * Run:
- *   pizx english-examples/english-fleet.mjs
+ *   pizx english-examples/fleet.mjs
  *
  * Best for: code review across files, parallel research, batch analysis.
  */

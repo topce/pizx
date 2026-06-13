@@ -1,12 +1,12 @@
 #!/usr/bin/env pizx
 /**
- * ─── english-debate.mjs — debate (alias for Δ Debate) ──────────────────────
+ * ─── debate.mjs — debate (alias for Δ Debate) ──────────────────────
  *
  * Multiple agents analyze a question from different perspectives then converge.
  * Uses the English word "debate" instead of the Greek letter Δ.
  *
  * Run:
- *   pizx english-examples/english-debate.mjs
+ *   pizx english-examples/debate.mjs
  */
 
 import { chalk } from 'zx'

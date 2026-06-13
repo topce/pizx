@@ -1,12 +1,12 @@
 #!/usr/bin/env pizx
 /**
- * ─── english-orchestrator.mjs — orchestrator (alias for Ω Orchestrator) ────
+ * ─── orchestrator.mjs — orchestrator (alias for Ω Orchestrator) ────
  *
  * Plan → Dispatch → Synthesize. The most sophisticated pattern.
  * Uses the English word "orchestrator" instead of the Greek letter Ω.
  *
  * Run:
- *   pizx english-examples/english-orchestrator.mjs
+ *   pizx english-examples/orchestrator.mjs
  */
 
 import { chalk } from 'zx'
