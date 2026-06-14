@@ -665,4 +665,4 @@ MIT
 Built on the shoulders of two outstanding tools:
 
 - [**zx**](https://github.com/google/zx) by [Anton Medvedev](https://github.com/antonmedv) — the original shell scripting tool for Node.js that popularized template-tag ergonomics for command execution. pizx preserves every zx API (`$`, `cd`, `echo`, `fetch`, `chalk`, etc.) unchanged.
-- [**Pi**](https://github.com/earendil-works/pi) by Mario Zechner / Earendil Works — the unified LLM API and coding agent harness that powers all `π`, `Π`, and pattern tags through `@earendil-works/pi-ai` and `@earendil-works/pi-coding-agent`.
+- [**Pi**](https://github.com/earendil-works/pi) by [Mario Zechner](https://github.com/badlogic) / Earendil Works — the unified LLM API and coding agent harness that powers all `π`, `Π`, and pattern tags through `@earendil-works/pi-ai` and `@earendil-works/pi-coding-agent`.
