@@ -1457,8 +1457,8 @@ describe('English word aliases', () => {
 
 // ── confirmPhase unit tests ───────────────────────────────────────────────
 
-import { confirmPhase } from './patterns/types.ts'
 import { createInterface } from 'node:readline'
+import { confirmPhase } from './patterns/types.ts'
 
 // Mock readline
 vi.mock('node:readline', async (importOriginal) => {
@@ -1555,15 +1555,9 @@ describe('confirmPhase', () => {
   it('writes the description to stderr', async () => {
     mockStdin('y')
     await confirmPhase('Execute 3 tasks?', { confirm: true })
-    expect(stderrWrite).toHaveBeenCalledWith(
-      expect.stringContaining('── Confirm ──')
-    )
-    expect(stderrWrite).toHaveBeenCalledWith(
-      expect.stringContaining('Execute 3 tasks?')
-    )
-    expect(stderrWrite).toHaveBeenCalledWith(
-      expect.stringContaining('Proceed? [Y/n]')
-    )
+    expect(stderrWrite).toHaveBeenCalledWith(expect.stringContaining('── Confirm ──'))
+    expect(stderrWrite).toHaveBeenCalledWith(expect.stringContaining('Execute 3 tasks?'))
+    expect(stderrWrite).toHaveBeenCalledWith(expect.stringContaining('Proceed? [Y/n]'))
   })
 
   it('closes the readline interface after getting answer', async () => {

@@ -2,6 +2,12 @@
 
 All notable changes to pizx are documented here.
 
+## [0.6.1] — 2025-06-14
+
+### Fixed
+
+- README: Added GitHub profile link for Mario Zechner in Credits section.
+
 ## [0.6.0] — 2025-06-13
 
 ### Added
@@ -93,6 +99,7 @@ All notable changes to pizx are documented here.
 - `pizx/globals` module for script mode.
 - Build pipeline with esbuild + TypeScript declarations.
 
+[0.6.1]: https://github.com/topce/pizx/releases/tag/v0.6.1
 [0.6.0]: https://github.com/topce/pizx/releases/tag/v0.6.0
 [0.5.0]: https://github.com/topce/pizx/releases/tag/v0.5.0
 [0.4.0]: https://github.com/topce/pizx/releases/tag/v0.4.0

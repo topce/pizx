@@ -86,7 +86,12 @@ async function run(
 
   // Confirm before API call (optional)
   const userPrompt = build(pieces, args)
-  if (!(await confirmPhase(`Send to AI:\n    ${userPrompt.slice(0, 200)}${userPrompt.length > 200 ? '...' : ''}`, opts))) {
+  if (
+    !(await confirmPhase(
+      `Send to AI:\n    ${userPrompt.slice(0, 200)}${userPrompt.length > 200 ? '...' : ''}`,
+      opts
+    ))
+  ) {
     throw new Error('pizx/π: Execution cancelled by user.')
   }
 
