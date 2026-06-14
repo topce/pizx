@@ -243,7 +243,28 @@ await Ω({ confirm: true })`design the system`
 // → "Proceed? [Y/n] "
 ```
 
-Supported by: `Ω`, `Σ`, `Φ`, `Λ`.
+Supported by: `π`, `Π`, `Ω`, `Σ`, `Φ`, `Λ`.
+
+For `π` and `Π`, the gate fires **before** the LLM call — review your prompt before spending tokens:
+
+```js
+// π: confirm before text generation
+await π({ confirm: true })`explain async/await in JavaScript`
+// → "── Confirm ──"
+// → "Send to AI:"
+// → "    explain async/await in JavaScript"
+// → "Proceed? [Y/n] "
+
+// Π: confirm before coding agent starts
+await Π({ confirm: true })`fix the TypeScript errors in src/`
+// → "── Confirm ──"
+// → "Send to coding agent:"
+// → "    fix the TypeScript errors in src/"
+// → "    Tools: read, bash, edit, write, grep, ls"
+// → "Proceed? [Y/n] "
+```
+
+> **Note:** `π.stream` does not support `confirm` — streaming has no natural pause point before output. Use `π({ confirm: true })` for non-streaming if you want confirmation.
 
 ### Agent Mode (File Tools for Any Pattern)
 

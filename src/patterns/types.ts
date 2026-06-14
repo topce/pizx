@@ -273,9 +273,7 @@ export async function confirmPhase(
   opts: { confirm?: boolean; quiet?: boolean }
 ): Promise<boolean> {
   if (!opts.confirm) return true
-  if (!opts.quiet) {
-    process.stderr.write(`\n  ── Confirm ──\n  ${description}\n  Proceed? [Y/n] `)
-  }
+  process.stderr.write(`\n  ── Confirm ──\n  ${description}\n  Proceed? [Y/n] `)
   const rl = createInterface({ input: process.stdin, output: process.stderr })
   const answer = await new Promise<string>((resolve) => {
     rl.question('', (ans: string) => resolve(ans))

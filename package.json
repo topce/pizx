@@ -65,9 +65,10 @@
     "example:agent-with-skill": "node dist/cli.js examples/pattern-agent-with-skill.mjs",
     "test:quality": "node dist/cli.js examples/test-quality.mjs",
     "test:confirm": "node dist/cli.js examples/test-confirm.mjs",
+    "test:confirm-all": "node dist/cli.js examples/test-confirm-all.mjs",
     "test:composition-fleet": "node dist/cli.js examples/test-composition-fleet.mjs",
     "test:composition-pipeline": "node dist/cli.js examples/test-composition-pipeline.mjs",
-    "test:new-features": "npm run test:quality && npm run test:confirm && npm run test:composition-fleet && npm run test:composition-pipeline"
+    "test:new-features": "npm run test:quality && npm run test:confirm && npm run test:confirm-all && npm run test:composition-fleet && npm run test:composition-pipeline"
   },
   "keywords": [
     "zx",

@@ -20,7 +20,7 @@ export { PiOutput }
 
 import { pickModel } from './model-picker.ts'
 import type { CallTrace } from './patterns/types.ts'
-import { build } from './patterns/types.ts'
+import { build, confirmPhase } from './patterns/types.ts'
 import { getErrorMessage } from './utils.ts'
 
 export interface PiOptions {
@@ -39,6 +39,8 @@ export interface PiOptions {
   maxRetries?: number
   /** API key to use for the provider (bypasses environment variable lookup). */
   apiKey?: string
+  /** If true, pause before the LLM call and ask for confirmation via stdin. Default: false */
+  confirm?: boolean
 }
 
 const defaults: PiOptions = {
@@ -81,6 +83,12 @@ async function run(
 ): Promise<PiOutput> {
   const model = pickModel(opts.model)
   if (!model) throw new Error('pizx/π: No AI models configured. Run `pi auth login` first.')
+
+  // Confirm before API call (optional)
+  const userPrompt = build(pieces, args)
+  if (!(await confirmPhase(`Send to AI:\n    ${userPrompt.slice(0, 200)}${userPrompt.length > 200 ? '...' : ''}`, opts))) {
+    throw new Error('pizx/π: Execution cancelled by user.')
+  }
 
   const t0 = Date.now()
   let text = ''

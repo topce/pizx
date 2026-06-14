@@ -12,7 +12,7 @@ import {
   createAgentSession,
   DefaultResourceLoader,
 } from '@earendil-works/pi-coding-agent'
-import { build } from './patterns/types.ts'
+import { build, confirmPhase } from './patterns/types.ts'
 import { getErrorMessage } from './utils.ts'
 
 export interface AgentOptions {
@@ -31,6 +31,8 @@ export interface AgentOptions {
   appendSystemPrompt?: string
   /** Skill names to load and register with the agent session. */
   skills?: string[]
+  /** If true, pause before the first agent turn and ask for confirmation via stdin. Default: false */
+  confirm?: boolean
 }
 
 const _agentDefaults: AgentOptions = {
@@ -169,6 +171,21 @@ async function execute(
   const prompt = build(pieces, args)
   const session = await getSession(opts)
   const t0 = Date.now()
+
+  // Confirm before first agent turn (optional)
+  const toolsInfo = opts.tools
+    ? `\n    Tools: ${opts.tools.join(', ')}`
+    : opts.excludeTools
+      ? `\n    Excluded tools: ${opts.excludeTools.join(', ')}`
+      : ''
+  if (
+    !(await confirmPhase(
+      `Send to coding agent:\n    ${prompt.slice(0, 200)}${prompt.length > 200 ? '...' : ''}${toolsInfo}`,
+      opts
+    ))
+  ) {
+    throw new Error('pizx/Π: Execution cancelled by user.')
+  }
 
   if (!opts.quiet) {
     process.stderr.write(`Π: ${prompt.slice(0, 100)}${prompt.length > 100 ? '...' : ''}\n`)

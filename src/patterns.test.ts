@@ -1454,3 +1454,128 @@ describe('English word aliases', () => {
     expect(typeof tag).toBe('function')
   })
 })
+
+// ── confirmPhase unit tests ───────────────────────────────────────────────
+
+import { confirmPhase } from './patterns/types.ts'
+import { createInterface } from 'node:readline'
+
+// Mock readline
+vi.mock('node:readline', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:readline')>()
+  return {
+    ...actual,
+    createInterface: vi.fn(),
+  }
+})
+
+describe('confirmPhase', () => {
+  let stderrWrite: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    stderrWrite = vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+  })
+
+  afterEach(() => {
+    stderrWrite.mockRestore()
+  })
+
+  function mockStdin(answer: string) {
+    vi.mocked(createInterface).mockReturnValue({
+      question: (_query: string, cb: (ans: string) => void) => {
+        cb(answer)
+      },
+      close: vi.fn(),
+    } as any)
+  }
+
+  it('returns true when confirm is not set (no prompt, no readline)', async () => {
+    const result = await confirmPhase('do something?', {})
+    expect(result).toBe(true)
+    expect(createInterface).not.toHaveBeenCalled()
+    expect(stderrWrite).not.toHaveBeenCalled()
+  })
+
+  it('returns true when confirm is false', async () => {
+    const result = await confirmPhase('do something?', { confirm: false })
+    expect(result).toBe(true)
+    expect(createInterface).not.toHaveBeenCalled()
+  })
+
+  it('returns true when user presses Enter (empty input)', async () => {
+    mockStdin('')
+    const result = await confirmPhase('do something?', { confirm: true })
+    expect(result).toBe(true)
+    expect(stderrWrite).toHaveBeenCalled()
+  })
+
+  it('returns true when user types "y"', async () => {
+    mockStdin('y')
+    const result = await confirmPhase('do something?', { confirm: true })
+    expect(result).toBe(true)
+  })
+
+  it('returns true when user types "Y" (uppercase)', async () => {
+    mockStdin('Y')
+    const result = await confirmPhase('do something?', { confirm: true })
+    expect(result).toBe(true)
+  })
+
+  it('returns true when user types "yes"', async () => {
+    mockStdin('yes')
+    const result = await confirmPhase('do something?', { confirm: true })
+    expect(result).toBe(true)
+  })
+
+  it('returns true when user types "Yes" (mixed case)', async () => {
+    mockStdin('Yes')
+    const result = await confirmPhase('do something?', { confirm: true })
+    expect(result).toBe(true)
+  })
+
+  it('returns false when user types "n"', async () => {
+    mockStdin('n')
+    const result = await confirmPhase('do something?', { confirm: true })
+    expect(result).toBe(false)
+  })
+
+  it('returns false when user types "no"', async () => {
+    mockStdin('no')
+    const result = await confirmPhase('do something?', { confirm: true })
+    expect(result).toBe(false)
+  })
+
+  it('returns false for any other input', async () => {
+    mockStdin('maybe later')
+    const result = await confirmPhase('do something?', { confirm: true })
+    expect(result).toBe(false)
+  })
+
+  it('writes the description to stderr', async () => {
+    mockStdin('y')
+    await confirmPhase('Execute 3 tasks?', { confirm: true })
+    expect(stderrWrite).toHaveBeenCalledWith(
+      expect.stringContaining('── Confirm ──')
+    )
+    expect(stderrWrite).toHaveBeenCalledWith(
+      expect.stringContaining('Execute 3 tasks?')
+    )
+    expect(stderrWrite).toHaveBeenCalledWith(
+      expect.stringContaining('Proceed? [Y/n]')
+    )
+  })
+
+  it('closes the readline interface after getting answer', async () => {
+    const closeMock = vi.fn()
+    vi.mocked(createInterface).mockReturnValue({
+      question: (_query: string, cb: (ans: string) => void) => {
+        cb('y')
+      },
+      close: closeMock,
+    } as any)
+
+    await confirmPhase('do something?', { confirm: true })
+    expect(closeMock).toHaveBeenCalled()
+  })
+})
