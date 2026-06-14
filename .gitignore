@@ -22,5 +22,8 @@ npm-debug.log*
 *.swo
 coverage/
 .agents/
+.codegraph/
+.understand-anything/
+graphify-out/
 social-content
 skills-lock.json
