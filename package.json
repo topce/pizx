@@ -1,6 +1,6 @@
 {
   "name": "@topce/pizx",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "zx fork with native Pi AI integration — π (pi-ai), Π (pi-coding-agent), and agent pattern template tags (Ρ Φ Σ Δ Λ Ψ Ω)",
   "type": "module",
   "main": "./dist/index.js",
@@ -66,6 +66,8 @@
     "test:quality": "node dist/cli.js examples/test-quality.mjs",
     "test:confirm": "node dist/cli.js examples/test-confirm.mjs",
     "test:confirm-all": "node dist/cli.js examples/test-confirm-all.mjs",
+    "example:execution-modes": "node dist/cli.js examples/pattern-execution-modes.mjs",
+    "example:execution-modes-en": "node dist/cli.js english-examples/execution-modes.mjs",
     "test:composition-fleet": "node dist/cli.js examples/test-composition-fleet.mjs",
     "test:composition-pipeline": "node dist/cli.js examples/test-composition-pipeline.mjs",
     "test:new-features": "npm run test:quality && npm run test:confirm && npm run test:confirm-all && npm run test:composition-fleet && npm run test:composition-pipeline"
@@ -92,16 +94,16 @@
     "node": ">=22.19.0"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.79.3",
-    "@earendil-works/pi-coding-agent": "0.79.3",
+    "@earendil-works/pi-ai": "0.79.4",
+    "@earendil-works/pi-coding-agent": "0.79.4",
     "zx": "8.8.5"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
     "@types/node": "25.9.3",
-    "@vitest/coverage-v8": "^4.1.8",
+    "@vitest/coverage-v8": "^4.1.9",
     "esbuild": "0.28.1",
     "typescript": "6.0.3",
-    "vitest": "4.1.8"
+    "vitest": "4.1.9"
   }
 }

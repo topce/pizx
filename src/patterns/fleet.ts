@@ -187,8 +187,8 @@ async function execute(
 
   // Confirm before execution (optional)
   const taskSummary = `Execute ${tasks.length} fleet task(s)?\n    ${tasks.map((t, i) => `${i + 1}. ${describeTask(t).slice(0, 80)}`).join('\n    ')}`
-  if (!(await confirmPhase(taskSummary, opts))) {
-    throw new Error('pizx/Φ: Execution cancelled by user.')
+  if (!(await confirmPhase(taskSummary, 'dispatch', true, opts))) {
+    throw new Error("pizx/Φ: Execution cancelled by user at phase 'dispatch'")
   }
 
   // Run tasks with concurrency limit

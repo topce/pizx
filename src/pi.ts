@@ -89,10 +89,12 @@ async function run(
   if (
     !(await confirmPhase(
       `Send to AI:\n    ${userPrompt.slice(0, 200)}${userPrompt.length > 200 ? '...' : ''}`,
+      'send',
+      true,
       opts
     ))
   ) {
-    throw new Error('pizx/π: Execution cancelled by user.')
+    throw new Error("pizx/π: Execution cancelled by user at phase 'send'")
   }
 
   const t0 = Date.now()

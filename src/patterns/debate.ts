@@ -22,6 +22,7 @@ import { DEBATE_ROLE_SETS } from './role-sets.ts'
 import {
   ask,
   build,
+  confirmPhase,
   createPatternTag,
   executeTask,
   mergeSystem,
@@ -120,6 +121,18 @@ async function execute(
   // ── Round 1: Initial perspectives (parallel) ──
   if (!opts.quiet) process.stderr.write('  → Round 1: Initial perspectives...\n')
 
+  // Confirm before debate (optional) — Round 1 is a major phase
+  if (
+    !(await confirmPhase(
+      `Debate round 1: ${roles.length} perspective(s)\n    ${roles.join(', ')}`,
+      'round_1',
+      true,
+      opts
+    ))
+  ) {
+    throw new Error("pizx/Δ: Execution cancelled by user at phase 'round_1'")
+  }
+
   const round1Results = await Promise.allSettled(
     roles.map((role) =>
       ask(question, {
@@ -147,6 +160,18 @@ async function execute(
   // ── Rounds 2+: Rebuttals (parallel within each round) ──
   for (let round = 2; round <= totalRounds; round++) {
     if (!opts.quiet) process.stderr.write(`  → Round ${round}: Rebuttals...\n`)
+
+    // Confirm before each rebuttal round (optional) — subsequent rounds are minor
+    if (
+      !(await confirmPhase(
+        `Debate round ${round}/${totalRounds}: ${roles.length} rebuttal(s)`,
+        `round_${round}`,
+        false,
+        opts
+      ))
+    ) {
+      throw new Error(`pizx/Δ: Execution cancelled by user at phase 'round_${round}'`)
+    }
 
     const roundResults = await Promise.allSettled(
       roles.map((role) => {

@@ -175,8 +175,8 @@ async function execute(
 
   // Confirm before pipeline execution (optional)
   const stageSummary = `Run ${stages.length} pipeline stage(s)?\n    ${stages.map((s, i) => `${i + 1}. ${describeStage(s)}`).join('\n    ')}`
-  if (!(await confirmPhase(stageSummary, opts))) {
-    throw new Error('pizx/Λ: Execution cancelled by user.')
+  if (!(await confirmPhase(stageSummary, 'dispatch', true, opts))) {
+    throw new Error("pizx/Λ: Execution cancelled by user at phase 'dispatch'")
   }
 
   const stageResults: PipelineStageResult[] = []

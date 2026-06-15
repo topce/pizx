@@ -171,8 +171,8 @@ async function execute(
 
   // Confirm before execution (optional)
   const subTaskSummary = `Execute ${subTasks.length} sub-task(s)?\n    ${subTasks.map((st, i) => `${i + 1}. ${st.slice(0, 80)}`).join('\n    ')}`
-  if (!(await confirmPhase(subTaskSummary, opts))) {
-    throw new Error('pizx/Σ: Execution cancelled by user.')
+  if (!(await confirmPhase(subTaskSummary, 'execute', true, opts))) {
+    throw new Error("pizx/Σ: Execution cancelled by user at phase 'execute'")
   }
 
   // 2. Execute sub-tasks in parallel (with concurrency limit)

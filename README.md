@@ -229,42 +229,48 @@ if (result.qualityReview) {
 }
 ```
 
-### Human-in-the-Loop (Confirm Gates)
+### Human-in-the-Loop (Execution Modes)
 
-Set `confirm: true` to pause before the main execution phase and ask for approval. The pattern displays a summary of what it's about to do and waits for `[Y/n]` on stdin:
+Three execution modes control how much human oversight you want:
 
 ```js
+// auto — no gates, runs to completion (default)
+await Ω({ confirm: false })`design the system`
+await Ω({ confirm: { auto: true } })`design the system`
+
+// semi — gates at major decision points (backward-compatible with confirm: true)
 await Ω({ confirm: true })`design the system`
-// → "── Confirm ──"
+await Ω({ confirm: { semi: true } })`design the system`
+// → "── Confirm (dispatch) ──"
 // → "Execute 3 sub-task(s) as planned?"
 // → "  1. Analyze requirements"
 // → "  2. Design architecture"
 // → "  3. Document decisions"
 // → "Proceed? [Y/n] "
+
+// hitl — gates before EVERY phase, human approves each step
+await Ω({ confirm: { hitl: true } })`design the system`
+// → pause at plan, dispatch, AND synthesize
 ```
 
-Supported by: `π`, `Π`, `Ω`, `Σ`, `Φ`, `Λ`.
+Supported by: `π`, `Π`, `Ω`, `Σ`, `Φ`, `Λ`, `Ρ`, `Δ`, `Ψ`.
 
-For `π` and `Π`, the gate fires **before** the LLM call — review your prompt before spending tokens:
+**Per-pattern gate behavior:**
 
-```js
-// π: confirm before text generation
-await π({ confirm: true })`explain async/await in JavaScript`
-// → "── Confirm ──"
-// → "Send to AI:"
-// → "    explain async/await in JavaScript"
-// → "Proceed? [Y/n] "
+| Pattern | hitl gates | semi gates |
+|---------|-----------|------------|
+| `π` / `Π` | before send | before send |
+| `Ω` Orchestrator | plan, dispatch, synthesize | plan, dispatch |
+| `Σ` Subagents | decompose, execute | decompose |
+| `Φ` Fleet | plan, execute | plan |
+| `Λ` Pipeline | plan, per-stage | plan (before first stage) |
+| `Ρ` Ralph Loop | per-iteration | per-iteration |
+| `Δ` Debate | per-round | before first round |
+| `Ψ` Critique | generate, review | generate |
 
-// Π: confirm before coding agent starts
-await Π({ confirm: true })`fix the TypeScript errors in src/`
-// → "── Confirm ──"
-// → "Send to coding agent:"
-// → "    fix the TypeScript errors in src/"
-// → "    Tools: read, bash, edit, write, grep, ls"
-// → "Proceed? [Y/n] "
-```
+> **Note:** `π.stream` does not support `confirm` — streaming has no natural pause point before output. Use non-streaming if you want confirmation.
 
-> **Note:** `π.stream` does not support `confirm` — streaming has no natural pause point before output. Use `π({ confirm: true })` for non-streaming if you want confirmation.
+See [`examples/pattern-execution-modes.mjs`](examples/pattern-execution-modes.mjs) and [`english-examples/execution-modes.mjs`](english-examples/execution-modes.mjs) for full working examples.
 
 ### Agent Mode (File Tools for Any Pattern)
 
@@ -648,11 +654,13 @@ See [`english-examples/`](english-examples/) for runnable examples using all Eng
 - [`pipeline.mjs`](english-examples/pipeline.mjs) — Pipeline via English aliases
 - [`all-patterns.mjs`](english-examples/all-patterns.mjs) — All patterns via English aliases
 - [`import-verify.mjs`](english-examples/import-verify.mjs) — Verify all imports
+- [`execution-modes.mjs`](english-examples/execution-modes.mjs) — hitl/semi/auto modes via English aliases
 
 ### New Feature Demos
 
 - [`test-quality.mjs`](examples/test-quality.mjs) — `qualityCheck` + `system` + `phaseLog`
 - [`test-confirm.mjs`](examples/test-confirm.mjs) — Human-in-the-loop approval gate
+- [`pattern-execution-modes.mjs`](examples/pattern-execution-modes.mjs) — hitl/semi/auto execution modes (9 patterns × 3 modes)
 - [`test-composition-fleet.mjs`](examples/test-composition-fleet.mjs) — Pattern composition in Fleet
 - [`test-composition-pipeline.mjs`](examples/test-composition-pipeline.mjs) — Pattern composition in Pipeline
 

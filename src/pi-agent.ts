@@ -181,10 +181,12 @@ async function execute(
   if (
     !(await confirmPhase(
       `Send to coding agent:\n    ${prompt.slice(0, 200)}${prompt.length > 200 ? '...' : ''}${toolsInfo}`,
+      'send',
+      true,
       opts
     ))
   ) {
-    throw new Error('pizx/Π: Execution cancelled by user.')
+    throw new Error("pizx/Π: Execution cancelled by user at phase 'send'")
   }
 
   if (!opts.quiet) {

@@ -35,7 +35,7 @@ export interface PatternOptions {
   /** Skill names to load and inject as system context (e.g. ['code-simplification']). */
   skills?: string[]
   /** If true, pause before the first major execution phase and ask for confirmation via stdin. Default: false */
-  confirm?: boolean
+  confirm?: boolean | ConfirmGate
   /** API key to use for the provider (bypasses environment variable lookup). */
   apiKey?: string
   /** Execution mode: 'text' (default) uses text generation, 'agent' uses coding agent with tools. */
@@ -260,20 +260,59 @@ export function mergeSystem(userSystem: string | undefined, patternSystem: strin
   return `${userSystem}\n\n${patternSystem}`
 }
 
-// ── Confirmation helper ─────────────────────────────────────────────────────
+// ── Confirmation gate types ─────────────────────────────────────────────────
+
+/** Execution mode for confirm gates. Exactly one key must be true. */
+export type ConfirmGate =
+  | { hitl: true } // Human-In-The-Loop: gate before every phase
+  | { semi: true } // Semi-autonomous: gate at major decision points only
+  | { auto: true } // Fully autonomous: no gates
+
+// ── Confirmation helpers ────────────────────────────────────────────────────
 
 import { createInterface } from 'node:readline'
 
 /**
- * If opts.confirm is true, pause and prompt the user for confirmation.
+ * Resolve the confirm union (boolean | ConfirmGate | undefined) to a simple mode string.
+ * `true` maps to 'semi' for backward compatibility.
+ */
+export function resolveMode(confirm: boolean | ConfirmGate | undefined): 'auto' | 'semi' | 'hitl' {
+  if (confirm === undefined || confirm === false) return 'auto'
+  if (confirm === true) return 'semi'
+  if ('hitl' in confirm) return 'hitl'
+  if ('semi' in confirm) return 'semi'
+  return 'auto' // { auto: true }
+}
+
+/**
+ * Decide whether to gate at this phase, given the resolved mode and
+ * whether this phase counts as a "major" decision point for the pattern.
+ */
+export function shouldGate(mode: 'auto' | 'semi' | 'hitl', isMajorPhase: boolean): boolean {
+  if (mode === 'hitl') return true // gate every phase
+  if (mode === 'semi') return isMajorPhase // gate only major phases
+  return false // auto: never gate
+}
+
+/**
+ * If the mode indicates, pause and prompt the user for confirmation.
  * Returns true if execution should continue, false to abort.
+ *
+ * @param description Human-readable summary of what will execute.
+ * @param phase Phase name for the prompt label and error messages (e.g. 'plan').
+ * @param isMajorPhase Whether this phase counts as "major" for semi mode gating.
+ * @param opts Options including the confirm setting.
  */
 export async function confirmPhase(
   description: string,
-  opts: { confirm?: boolean; quiet?: boolean }
+  phase: string,
+  isMajorPhase: boolean,
+  opts: { confirm?: boolean | ConfirmGate; quiet?: boolean }
 ): Promise<boolean> {
-  if (!opts.confirm) return true
-  process.stderr.write(`\n  ── Confirm ──\n  ${description}\n  Proceed? [Y/n] `)
+  const mode = resolveMode(opts.confirm)
+  if (!shouldGate(mode, isMajorPhase)) return true
+
+  process.stderr.write(`\n  ── Confirm (${phase}) ──\n  ${description}\n  Proceed? [Y/n] `)
   const rl = createInterface({ input: process.stdin, output: process.stderr })
   const answer = await new Promise<string>((resolve) => {
     rl.question('', (ans: string) => resolve(ans))

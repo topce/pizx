@@ -20,6 +20,7 @@ import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import { createAgentSession } from '@earendil-works/pi-coding-agent'
 import {
   build,
+  confirmPhase,
   createPatternTag,
   executeTask,
   mergeSystem,
@@ -147,6 +148,18 @@ async function execute(
   while (iteration <= (opts.maxIterations ?? 5)) {
     if (!opts.quiet) {
       process.stderr.write(`Ρ: Iteration ${iteration}/${opts.maxIterations}\n`)
+    }
+
+    // Confirm before each iteration (optional)
+    if (
+      !(await confirmPhase(
+        `Ralph Loop iteration ${iteration}/${opts.maxIterations}\n    Goal: ${currentGoal.slice(0, 120)}`,
+        'iteration',
+        true,
+        opts
+      ))
+    ) {
+      throw new Error("pizx/Ρ: Execution cancelled by user at phase 'iteration'")
     }
 
     // 1. Analyze (planner model — high-level reasoning)

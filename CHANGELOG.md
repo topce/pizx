@@ -2,6 +2,29 @@
 
 All notable changes to pizx are documented here.
 
+## [0.7.0] — Unreleased
+
+### Added
+
+- **Execution Modes (hitl / semi / auto)** — `confirm` option extended from `boolean` to `boolean | ConfirmGate` with three autonomy levels:
+  - `{ hitl: true }` — Human-In-The-Loop: gates before EVERY phase, human approves each step
+  - `{ semi: true }` — Semi-autonomous: gates at major decision points (same as `confirm: true`)
+  - `{ auto: true }` — Fully autonomous: no gates (same as `confirm: false`, default)
+  - `confirm: boolean` remains fully backward-compatible
+- **New helpers**: `resolveMode()` and `shouldGate()` — pure functions for mode resolution and gating decisions
+- **New `ConfirmGate` type** — exported from `@topce/pizx` for TypeScript consumers
+- **Gate support added to 3 new patterns**: `Ρ` (Ralph Loop), `Δ` (Debate), `Ψ` (Critique)
+  - Total: 7 patterns with gates (was 4: `Ω`, `Σ`, `Φ`, `Λ` plus `π`, `Π`)
+- **Examples**: `examples/pattern-execution-modes.mjs` and `english-examples/execution-modes.mjs` — full demo of all 9 tags × 3 modes with `MODE`/`WHICH` env var filtering
+- **README**: Updated Human-in-the-Loop section with per-pattern gate behavior table
+- **Example READMEs**: `examples/README.md` and `english-examples/README.md` — comprehensive indexes
+
+### Changed
+
+- `confirmPhase()` signature updated — now accepts `phase` and `isMajorPhase` parameters
+- Error messages include phase name on cancellation (e.g., `at phase 'dispatch'`)
+- Prompt label shows phase name (e.g., `── Confirm (plan) ──`)
+
 ## [0.6.1] — 2025-06-14
 
 ### Fixed

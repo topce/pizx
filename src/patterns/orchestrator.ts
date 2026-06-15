@@ -169,8 +169,8 @@ async function execute(
     tasks.length > 0
       ? `Execute ${tasks.length} sub-task(s) as planned?\n    ${tasks.map((t, i) => `${i + 1}. ${t.slice(0, 80)}`).join('\n    ')}`
       : `Execute the plan?`
-  if (!(await confirmPhase(planSummary, opts))) {
-    throw new Error('pizx/Ω: Execution cancelled by user.')
+  if (!(await confirmPhase(planSummary, 'dispatch', true, opts))) {
+    throw new Error("pizx/Ω: Execution cancelled by user at phase 'dispatch'")
   }
 
   // 2. Dispatch (parallel execution with concurrency limit)

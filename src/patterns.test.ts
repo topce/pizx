@@ -1458,7 +1458,7 @@ describe('English word aliases', () => {
 // ── confirmPhase unit tests ───────────────────────────────────────────────
 
 import { createInterface } from 'node:readline'
-import { confirmPhase } from './patterns/types.ts'
+import { confirmPhase, resolveMode, shouldGate } from './patterns/types.ts'
 
 // Mock readline
 vi.mock('node:readline', async (importOriginal) => {
@@ -1491,71 +1491,71 @@ describe('confirmPhase', () => {
   }
 
   it('returns true when confirm is not set (no prompt, no readline)', async () => {
-    const result = await confirmPhase('do something?', {})
+    const result = await confirmPhase('do something?', 'test', true, {})
     expect(result).toBe(true)
     expect(createInterface).not.toHaveBeenCalled()
     expect(stderrWrite).not.toHaveBeenCalled()
   })
 
   it('returns true when confirm is false', async () => {
-    const result = await confirmPhase('do something?', { confirm: false })
+    const result = await confirmPhase('do something?', 'test', true, { confirm: false })
     expect(result).toBe(true)
     expect(createInterface).not.toHaveBeenCalled()
   })
 
   it('returns true when user presses Enter (empty input)', async () => {
     mockStdin('')
-    const result = await confirmPhase('do something?', { confirm: true })
+    const result = await confirmPhase('do something?', 'test', true, { confirm: true })
     expect(result).toBe(true)
     expect(stderrWrite).toHaveBeenCalled()
   })
 
   it('returns true when user types "y"', async () => {
     mockStdin('y')
-    const result = await confirmPhase('do something?', { confirm: true })
+    const result = await confirmPhase('do something?', 'test', true, { confirm: true })
     expect(result).toBe(true)
   })
 
   it('returns true when user types "Y" (uppercase)', async () => {
     mockStdin('Y')
-    const result = await confirmPhase('do something?', { confirm: true })
+    const result = await confirmPhase('do something?', 'test', true, { confirm: true })
     expect(result).toBe(true)
   })
 
   it('returns true when user types "yes"', async () => {
     mockStdin('yes')
-    const result = await confirmPhase('do something?', { confirm: true })
+    const result = await confirmPhase('do something?', 'test', true, { confirm: true })
     expect(result).toBe(true)
   })
 
   it('returns true when user types "Yes" (mixed case)', async () => {
     mockStdin('Yes')
-    const result = await confirmPhase('do something?', { confirm: true })
+    const result = await confirmPhase('do something?', 'test', true, { confirm: true })
     expect(result).toBe(true)
   })
 
   it('returns false when user types "n"', async () => {
     mockStdin('n')
-    const result = await confirmPhase('do something?', { confirm: true })
+    const result = await confirmPhase('do something?', 'test', true, { confirm: true })
     expect(result).toBe(false)
   })
 
   it('returns false when user types "no"', async () => {
     mockStdin('no')
-    const result = await confirmPhase('do something?', { confirm: true })
+    const result = await confirmPhase('do something?', 'test', true, { confirm: true })
     expect(result).toBe(false)
   })
 
   it('returns false for any other input', async () => {
     mockStdin('maybe later')
-    const result = await confirmPhase('do something?', { confirm: true })
+    const result = await confirmPhase('do something?', 'test', true, { confirm: true })
     expect(result).toBe(false)
   })
 
   it('writes the description to stderr', async () => {
     mockStdin('y')
-    await confirmPhase('Execute 3 tasks?', { confirm: true })
-    expect(stderrWrite).toHaveBeenCalledWith(expect.stringContaining('── Confirm ──'))
+    await confirmPhase('Execute 3 tasks?', 'plan', true, { confirm: true })
+    expect(stderrWrite).toHaveBeenCalledWith(expect.stringContaining('── Confirm (plan) ──'))
     expect(stderrWrite).toHaveBeenCalledWith(expect.stringContaining('Execute 3 tasks?'))
     expect(stderrWrite).toHaveBeenCalledWith(expect.stringContaining('Proceed? [Y/n]'))
   })
@@ -1569,7 +1569,231 @@ describe('confirmPhase', () => {
       close: closeMock,
     } as any)
 
-    await confirmPhase('do something?', { confirm: true })
+    await confirmPhase('do something?', 'test', true, { confirm: true })
     expect(closeMock).toHaveBeenCalled()
+  })
+
+  it('returns true for isMajorPhase=false when confirm is semi (skips gate)', async () => {
+    const result = await confirmPhase('do something?', 'sync', false, { confirm: { semi: true } })
+    expect(result).toBe(true)
+    expect(createInterface).not.toHaveBeenCalled()
+  })
+
+  it('prompts for isMajorPhase=false when confirm is hitl (gates everything)', async () => {
+    mockStdin('y')
+    const result = await confirmPhase('do something?', 'sync', false, { confirm: { hitl: true } })
+    expect(result).toBe(true)
+    expect(stderrWrite).toHaveBeenCalledWith(expect.stringContaining('── Confirm (sync) ──'))
+  })
+
+  it('returns true for confirm { auto: true } (no gate)', async () => {
+    const result = await confirmPhase('do something?', 'test', true, { confirm: { auto: true } })
+    expect(result).toBe(true)
+    expect(createInterface).not.toHaveBeenCalled()
+  })
+
+  it('returns true for confirm true with isMajorPhase=false (semi skips minor)', async () => {
+    const result = await confirmPhase('do something?', 'sync', false, { confirm: true })
+    expect(result).toBe(true)
+    expect(createInterface).not.toHaveBeenCalled()
+  })
+})
+
+// ── resolveMode ─────────────────────────────────────────────────────────
+
+describe('resolveMode', () => {
+  it('returns auto for undefined', () => {
+    expect(resolveMode(undefined)).toBe('auto')
+  })
+
+  it('returns auto for false', () => {
+    expect(resolveMode(false)).toBe('auto')
+  })
+
+  it('returns semi for true (backward compat)', () => {
+    expect(resolveMode(true)).toBe('semi')
+  })
+
+  it('returns hitl for { hitl: true }', () => {
+    expect(resolveMode({ hitl: true })).toBe('hitl')
+  })
+
+  it('returns semi for { semi: true }', () => {
+    expect(resolveMode({ semi: true })).toBe('semi')
+  })
+
+  it('returns auto for { auto: true }', () => {
+    expect(resolveMode({ auto: true })).toBe('auto')
+  })
+})
+
+// ── shouldGate ───────────────────────────────────────────────────────────
+
+describe('shouldGate', () => {
+  it('never gates in auto mode (major)', () => {
+    expect(shouldGate('auto', true)).toBe(false)
+  })
+
+  it('never gates in auto mode (minor)', () => {
+    expect(shouldGate('auto', false)).toBe(false)
+  })
+
+  it('gates major phases in semi mode', () => {
+    expect(shouldGate('semi', true)).toBe(true)
+  })
+
+  it('skips minor phases in semi mode', () => {
+    expect(shouldGate('semi', false)).toBe(false)
+  })
+
+  it('gates everything in hitl mode (major)', () => {
+    expect(shouldGate('hitl', true)).toBe(true)
+  })
+
+  it('gates everything in hitl mode (minor)', () => {
+    expect(shouldGate('hitl', false)).toBe(true)
+  })
+})
+
+// ── Pattern-level gating tests ────────────────────────────────────────────
+
+describe('Pattern confirm gates — Ralph (Ρ)', () => {
+  function mockStdin(answer: string) {
+    vi.mocked(createInterface).mockReturnValue({
+      question: (_query: string, cb: (ans: string) => void) => cb(answer),
+      close: vi.fn(),
+    } as any)
+  }
+
+  it('passes through with confirm: true when user approves (semi, major)', async () => {
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('analysis'))
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('plan with FINAL: DONE'))
+    mockStdin('y')
+
+    const { Ρ } = await import('./patterns/ralph.ts')
+    const result = await Ρ({ confirm: true, maxIterations: 1, useTools: false })`test goal`
+    expect(result.text).toContain('Iteration')
+  })
+
+  it('throws when user declines (semi, major)', async () => {
+    mockStdin('n')
+
+    const { Ρ } = await import('./patterns/ralph.ts')
+    await expect(
+      Ρ({ confirm: true, maxIterations: 1, useTools: false })`test goal`
+    ).rejects.toThrow("pizx/Ρ: Execution cancelled by user at phase 'iteration'")
+  })
+
+  it('passes through with confirm: { hitl: true } (gates every iteration)', async () => {
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('analysis'))
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('plan with FINAL: DONE'))
+    mockStdin('y')
+
+    const { Ρ } = await import('./patterns/ralph.ts')
+    const result = await Ρ({ confirm: { hitl: true }, maxIterations: 1, useTools: false })`test`
+    expect(result.text).toContain('Iteration')
+  })
+
+  it('skips gate with confirm: false (auto)', async () => {
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('analysis'))
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('plan with FINAL: DONE'))
+
+    const { Ρ } = await import('./patterns/ralph.ts')
+    const result = await Ρ({ confirm: false, maxIterations: 1, useTools: false })`test goal`
+    expect(result.text).toContain('Iteration')
+    expect(createInterface).not.toHaveBeenCalled()
+  })
+})
+
+describe('Pattern confirm gates — Debate (Δ)', () => {
+  function mockStdin(answer: string) {
+    vi.mocked(createInterface).mockReturnValue({
+      question: (_query: string, cb: (ans: string) => void) => cb(answer),
+      close: vi.fn(),
+    } as any)
+  }
+
+  it('passes through with confirm: true (semi — gates round 1 only)', async () => {
+    // Round 1: 3 perspectives (parallel) + synthesis
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('perspective 1'))
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('perspective 2'))
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('perspective 3'))
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('conclusion'))
+    mockStdin('y')
+
+    const { Δ } = await import('./patterns/debate.ts')
+    const result = await Δ({ confirm: true, perspectives: 3, rounds: 1 })`test topic`
+    expect(result.conclusion).toContain('conclusion')
+  })
+
+  it('throws when user declines round 1', async () => {
+    mockStdin('n')
+
+    const { Δ } = await import('./patterns/debate.ts')
+    await expect(Δ({ confirm: true, perspectives: 3, rounds: 1 })`test topic`).rejects.toThrow(
+      "pizx/Δ: Execution cancelled by user at phase 'round_1'"
+    )
+  })
+
+  it('gates round 2 only in hitl (semi skips minor phases)', async () => {
+    // Round 1: 3 perspectives + round 2: 3 rebuttals + synthesis
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('p1'))
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('p2'))
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('p3'))
+    // Round 2: confirm gates here (minor, hitl only) — we use semi so it skips
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('r2-p1'))
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('r2-p2'))
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('r2-p3'))
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('conclusion'))
+    mockStdin('y') // round 1 gate
+
+    const { Δ } = await import('./patterns/debate.ts')
+    const result = await Δ({ confirm: true, perspectives: 3, rounds: 2 })`test topic`
+    expect(result.conclusion).toContain('conclusion')
+    // Semi only gates round 1 (major), round 2 is minor so gate is skipped
+    // createInterface is called ONCE for round 1
+    expect(vi.mocked(createInterface)).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('Pattern confirm gates — Critique (Ψ)', () => {
+  function mockStdin(answer: string) {
+    vi.mocked(createInterface).mockReturnValue({
+      question: (_query: string, cb: (ans: string) => void) => cb(answer),
+      close: vi.fn(),
+    } as any)
+  }
+
+  it('passes through with confirm: true (semi — gates generate, skips review)', async () => {
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('generated content'))
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('critique feedback'))
+    mockStdin('y')
+
+    const { Ψ } = await import('./patterns/critique.ts')
+    const result = await Ψ({ confirm: true, rounds: 1 })`test prompt`
+    expect(result.finalContent).toContain('generated content')
+    // Semi: gates generate (major), skips review (minor)
+    expect(vi.mocked(createInterface)).toHaveBeenCalledTimes(1)
+  })
+
+  it('throws when user declines generate phase', async () => {
+    mockStdin('n')
+
+    const { Ψ } = await import('./patterns/critique.ts')
+    await expect(Ψ({ confirm: true, rounds: 1 })`test prompt`).rejects.toThrow(
+      "pizx/Ψ: Execution cancelled by user at phase 'generate'"
+    )
+  })
+
+  it('gates review phase in hitl mode', async () => {
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('generated content'))
+    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('critique feedback'))
+    mockStdin('y')
+
+    const { Ψ } = await import('./patterns/critique.ts')
+    const result = await Ψ({ confirm: { hitl: true }, rounds: 1 })`test prompt`
+    expect(result.finalContent).toContain('generated content')
+    // hitl: gates generate AND review — 2 calls
+    expect(vi.mocked(createInterface)).toHaveBeenCalledTimes(2)
   })
 })

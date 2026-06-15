@@ -21,6 +21,7 @@
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import {
   build,
+  confirmPhase,
   createPatternTag,
   executeTask,
   mergeSystem,
@@ -110,6 +111,19 @@ async function execute(
     // Generate (first round) or improve (subsequent rounds)
     if (r === 0) {
       if (!opts.quiet) process.stderr.write('  → Generating initial content...\n')
+
+      // Confirm before generation (optional) — generate is a major phase
+      if (
+        !(await confirmPhase(
+          `Critique generation: "${prompt.slice(0, 120)}${prompt.length > 120 ? '...' : ''}"`,
+          'generate',
+          true,
+          opts
+        ))
+      ) {
+        throw new Error("pizx/Ψ: Execution cancelled by user at phase 'generate'")
+      }
+
       currentContent = await executeTask(prompt, {
         ...opts,
         model: workerModel,
@@ -127,6 +141,12 @@ async function execute(
 
     // Critique
     if (!opts.quiet) process.stderr.write(`  → Critiquing (round ${r + 1})...\n`)
+
+    // Confirm before review (optional) — review is a minor phase (hitl only)
+    if (!(await confirmPhase(`Critique review round ${r + 1}/${rounds}`, 'review', false, opts))) {
+      throw new Error("pizx/Ψ: Execution cancelled by user at phase 'review'")
+    }
+
     const critique = await executeTask(currentContent, {
       ...opts,
       model: plannerModel,
