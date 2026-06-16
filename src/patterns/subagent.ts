@@ -49,7 +49,7 @@ export interface SubagentOptions extends PatternOptions {
 
 const defaults: SubagentOptions = {
   maxTokens: 4096,
-  thinkingLevel: 'medium' as ThinkingLevel,
+  thinkingLevel: 'medium',
   maxSubTasks: 4,
   concurrency: 4,
 }
@@ -63,8 +63,20 @@ export class SubagentResult {
     /** The sub-agent's response */
     public readonly text: string,
     /** Whether this sub-task succeeded */
-    public readonly success: boolean
+    public readonly success: boolean,
+    /** Error message if the sub-task failed */
+    public readonly error?: string
   ) {}
+
+  /** Alias for subTask — matches Fleet/Orchestrator naming convention. */
+  get task(): string {
+    return this.subTask
+  }
+
+  /** Alias for text — preferred name for pattern results. */
+  get output(): string {
+    return this.text
+  }
 }
 
 export class SubagentOutput extends PatternOutput {
@@ -107,7 +119,7 @@ async function decomposeTask(task: string, opts: SubagentOptions): Promise<strin
     // Extract JSON array from the result
     const jsonMatch = result.match(/\[[\s\S]*\]/)
     if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0])
+      const parsed = JSON.parse(jsonMatch[0]) as unknown
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed.map(String).slice(0, opts.maxSubTasks ?? 4)
       }
@@ -186,7 +198,7 @@ async function execute(
       batch.map((st) =>
         ask(st, { ...opts, model: workerModel, system: mergeSystem(opts.system, SUBAGENT_SYSTEM) })
           .then((text) => new SubagentResult(st, text, true))
-          .catch((err) => new SubagentResult(st, String(err), false))
+          .catch((err) => new SubagentResult(st, '', false, String(err)))
       )
     )
     batchResults.forEach((r) => {

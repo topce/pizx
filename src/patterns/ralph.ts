@@ -44,7 +44,7 @@ const defaults: RalphOptions = {
   maxIterations: 5,
   useTools: true,
   maxAgentTurns: 10,
-  thinkingLevel: 'medium' as ThinkingLevel,
+  thinkingLevel: 'medium',
   maxTokens: 4096,
 }
 

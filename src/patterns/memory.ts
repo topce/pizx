@@ -41,7 +41,7 @@ export interface MemoryOptions extends PatternOptions {
 
 const defaults: MemoryOptions = {
   maxTokens: 4096,
-  thinkingLevel: 'medium' as ThinkingLevel,
+  thinkingLevel: 'medium',
   agents: 3,
   rounds: 1,
 }

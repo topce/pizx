@@ -14,7 +14,6 @@
  * Topology: Directed Acyclic Graph
  */
 
-import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import {
   build,
   createPatternTag,
@@ -55,7 +54,7 @@ export interface GraphOptions extends PatternOptions {
 
 const defaults: GraphOptions = {
   maxTokens: 4096,
-  thinkingLevel: 'medium' as ThinkingLevel,
+  thinkingLevel: 'medium',
 }
 
 // ── Outputs ─────────────────────────────────────────────────────────────────

@@ -57,11 +57,15 @@ export function loadPiSettings(agentDir?: string): PiSettings {
 
   try {
     const raw = readFileSync(path, 'utf-8')
-    const parsed = JSON.parse(raw)
+    const parsed = JSON.parse(raw) as Record<string, unknown>
     return {
-      defaultModel: parsed.defaultModel ?? undefined,
-      defaultProvider: parsed.defaultProvider ?? undefined,
-      defaultThinkingLevel: parsed.defaultThinkingLevel ?? undefined,
+      defaultModel: typeof parsed.defaultModel === 'string' ? parsed.defaultModel : undefined,
+      defaultProvider:
+        typeof parsed.defaultProvider === 'string' ? parsed.defaultProvider : undefined,
+      defaultThinkingLevel:
+        typeof parsed.defaultThinkingLevel === 'string'
+          ? (parsed.defaultThinkingLevel as PiSettings['defaultThinkingLevel'])
+          : undefined,
     }
   } catch {
     // Unparseable settings.json — silently ignore

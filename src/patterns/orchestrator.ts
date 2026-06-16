@@ -43,7 +43,7 @@ export interface OrchestratorOptions extends PatternOptions {
 
 const defaults: OrchestratorOptions = {
   maxTokens: 4096,
-  thinkingLevel: 'medium' as ThinkingLevel,
+  thinkingLevel: 'medium',
   workers: 3,
   concurrency: 3,
 }
@@ -57,8 +57,15 @@ export class OrchestratorWorkerResult {
     /** The worker's output */
     public readonly output: string,
     /** Whether the worker succeeded */
-    public readonly success: boolean
+    public readonly success: boolean,
+    /** Error message if the worker failed */
+    public readonly error?: string
   ) {}
+
+  /** Alias for output — matches Fleet/Subagent naming convention. */
+  get text(): string {
+    return this.output
+  }
 }
 
 export class OrchestratorOutput extends PatternOutput {
@@ -184,7 +191,7 @@ async function execute(
       batch.map((task) =>
         ask(task, { ...opts, model: workerModel, system: mergeSystem(opts.system, WORKER_SYSTEM) })
           .then((text) => new OrchestratorWorkerResult(task, text, true))
-          .catch((err) => new OrchestratorWorkerResult(task, String(err), false))
+          .catch((err) => new OrchestratorWorkerResult(task, '', false, String(err)))
       )
     )
     batchResults.forEach((r) => {

@@ -8,6 +8,54 @@
 
 import type { ThinkingBudgets, ThinkingLevel } from '@earendil-works/pi-ai'
 
+// ── Tag Output interface ────────────────────────────────────────────────────
+
+/**
+ * Common output contract shared by all pizx tags (π, Π, and all patterns).
+ *
+ * Every tag's result implements at minimum: text access, timing, and
+ * coercion methods. For token/cost tracking, see {@link PiOutput} and
+ * {@link PatternOutput} which extend this with trace data.
+ */
+export interface TagOutput {
+  /** Full result text */
+  readonly text: string
+  /** Start timestamp (ms since epoch) */
+  readonly startTime: number
+  /** End timestamp (ms since epoch) */
+  readonly endTime: number
+  /** Duration in milliseconds */
+  readonly duration: number
+  toString(): string
+  valueOf(): string
+  [Symbol.toPrimitive](): string
+}
+
+// ── Worker Result interface ─────────────────────────────────────────────────
+
+/**
+ * Shared shape for all sub-task / worker results across patterns.
+ *
+ * Used by Fleet ({@link FleetMemberOutput}), Orchestrator
+ * ({@link OrchestratorWorkerResult}), Subagents ({@link SubagentResult}),
+ * and Broadcast ({@link BroadcastResponse}).
+ *
+ * Each class provides both `text` and `output` accessors for
+ * backward compatibility — they return the same value.
+ */
+export interface WorkerResult {
+  /** Description of the assigned task */
+  readonly task: string
+  /** The worker's output text */
+  readonly text: string
+  /** Alias for text (preferred for pattern results) */
+  readonly output: string
+  /** Whether execution succeeded */
+  readonly success: boolean
+  /** Error message if execution failed */
+  readonly error?: string
+}
+
 // ── Common options ──────────────────────────────────────────────────────────
 
 /** Options shared by all pattern tags. Each pattern extends this. */
@@ -162,8 +210,59 @@ export interface PatternFn<TOptions extends PatternOptions, TOutput extends Patt
   quiet: PatternFn<TOptions, TOutput>
 }
 
-/** A Promise that resolves to a pattern output. */
+/**
+ * A Promise that resolves to a pattern output.
+ *
+ * This is a type-level marker for forward compatibility — it adds no
+ * runtime behavior beyond `Promise<TOutput>`. Future versions may add
+ * chaining methods (e.g. `.pipe()`) without changing the return type.
+ */
 export class PatternPromise<TOutput extends PatternOutput> extends Promise<TOutput> {}
+
+// ── Option validation ──────────────────────────────────────────────────────
+
+/**
+ * Validate pattern options at the boundary before execution.
+ * Throws with a descriptive message for invalid values.
+ */
+export function validateOptions(opts: Record<string, unknown>): void {
+  if (typeof opts.concurrency === 'number' && opts.concurrency < 1) {
+    throw new Error(`pizx: concurrency must be >= 1, got ${opts.concurrency}`)
+  }
+  if (typeof opts.workers === 'number' && opts.workers < 1) {
+    throw new Error(`pizx: workers must be >= 1, got ${opts.workers}`)
+  }
+  if (typeof opts.maxIterations === 'number' && opts.maxIterations < 1) {
+    throw new Error(`pizx: maxIterations must be >= 1, got ${opts.maxIterations}`)
+  }
+  if (typeof opts.maxSubTasks === 'number' && opts.maxSubTasks < 1) {
+    throw new Error(`pizx: maxSubTasks must be >= 1, got ${opts.maxSubTasks}`)
+  }
+  if (typeof opts.maxTurns === 'number' && opts.maxTurns < 1) {
+    throw new Error(`pizx: maxTurns must be >= 1, got ${opts.maxTurns}`)
+  }
+  if (typeof opts.maxAgentTurns === 'number' && opts.maxAgentTurns < 1) {
+    throw new Error(`pizx: maxAgentTurns must be >= 1, got ${opts.maxAgentTurns}`)
+  }
+  if (typeof opts.qualityThreshold === 'number') {
+    const qt = opts.qualityThreshold
+    if (qt < 0.0 || qt > 1.0) {
+      throw new Error(`pizx: qualityThreshold must be between 0.0 and 1.0, got ${qt}`)
+    }
+  }
+  if (typeof opts.rounds === 'number' && opts.rounds < 0) {
+    throw new Error(`pizx: rounds must be >= 0, got ${opts.rounds}`)
+  }
+  const validThinkingLevels = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh']
+  if (typeof opts.thinkingLevel === 'string' && !validThinkingLevels.includes(opts.thinkingLevel)) {
+    throw new Error(
+      `pizx: invalid thinkingLevel "${opts.thinkingLevel}". Valid: ${validThinkingLevels.join(', ')}`
+    )
+  }
+  if (typeof opts.mode === 'string' && !['text', 'agent'].includes(opts.mode)) {
+    throw new Error(`pizx: invalid mode "${opts.mode}". Valid: text, agent`)
+  }
+}
 
 // ── Tag factory ────────────────────────────────────────────────────────────
 
@@ -173,6 +272,9 @@ export class PatternPromise<TOutput extends PatternOutput> extends Promise<TOutp
  * Every pattern tag (Φ, Σ, Δ, Λ, Ψ, Ω, Ρ, Θ, Μ, Β, Α, Γ, Ν, Χ, Τ)
  * uses this single factory instead of duplicating the same ~30 lines
  * of option-chaining boilerplate.
+ *
+ * Options are validated at the boundary before execution begins —
+ * invalid values throw immediately with descriptive messages.
  */
 // ── Trace accumulator (module-level, managed by createPatternTag) ───────────
 
@@ -198,6 +300,7 @@ export function createPatternTag<TOptions extends PatternOptions, TOutput extend
 ): PatternFn<TOptions, TOutput> {
   function make(opts: Partial<TOptions> = {}): PatternFn<TOptions, TOutput> {
     const merged = { ...defaults, ...opts }
+    validateOptions(merged)
 
     const fn = ((
       pieces: TemplateStringsArray | Partial<TOptions>,
@@ -364,7 +467,7 @@ export async function ask(prompt: string, opts: Partial<PatternOptions> = {}): P
     },
     {
       maxTokens: opts.maxTokens ?? 4096,
-      reasoning: opts.thinkingLevel ?? ('medium' as ThinkingLevel),
+      reasoning: opts.thinkingLevel ?? 'medium',
       thinkingBudgets: opts.thinkingBudgets,
       timeoutMs: opts.timeoutMs,
       maxRetries: opts.maxRetries,

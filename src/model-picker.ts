@@ -12,8 +12,8 @@ import {
   getEnvApiKey,
   getModels,
   getProviders,
+  type Api,
   type KnownProvider,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type Model,
 } from '@earendil-works/pi-ai'
 
@@ -33,8 +33,8 @@ function getPiDefaults(): PiSettings {
 // ── Model registry helpers ──────────────────────────────────────────────────
 
 /** Return all known models from the pi-ai static registry. */
-function allModels(): Model<any>[] {
-  const result: Model<any>[] = []
+function allModels(): Model<Api>[] {
+  const result: Model<Api>[] = []
   for (const p of getProviders()) {
     const ms = getModels(p)
     if (ms && ms.length > 0) result.push(...ms)
@@ -48,13 +48,13 @@ function getConfiguredProviders(): string[] {
 }
 
 /** Return models only from providers that have configured auth. */
-function configuredModels(): Model<any>[] {
+function configuredModels(): Model<Api>[] {
   const configured = new Set<string>(getConfiguredProviders())
   return allModels().filter((m) => configured.has(m.provider))
 }
 
 /** Find a model by provider/modelId or modelId-only string. */
-function findModelById(id: string): Model<any> | undefined {
+function findModelById(id: string): Model<Api> | undefined {
   const all = allModels()
   if (id.includes('/')) {
     const [provider, modelId] = id.split('/', 2)
@@ -80,7 +80,7 @@ function findModelById(id: string): Model<any> | undefined {
  *
  * Returns `undefined` only when the registry is completely empty (no models registered).
  */
-export function pickModel(preferred?: string): Model<any> | undefined {
+export function pickModel(preferred?: string): Model<Api> | undefined {
   // 1. Explicit preferred model
   if (preferred) {
     const hit = findModelById(preferred)

@@ -48,7 +48,7 @@ export interface TauOptions extends PatternOptions {
 
 const defaults: TauOptions = {
   maxTokens: 4096,
-  thinkingLevel: 'medium' as ThinkingLevel,
+  thinkingLevel: 'medium',
   agents: 3,
   rounds: 1,
 }

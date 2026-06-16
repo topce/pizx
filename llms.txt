@@ -1,0 +1,60 @@
+# pizx — AI-powered shell scripting for Node.js
+
+> zx fork with native Pi AI integration, 15+ agent pattern template tags, and multi-agent orchestration. Write shell scripts that can reason, code, collaborate, and self-improve — all from JavaScript/TypeScript.
+
+## Quick Start
+
+- Install: `npm install @topce/pizx`
+- Docs: [README.md](https://github.com/topce/pizx#readme)
+
+## Core Concepts
+
+- π (pi): AI text generation via pi-ai — [docs/pi.md](https://github.com/topce/pizx/blob/main/docs/pi.md)
+- Π (Pi): Coding agent with file tools (read, bash, edit, write) — [docs/capital-pi.md](https://github.com/topce/pizx/blob/main/docs/capital-pi.md)
+- $: Shell commands (unchanged from zx)
+
+## Agent Patterns
+
+- Ρ (Ralph Loop): Analyze → plan → execute → review loop — [docs/ralph.md](https://github.com/topce/pizx/blob/main/docs/ralph.md)
+- Φ (Fleet): Parallel worker execution — [docs/fleet.md](https://github.com/topce/pizx/blob/main/docs/fleet.md)
+- Σ (Subagents): Decompose → sub-agents → synthesize — [docs/subagent.md](https://github.com/topce/pizx/blob/main/docs/subagent.md)
+- Δ (Debate): Multiple perspectives converge — [docs/debate.md](https://github.com/topce/pizx/blob/main/docs/debate.md)
+- Λ (Pipeline): Staged sequential processing — [docs/pipeline.md](https://github.com/topce/pizx/blob/main/docs/pipeline.md)
+- Ψ (Critique): Generate → critique → improve — [docs/critique.md](https://github.com/topce/pizx/blob/main/docs/critique.md)
+- Ω (Orchestrator): Plan → dispatch → synthesize — [docs/orchestrator.md](https://github.com/topce/pizx/blob/main/docs/orchestrator.md)
+- Ν (Nu/Team): Self-organizing teams — [docs/nu.md](https://github.com/topce/pizx/blob/main/docs/nu.md)
+
+## Communication Patterns
+
+- Θ (Thread): Multi-agent conversation — [docs/thread.md](https://github.com/topce/pizx/blob/main/docs/thread.md)
+- Μ (Memory): Shared blackboard — [docs/memory.md](https://github.com/topce/pizx/blob/main/docs/memory.md)
+- Β (Broadcast): One-to-many messaging — [docs/broadcast.md](https://github.com/topce/pizx/blob/main/docs/broadcast.md)
+
+## Orchestration Topologies
+
+- Α (Adaptive): Self-adjusting workflow — [docs/adaptive.md](https://github.com/topce/pizx/blob/main/docs/adaptive.md)
+- Γ (Graph): DAG-based execution — [docs/graph.md](https://github.com/topce/pizx/blob/main/docs/graph.md)
+- Χ (Chi/Learn): Analyze traces → extract patterns — [docs/chi.md](https://github.com/topce/pizx/blob/main/docs/chi.md)
+- Τ (Tau/Store): Define schema → write → refine → consolidate — [docs/tau.md](https://github.com/topce/pizx/blob/main/docs/tau.md)
+
+## Architecture
+
+- [ADR-001: Template-Tag DSL](https://github.com/topce/pizx/blob/main/docs/decisions/ADR-001-template-tag-dsl.md)
+- [ADR-002: Shared Tag Factory](https://github.com/topce/pizx/blob/main/docs/decisions/ADR-002-shared-tag-factory.md)
+- [ADR-003: Quality Validation](https://github.com/topce/pizx/blob/main/docs/decisions/ADR-003-quality-validation.md)
+- [ADR-004: Phase Logging](https://github.com/topce/pizx/blob/main/docs/decisions/ADR-004-phase-logging.md)
+- [ADR-005: Pattern Composition](https://github.com/topce/pizx/blob/main/docs/decisions/ADR-005-pattern-composition.md)
+- [ADR-006: Confirm Gates](https://github.com/topce/pizx/blob/main/docs/decisions/ADR-006-confirm-gates.md)
+- [ADR-007: System Propagation](https://github.com/topce/pizx/blob/main/docs/decisions/ADR-007-system-propagation.md)
+
+## Onboarding
+
+- [Onboarding Guide](https://github.com/topce/pizx/blob/main/docs/onboarding.md)
+- [Advanced Features](https://github.com/topce/pizx/blob/main/docs/advanced-features.md)
+
+## Links
+
+- GitHub: https://github.com/topce/pizx
+- npm: https://www.npmjs.com/package/@topce/pizx
+- Pi AI: https://github.com/earendil-works/pi
+- zx: https://github.com/google/zx

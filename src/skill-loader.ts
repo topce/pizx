@@ -30,6 +30,9 @@ export const SKILL_PATHS: string[] = [
  * Searches each SKILL_PATHS entry for `${base}/${name}/SKILL.md`.
  * Returns the file content on first match, `undefined` if not found.
  *
+ * For loading multiple skills, prefer {@link loadSkillContents} which
+ * returns a `Map<string, string>` and silently skips unfound skills.
+ *
  * Writes a warning to stderr when a file is found but unreadable.
  */
 export async function loadSkillContent(name: string): Promise<string | undefined> {
@@ -49,6 +52,10 @@ export async function loadSkillContent(name: string): Promise<string | undefined
  *
  * Silently skips skills that aren't found. Returns a map of
  * found skill names to their content.
+ *
+ * Note: The return type differs from {@link loadSkillContent} (single skill).
+ * `loadSkillContent` returns `string | undefined`; this returns `Map<string, string>`
+ * containing only found skills.
  */
 export async function loadSkillContents(names: string[]): Promise<Map<string, string>> {
   const map = new Map<string, string>()

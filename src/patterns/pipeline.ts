@@ -30,7 +30,6 @@
  * When a stage is a function, it receives the previous stage's output string.
  */
 
-import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import {
   build,
   confirmPhase,
@@ -67,7 +66,7 @@ function describeStage(stage: TaskDescriptor): string {
 
 const defaults: PipelineOptions = {
   maxTokens: 4096,
-  thinkingLevel: 'medium' as ThinkingLevel,
+  thinkingLevel: 'medium',
 }
 
 // ── Outputs ─────────────────────────────────────────────────────────────────
@@ -169,12 +168,12 @@ async function execute(
   if (!opts.quiet) {
     process.stderr.write(`Λ: Pipeline — ${stages.length} stage(s)\n`)
     for (let i = 0; i < stages.length; i++) {
-      process.stderr.write(`  [${i + 1}] ${stages[i]}\n`)
+      process.stderr.write(`  [${i + 1}] ${String(stages[i])}\n`)
     }
   }
 
   // Confirm before pipeline execution (optional)
-  const stageSummary = `Run ${stages.length} pipeline stage(s)?\n    ${stages.map((s, i) => `${i + 1}. ${describeStage(s)}`).join('\n    ')}`
+  const stageSummary = `Run ${stages.length} pipeline stage(s)?\n    ${stages.map((s, i) => `${i + 1}. ${String(describeStage(s))}`).join('\n    ')}`
   if (!(await confirmPhase(stageSummary, 'dispatch', true, opts))) {
     throw new Error("pizx/Λ: Execution cancelled by user at phase 'dispatch'")
   }

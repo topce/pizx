@@ -52,7 +52,7 @@ export function loadPiAuth(): void {
 
     try {
       const raw = readFileSync(path, 'utf-8')
-      const config = JSON.parse(raw)
+      const config = JSON.parse(raw) as Record<string, unknown>
 
       for (const [provider, cred] of Object.entries(config)) {
         const envVar = PROVIDER_ENV_MAP[provider]
@@ -68,10 +68,8 @@ export function loadPiAuth(): void {
       }
 
       // Also try reading as { apiKeys: { ... } } (legacy format)
-      if ((config as Record<string, unknown>).apiKeys) {
-        for (const [provider, key] of Object.entries(
-          (config as Record<string, unknown>).apiKeys as Record<string, string>
-        )) {
+      if (config.apiKeys) {
+        for (const [provider, key] of Object.entries(config.apiKeys as Record<string, string>)) {
           const envVar = PROVIDER_ENV_MAP[provider]
           if (!envVar) continue
           if (process.env[envVar]) continue

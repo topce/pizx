@@ -39,7 +39,7 @@ export interface BroadcastOptions extends PatternOptions {
 
 const defaults: BroadcastOptions = {
   maxTokens: 4096,
-  thinkingLevel: 'medium' as ThinkingLevel,
+  thinkingLevel: 'medium',
   workers: 4,
 }
 

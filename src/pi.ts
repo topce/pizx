@@ -19,7 +19,7 @@ import { PiOutput } from './pi-output.ts'
 export { PiOutput }
 
 import { pickModel } from './model-picker.ts'
-import type { CallTrace } from './patterns/types.ts'
+import type { CallTrace, ConfirmGate } from './patterns/types.ts'
 import { build, confirmPhase } from './patterns/types.ts'
 import { getErrorMessage } from './utils.ts'
 
@@ -39,12 +39,17 @@ export interface PiOptions {
   maxRetries?: number
   /** API key to use for the provider (bypasses environment variable lookup). */
   apiKey?: string
-  /** If true, pause before the LLM call and ask for confirmation via stdin. Default: false */
-  confirm?: boolean
+  /**
+   * Control human-in-the-loop confirmation.
+   * - `true` / `{ semi: true }`: pause before the LLM call
+   * - `{ hitl: true }`: not applicable for π (single-turn)
+   * - `false` / `{ auto: true }` / undefined: no confirmation (default)
+   */
+  confirm?: boolean | ConfirmGate
 }
 
 const defaults: PiOptions = {
-  thinkingLevel: 'medium' as ThinkingLevel,
+  thinkingLevel: 'medium',
   quiet: false,
   maxTokens: 4096,
 }
@@ -138,7 +143,7 @@ async function run(
       }
     }
   } catch (err) {
-    throw new Error(`pizx/π: AI generation failed: ${getErrorMessage(err)}`)
+    throw new Error(`pizx/π: AI generation failed: ${getErrorMessage(err)}`, { cause: err })
   }
   if (!opts.quiet && text) process.stdout.write('\n')
   const output = new PiOutput(text.trim(), model.id, [], t0, Date.now())
@@ -173,7 +178,8 @@ export class PiPromise extends Promise<PiOutput> {
 
 // ── π tag type ──────────────────────────────────────────────────────────────
 
-interface PiFn {
+/** Signature for the π / pi / ai template tag function. */
+export interface PiFn {
   (pieces: TemplateStringsArray, ...args: unknown[]): PiPromise
   (opts: Partial<PiOptions>): PiFn
   quiet: PiFn
@@ -210,7 +216,7 @@ function makePi(opts: Partial<PiOptions> = {}): PiFn {
 
   fn.stream = async function* stream_pi(pieces: TemplateStringsArray, ...args: unknown[]) {
     yield* runStream(pieces, args, merged)
-  } as unknown as PiFn['stream']
+  }
 
   return fn
 }

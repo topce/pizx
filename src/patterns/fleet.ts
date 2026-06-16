@@ -30,7 +30,6 @@
  * unless a function (pattern call) is provided in the tasks array.
  */
 
-import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import { getErrorMessage } from '../utils.ts'
 import {
   build,
@@ -58,7 +57,7 @@ export interface FleetOptions extends PatternOptions {
 
 const defaults: FleetOptions = {
   maxTokens: 4096,
-  thinkingLevel: 'medium' as ThinkingLevel,
+  thinkingLevel: 'medium',
   concurrency: 5,
 }
 
@@ -75,6 +74,11 @@ export class FleetMemberOutput {
     /** Error message if failed */
     public readonly error?: string
   ) {}
+
+  /** Alias for text — preferred name for pattern results. */
+  get output(): string {
+    return this.text
+  }
 }
 
 export class FleetOutput extends PatternOutput {
@@ -205,7 +209,7 @@ async function execute(
         results.push(r.value)
       } else {
         results.push(
-          new FleetMemberOutput(describeTask(batch[idx]), '', false, r.reason?.toString())
+          new FleetMemberOutput(describeTask(batch[idx]), '', false, String(r.reason ?? 'unknown'))
         )
       }
     })

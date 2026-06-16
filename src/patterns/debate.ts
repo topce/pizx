@@ -47,7 +47,7 @@ export interface DebateOptions extends PatternOptions {
 
 const defaults: DebateOptions = {
   maxTokens: 4096,
-  thinkingLevel: 'medium' as ThinkingLevel,
+  thinkingLevel: 'medium',
   perspectives: 3,
   rounds: 1,
 }

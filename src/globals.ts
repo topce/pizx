@@ -74,10 +74,16 @@ g.Χ = Χ // Chi — Cross-Agent Learning
 g.Τ = Τ // Tau — Tool-Mediated Orchestration
 
 // English word aliases (also exported as named bindings)
+// NOTE: pi (lowercase) = π (text generation), Pi (capital) = Π (coding agent).
+// Use `piAgent` for an unambiguous alias for Π.
 const pi = π
+const ai = π
 const Pi = Π
+const codingAgent = Π
 g.pi = pi
+g.ai = ai
 g.Pi = Pi
+g.codingAgent = codingAgent
 g.ralph = ralph
 g.fleet = fleet
 g.subagent = subagent
@@ -101,10 +107,12 @@ g.closeAgent = closeAgent
 
 // Named exports for explicit import
 export {
-  // English word aliases
   adaptive,
+  // English word aliases
+  ai,
   broadcast,
   closeAgent,
+  codingAgent,
   configureAgent,
   configurePi,
   critique,

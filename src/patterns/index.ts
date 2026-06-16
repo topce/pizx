@@ -62,11 +62,20 @@ export {
   resolveMode,
   runQualityReview,
   shouldGate,
+  type TagOutput,
   type TaskDescriptor,
+  validateOptions,
+  type WorkerResult,
 } from './types.ts'
 
 // ── English word aliases ────────────────────────────────────────────────────
 // Use these instead of Greek letters for improved readability and accessibility.
+//
+// IMPORTANT: `pi` and `Pi` are case-sensitive and map to DIFFERENT tags:
+//   pi (lowercase p) / ai → π (text generation) — the simple ask-a-question tag
+//   Pi (capital P) / codingAgent → Π (coding agent) — the full agent with file tools
+// Use `ai` and `codingAgent` for unambiguous, case-insensitive aliases.
+//
 //   ralph       → Ρ (Ralph Loop)
 //   fleet       → Φ (Fleet)
 //   subagent    → Σ (Subagents)
@@ -82,6 +91,7 @@ export {
 //   team        → Ν (Nu — Self-Organizing Teams)
 //   learn       → Χ (Chi — Cross-Agent Learning)
 //   store       → Τ (Tau — Tool-Mediated Orchestration)
+//   codingAgent → Π (Capital Pi — unambiguous alias for the coding agent)
 
 import { Α as _Α } from './adaptive.ts'
 import { Β as _Β } from './broadcast.ts'

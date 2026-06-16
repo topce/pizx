@@ -2,7 +2,19 @@
 
 All notable changes to pizx are documented here.
 
-## [0.7.0] — Unreleased
+## [0.8.0] — 2025-06-16
+
+### Added
+
+- **ESLint** alongside Biome — `typescript-eslint` with type-checked rules for deeper TypeScript linting. Biome continues handling formatting and fast lint rules.
+- New `lint:biome` and `lint:eslint` scripts; `lint` now runs both.
+
+### Changed
+
+- Fixed type safety across 12 source files: removed unused imports, added `cause` to rethrown errors, replaced `Model<any>` with `Model<Api>`, added proper `JSON.parse` typing.
+- README: added npm version badge, improved tag alias table with `ai`/`codingAgent` disambiguation note.
+
+## [0.7.0] — 2025-06-15
 
 ### Added
 

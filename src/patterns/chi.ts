@@ -16,7 +16,6 @@
  * Pattern: Cross-Agent Learning (Advanced Technique)
  */
 
-import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import {
   build,
   createPatternTag,
@@ -41,7 +40,7 @@ export interface ChiOptions extends PatternOptions {
 
 const defaults: ChiOptions = {
   maxTokens: 4096,
-  thinkingLevel: 'high' as ThinkingLevel,
+  thinkingLevel: 'high',
 }
 
 // ── Outputs ─────────────────────────────────────────────────────────────────

@@ -12,7 +12,7 @@ import {
   createAgentSession,
   DefaultResourceLoader,
 } from '@earendil-works/pi-coding-agent'
-import { build, confirmPhase } from './patterns/types.ts'
+import { build, type ConfirmGate, confirmPhase } from './patterns/types.ts'
 import { getErrorMessage } from './utils.ts'
 
 export interface AgentOptions {
@@ -31,8 +31,19 @@ export interface AgentOptions {
   appendSystemPrompt?: string
   /** Skill names to load and register with the agent session. */
   skills?: string[]
-  /** If true, pause before the first agent turn and ask for confirmation via stdin. Default: false */
-  confirm?: boolean
+  /** Timeout in milliseconds for each LLM call. Default: provider SDK default. */
+  timeoutMs?: number
+  /** Maximum retry attempts for transient failures. Default: provider SDK default (typically 2). */
+  maxRetries?: number
+  /** API key to use for the provider (bypasses environment variable lookup). */
+  apiKey?: string
+  /**
+   * Control human-in-the-loop confirmation.
+   * - `true` / `{ semi: true }`: pause before the first agent turn
+   * - `{ hitl: true }`: not applicable for Π (single-turn agent)
+   * - `false` / `{ auto: true }` / undefined: no confirmation (default)
+   */
+  confirm?: boolean | ConfirmGate
 }
 
 const _agentDefaults: AgentOptions = {
@@ -124,7 +135,9 @@ async function getSession(opts: AgentOptions): Promise<AgentSession> {
     _sharedSession = result.session
     return _sharedSession
   } catch (err) {
-    throw new Error(`pizx/Π: Failed to create agent session: ${getErrorMessage(err)}`)
+    throw new Error(`pizx/Π: Failed to create agent session: ${getErrorMessage(err)}`, {
+      cause: err,
+    })
   }
 }
 
@@ -214,7 +227,8 @@ async function execute(
 
 // ── The Π tag ───────────────────────────────────────────────────────────────
 
-interface AgentFn {
+/** Signature for the Π / Pi / codingAgent template tag function. */
+export interface AgentFn {
   (pieces: TemplateStringsArray, ...args: unknown[]): AgentPromise
   (opts: Partial<AgentOptions>): AgentFn
   quiet: AgentFn
@@ -255,7 +269,16 @@ export function configureAgent(opts: Partial<AgentOptions>): void {
   Object.assign(_agentDefaults, opts)
 }
 
-export async function closeAgent(): Promise<void> {
+/**
+ * Dispose the shared Π coding agent session.
+ *
+ * Note: This only closes the session used by the `Π` / `Pi` / `codingAgent` tag.
+ * Pattern executions in `mode: 'agent'` create and dispose their own sessions
+ * automatically and are not affected by this call.
+ *
+ * Call this between scripts or tests to reset agent state.
+ */
+export function closeAgent(): void {
   if (_sharedSession) {
     _sharedSession.dispose()
     _sharedSession = null

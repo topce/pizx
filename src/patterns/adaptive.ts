@@ -35,7 +35,7 @@ export interface AdaptiveOptions extends PatternOptions {
 
 const defaults: AdaptiveOptions = {
   maxTokens: 4096,
-  thinkingLevel: 'medium' as ThinkingLevel,
+  thinkingLevel: 'medium',
   maxSteps: 5,
   qualityThreshold: 0.8,
 }

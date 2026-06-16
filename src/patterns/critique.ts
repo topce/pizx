@@ -18,7 +18,6 @@
  *   rounds: number of critique-improve cycles (default: 1, max: 3)
  */
 
-import type { ThinkingLevel } from '@earendil-works/pi-ai'
 import {
   build,
   confirmPhase,
@@ -38,7 +37,7 @@ export interface CritiqueOptions extends PatternOptions {
 
 const defaults: CritiqueOptions = {
   maxTokens: 4096,
-  thinkingLevel: 'medium' as ThinkingLevel,
+  thinkingLevel: 'medium',
   rounds: 1,
 }
 

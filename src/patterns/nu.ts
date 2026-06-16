@@ -46,7 +46,7 @@ export interface NuOptions extends PatternOptions {
 
 const defaults: NuOptions = {
   maxTokens: 4096,
-  thinkingLevel: 'medium' as ThinkingLevel,
+  thinkingLevel: 'medium',
   minAgents: 2,
   maxAgents: 5,
 }

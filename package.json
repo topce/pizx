@@ -1,7 +1,7 @@
 {
   "name": "@topce/pizx",
-  "version": "0.7.0",
-  "description": "zx fork with native Pi AI integration — π (pi-ai), Π (pi-coding-agent), and agent pattern template tags (Ρ Φ Σ Δ Λ Ψ Ω)",
+  "version": "0.8.0",
+  "description": "zx fork with native Pi AI integration — shell scripting with AI agents, multi-agent orchestration, and 15+ agent pattern template tags (Ralph, Fleet, Subagent, Debate, Pipeline, Orchestrator, Critique, Thread, Memory, Broadcast, Adaptive, Graph, Nu, Chi, Tau)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -30,8 +30,12 @@
     "build:js": "node scripts/build.mjs",
     "build:dts": "tsc --project tsconfig.build.json",
     "dev": "node scripts/build.mjs --watch",
+    "lint": "biome ci src/ && eslint src/",
+    "lint:biome": "biome ci src/",
+    "lint:eslint": "eslint src/",
+    "lint:fix": "biome lint --write src/ && eslint --fix src/",
     "check": "biome check --write src/",
-    "lint:fix": "biome lint --write src/",
+    "typecheck": "tsc --noEmit",
     "test": "vitest --run",
     "test:integration": "PIZX_INTEGRATION=1 vitest --run src/patterns.integration.test.ts",
     "test:coverage": "vitest --run --coverage",
@@ -82,10 +86,21 @@
     "script",
     "cli",
     "automation",
-    "llm"
+    "llm",
+    "multi-agent",
+    "orchestration",
+    "agent-patterns",
+    "coding-agent",
+    "template-tag",
+    "ai-scripting",
+    "shell-scripting",
+    "agentic-workflow",
+    "fleet",
+    "ralph-loop"
   ],
   "author": "Slobodan Filipovic <topce@users.noreply.github.com>",
   "license": "MIT",
+  "homepage": "https://github.com/topce/pizx#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/topce/pizx.git"
@@ -100,10 +115,14 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
+    "@eslint/js": "^10.0.1",
     "@types/node": "25.9.3",
     "@vitest/coverage-v8": "^4.1.9",
     "esbuild": "0.28.1",
+    "eslint": "^10.5.0",
+    "globals": "^17.6.0",
     "typescript": "6.0.3",
+    "typescript-eslint": "^8.61.1",
     "vitest": "4.1.9"
   }
 }

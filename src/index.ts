@@ -112,12 +112,15 @@ export {
   SubagentResult,
   store,
   subagent,
+  type TagOutput,
   type TaskDescriptor,
   ThreadMessage,
   type ThreadOptions,
   ThreadOutput,
   team,
   thread,
+  validateOptions,
+  type WorkerResult,
   // Orchestration topologies
   Α,
   Β,
@@ -137,7 +140,7 @@ export {
 
 import { π } from './pi.ts'
 
-export { configurePi, type PiOptions, PiOutput, type PiPromise } from './pi.ts'
+export { configurePi, type PiFn, type PiOptions, PiOutput, type PiPromise } from './pi.ts'
 export {
   type AgentOptions,
   AgentOutput,
@@ -146,6 +149,8 @@ export {
   configureAgent,
   Π,
   Π as Pi,
+  /** Unambiguous alias for Π — the Pi coding agent with file tools. Prefer this over `Pi` to avoid case-sensitivity confusion with `pi` (text generation). */
+  Π as piAgent,
 } from './pi-agent.ts'
 export { loadSkillContent, loadSkillContents, SKILL_PATHS } from './skill-loader.ts'
-export { π, π as pi }
+export { π, π as pi, π as ai }

@@ -41,7 +41,7 @@ export interface ThreadOptions extends PatternOptions {
 
 const defaults: ThreadOptions = {
   maxTokens: 4096,
-  thinkingLevel: 'medium' as ThinkingLevel,
+  thinkingLevel: 'medium',
   agents: 3,
   turns: 3,
 }
