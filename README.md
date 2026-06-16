@@ -10,8 +10,13 @@
 ## Quick Start
 
 ```bash
+# Step 1: Install Pi CLI (one-time) — needed for AI credentials
+# See https://github.com/earendil-works/pi
+npm install -g @earendil-works/pi
+pi auth login
+
+# Step 2: Install pizx in your project
 npm install @topce/pizx
-pi auth login        # one-time: configure Pi AI credentials
 ```
 
 Write a script (`hello.mjs`):
@@ -49,8 +54,9 @@ npm install @topce/pizx
 
 **Prerequisites:**
 - Node.js >= 22.19.0
-- [Pi AI](https://github.com/earendil-works/pi) installed and configured (`pi auth login`)
-- Shell commands from [zx](https://github.com/google/zx) (`$`, `cd`, `echo`, `fetch`, etc.)
+- [Pi AI CLI](https://github.com/earendil-works/pi) installed and configured with `pi auth login` (provides LLM credentials)
+
+> **No separate install needed for zx.** pizx bundles zx as an npm dependency — `$`, `cd`, `echo`, `fetch`, and all other zx shell commands come built-in when you install `@topce/pizx`.
 
 ## Writing Scripts
 

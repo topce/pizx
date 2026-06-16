@@ -364,9 +364,15 @@ These areas are the most complex and should be approached with care:
 ### Installation
 
 ```bash
-npm install @topce/pizx
+# 1. Install Pi CLI (one-time) — required for AI credentials
+npm install -g @earendil-works/pi
 pi auth login
+
+# 2. Install pizx in your project
+npm install @topce/pizx
 ```
+
+> **No separate zx install needed.** pizx bundles `zx` as an npm dependency — all shell commands (`$`, `cd`, `echo`, `fetch`) come built-in.
 
 ### First Script
 
