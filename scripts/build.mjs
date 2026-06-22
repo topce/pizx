@@ -5,7 +5,7 @@ const isWatch = process.argv.includes('--watch')
 
 /** @type {esbuild.BuildOptions} */
 const opts = {
-  entryPoints: ['src/index.ts', 'src/cli.ts'],
+  entryPoints: ['src/index.ts', 'src/cli.ts', 'src/globals.ts'],
   bundle: true,
   platform: 'node',
   target: 'node22',
