@@ -2,6 +2,18 @@
 
 All notable changes to pizx are documented here.
 
+## [0.9.1] — 2025-06-22
+
+### Fixed
+
+- **Budget cap uses real API costs** — `budgetCapUsd` now reads actual trace costs via `getCurrentCost()` instead of `iteration * 0.06` estimate. Exact per-call costs from the LLM provider are summed mid-execution.
+- **Shared anti-spin utilities** — `textSimilarity` and `checkAntiSpin` extracted to `src/patterns/utils.ts`, eliminating 50+ lines of duplicated code between Ralph and Goal.
+
+### Added
+
+- **Goal budget cap test** — test parity with Ralph for `budgetCapUsd`.
+- **Updated social banner** — GitHub banner now reflects v0.9.0/0.9.1 features.
+
 ## [0.9.0] — 2025-06-22
 
 ### Added
