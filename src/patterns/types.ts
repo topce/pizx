@@ -294,6 +294,19 @@ function pushTrace(entry: CallTrace): void {
   if (_trace) _trace.push(entry)
 }
 
+/**
+ * Get the current accumulated cost from the in-progress execution trace.
+ * Sums all LLM call costs made so far. Only valid during pattern execution
+ * (between beginTrace and collectTrace). Returns 0 if no trace is active.
+ *
+ * Used by patterns to implement budgetCapUsd with real API costs instead
+ * of estimated per-iteration guesses.
+ */
+export function getCurrentCost(): number {
+  if (!_trace) return 0
+  return _trace.reduce((sum, t) => sum + t.cost, 0)
+}
+
 export function createPatternTag<TOptions extends PatternOptions, TOutput extends PatternOutput>(
   defaults: TOptions,
   execute: (pieces: TemplateStringsArray, args: unknown[], opts: TOptions) => Promise<TOutput>

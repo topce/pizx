@@ -2188,4 +2188,33 @@ describe('goal — Goal tag', () => {
     expect(result.passed).toBe(false)
     expect(result.iterationCount).toBe(3)
   })
+
+  it('stops when cumulative cost exceeds budgetCapUsd', async () => {
+    vi.mocked(completeSimple).mockImplementation(
+      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+        const prompt = ctx?.messages?.[0]?.content ?? ''
+        if (prompt.includes('## Exact End State')) {
+          return Promise.resolve(
+            mockResult(
+              '## Exact End State\n- Done\n\n## Verification Criteria\n- Done\n\n## What NOT to Touch\n- None\n\n## Stop Conditions\n- Max iterations: 5'
+            )
+          )
+        }
+        if (prompt.includes('Verify this against the contract')) {
+          return Promise.resolve(mockResult('Needs work. VERDICT: HAS_FAILURES'))
+        }
+        return Promise.resolve(mockResult('Implementation attempted.'))
+      }
+    )
+
+    const { goal } = await import('./patterns/goal.ts')
+    const result = await goal.quiet({
+      budgetCapUsd: 0.001,
+      maxIterations: 5,
+      antiSpin: false,
+    })`add feature`
+
+    expect(result.terminationReason).toBeDefined()
+    expect(result.terminationReason).toContain('budget exceeded')
+  })
 })

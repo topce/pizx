@@ -221,7 +221,7 @@ console.log(result.terminationReason)  // why it stopped, if early
 const result = await Ρ({
   antiSpin: true,       // stop if reviews are >80% identical (no-progress)
   streakMode: 2,        // require 2 consecutive DONE before accepting
-  budgetCapUsd: 3.00,   // stop if estimated cost exceeds $3
+  budgetCapUsd: 3.00,   // stop if real cost exceeds $3
 })`review and fix issues in src/`
 
 if (result.terminationReason) {
@@ -357,12 +357,12 @@ Each pattern accepts options beyond the shared set. Quick reference:
 | `Ρ` Ralph | `maxAgentTurns` | number | 10 | Agent turns per execution phase |
 | `Ρ` Ralph | `antiSpin` | boolean | true | Detect no-progress (>80% review overlap) and flip-flop |
 | `Ρ` Ralph | `streakMode` | number | 1 | Require N consecutive DONE reviews before stopping |
-| `Ρ` Ralph | `budgetCapUsd` | number | — | Stop when estimated cost exceeds this amount |
+| `Ρ` Ralph | `budgetCapUsd` | number | — | Stop when real accumulated API cost exceeds this amount |
 | `γ` Goal | `verifierModel` | string | planner | Model for contract writing + verification (separate from worker) |
 | `γ` Goal | `maxIterations` | number | 5 | Max execution+verify cycles |
 | `γ` Goal | `antiSpin` | boolean | true | Detect no-progress and flip-flop patterns |
 | `γ` Goal | `streakMode` | number | 1 | Require N consecutive ALL_PASS verdicts |
-| `γ` Goal | `budgetCapUsd` | number | — | Stop when estimated cost exceeds this amount |
+| `γ` Goal | `budgetCapUsd` | number | — | Stop when real accumulated API cost exceeds this amount |
 | `Φ` Fleet | `tasks` | `TaskDescriptor[]` | auto | Explicit task list (supports pattern composition) |
 | `Φ` Fleet | `concurrency` | number | 5 | Max parallel workers |
 | `Σ` Subagent | `subdomains` | string[] | auto | Explicit sub-task list |

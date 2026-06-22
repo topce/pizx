@@ -41,7 +41,7 @@ await goal.quiet`refactor the auth module`
 |--------|------|---------|-------------|
 | `verifierModel` | string | `plannerModel` or `model` | Model for contract writing and verification. Defaults to the planner model. |
 | `maxIterations` | number | `5` | Maximum execution+verify cycles before stopping. |
-| `budgetCapUsd` | number | — | Stop when estimated cumulative cost exceeds this amount. |
+| `budgetCapUsd` | number | — | Stop when real accumulated API cost exceeds this amount. |
 | `antiSpin` | boolean | `true` | Detect no-progress (>80% verification overlap) and flip-flop patterns. |
 | `streakMode` | number | `1` | Require N consecutive `ALL_PASS` verdicts before stopping. |
 
@@ -82,9 +82,11 @@ goal: No verifierModel specified — using deepseek/deepseek-v4-pro for both wor
 
 ## Budget Cap
 
-Each iteration is estimated at ~$0.06 (execute + verify calls). Set `budgetCapUsd` to prevent runaway costs. When the estimated cost exceeds the cap, execution stops with `terminationReason: 'budget exceeded'`.
+The budget cap uses **real API costs** from your LLM provider, summed from all LLM calls made during execution. When the accumulated real cost exceeds `budgetCapUsd`, execution stops with `terminationReason: 'budget exceeded'`.
 
-> **Note:** Budget tracking uses a conservative per-iteration estimate. Exact per-call costs are available in `result.trace` after execution completes.
+> **Note:** Budget cap is checked at the START of each iteration. If a single iteration exceeds the cap, that iteration completes and then execution stops.
+
+Exact per-call costs are available in `result.trace` after execution.
 
 ## Contract Structure
 

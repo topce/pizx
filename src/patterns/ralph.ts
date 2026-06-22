@@ -30,6 +30,7 @@ import {
   confirmPhase,
   createPatternTag,
   executeTask,
+  getCurrentCost,
   mergeSystem,
   type PatternOptions,
   PatternOutput,
@@ -224,13 +225,11 @@ async function execute(
       process.stderr.write(`Ρ: Iteration ${iteration}/${opts.maxIterations}\n`)
     }
 
-    // Budget cap check — track estimated running cost
+    // Budget cap check — stop if real accumulated cost exceeds cap
     if (opts.budgetCapUsd !== undefined) {
-      // Each iteration costs ~$0.005-0.02 for a full analyze+plan+execute+review cycle.
-      // Conservative estimate: $0.015/call × 4 calls/iteration = $0.06/iteration.
-      const estimatedCost = iteration * 0.06
-      if (estimatedCost >= opts.budgetCapUsd) {
-        terminationReason = `budget exceeded (est. $${estimatedCost.toFixed(2)} >= $${opts.budgetCapUsd.toFixed(2)})`
+      const currentCost = getCurrentCost()
+      if (currentCost >= opts.budgetCapUsd) {
+        terminationReason = `budget exceeded ($${currentCost.toFixed(4)} >= $${opts.budgetCapUsd.toFixed(2)})`
         if (!opts.quiet) {
           process.stderr.write(`  ⛔ ${terminationReason} — stopping\n`)
         }

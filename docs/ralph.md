@@ -54,7 +54,7 @@ await Ρ({
 | `maxAgentTurns` | `number` | `10` | Max agent turns per execution phase |
 | `antiSpin` | `boolean` | `true` | Detect no-progress and flip-flop patterns; stop early instead of burning iterations |
 | `streakMode` | `number` | `1` | Require N consecutive "DONE" reviews before stopping (1 = current behavior, 3-10 recommended for reliability) |
-| `budgetCapUsd` | `number` | — | Stop when estimated cumulative cost exceeds this USD amount |
+| `budgetCapUsd` | `number` | — | Stop when real accumulated API cost exceeds this USD amount |
 
 All standard pattern options (`model`, `plannerModel`, `workerModel`, `quiet`, `maxTokens`, `thinkingLevel`, `system`, `timeoutMs`, `maxRetries`, `skills`, `confirm`, `apiKey`) are also supported.
 
@@ -118,13 +118,12 @@ await Ρ({ streakMode: 10 })`fix the security vulnerability`
 
 Default: `1` (current behavior — stop on first DONE).
 
-### Budget Cap (`budgetCapUsd: N`)
+## Budget Cap
 
-Stops execution when the estimated cumulative cost exceeds the cap. Uses a conservative per-iteration estimate (~$0.06 for a full analyze+plan+execute+review cycle).
+The budget cap uses **real API costs** from your LLM provider, summed from all LLM calls made during execution. Each response's token usage and cost is recorded in `result.trace` — the budget cap reads the accumulated cost mid-execution.
 
 ```js
 await Ρ({ budgetCapUsd: 2.50, maxIterations: 20 })`refactor the entire codebase`
-// Will run at most ~41 iterations before the estimated $2.50 cap is hit
 ```
 
-Exact per-call costs are available in `result.trace` after execution.
+When the total real cost exceeds the cap, execution stops with `terminationReason: 'budget exceeded'`. Exact per-call costs are available in `result.trace` after execution.
