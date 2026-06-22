@@ -310,7 +310,7 @@ describe('PatternOutput', () => {
 
 describe('RalphOutput', () => {
   it('stores iteration info', () => {
-    const out = new RalphOutput('summary', 3, true, [], 1000, 1500)
+    const out = new RalphOutput('summary', 3, true, [], undefined, 1000, 1500)
     expect(out.text).toBe('summary')
     expect(out.iterationCount).toBe(3)
     expect(out.completed).toBe(true)

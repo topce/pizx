@@ -8,9 +8,16 @@
  *   4. π reviews the result
  *   5. Loop or exit based on quality criteria
  *
+ * Anti-spin detection (v1): no-progress (>80% review overlap), flip-flop
+ * (alternating ITERATE/DONE), streak mode (N consecutive DONE before stopping),
+ * and budget cap (cumulative cost ceiling).
+ *
  * Usage:
  *   await Ρ`improve error handling in src/`
  *   await Ρ({ maxIterations: 3 })`refactor the auth module`
+ *   await Ρ({ antiSpin: false })`let it run to max iterations`
+ *   await Ρ({ streakMode: 3 })`require 3 consecutive clean reviews`
+ *   await Ρ({ budgetCapUsd: 2.50 })`stop if cost exceeds $2.50`
  *   await Ρ.quiet`fix all lint issues`
  *
  * The template string is the overall goal. The loop drives toward it.
@@ -38,12 +45,22 @@ export interface RalphOptions extends PatternOptions {
   useTools?: boolean
   /** Maximum agent turns per execution phase. Default: 10 */
   maxAgentTurns?: number
+  /** Enable anti-spin detection: no-progress, flip-flop, and silent-iteration detection.
+   *  Stops early instead of burning through maxIterations. Default: true */
+  antiSpin?: boolean
+  /** Require N consecutive "DONE" reviews before stopping. One green run = luck;
+   *  N = reliability. Default: 1 (current behavior). Article recommends 3-10. */
+  streakMode?: number
+  /** Stop when cumulative cost exceeds this USD amount. Reads from accumulated trace. */
+  budgetCapUsd?: number
 }
 
 const defaults: RalphOptions = {
   maxIterations: 5,
   useTools: true,
   maxAgentTurns: 10,
+  antiSpin: true,
+  streakMode: 1,
   thinkingLevel: 'medium',
   maxTokens: 4096,
 }
@@ -59,8 +76,10 @@ export class RalphOutput extends PatternOutput {
     public readonly completed: boolean,
     /** Per-iteration summaries */
     public readonly iterations: RalphIterationSummary[],
-    startTime: number,
-    endTime: number
+    /** Reason the loop terminated early, if anti-spin or budget cap stopped it */
+    public readonly terminationReason?: string,
+    startTime: number = Date.now(),
+    endTime: number = Date.now()
   ) {
     super(text, startTime, endTime)
   }
@@ -125,6 +144,49 @@ const REVIEW_SYSTEM = `You are a quality assurance reviewer. Review the changes 
 
 Your final line MUST be either "FINAL: ITERATE" or "FINAL: DONE".`
 
+// ── Anti-spin detection helpers ────────────────────────────────────────────
+
+/** Compute a simple token-overlap similarity between two strings (0.0–1.0). */
+function textSimilarity(a: string, b: string): number {
+  const tokensA = new Set(a.toLowerCase().split(/\s+/).filter(Boolean))
+  const tokensB = new Set(b.toLowerCase().split(/\s+/).filter(Boolean))
+  if (tokensA.size === 0 && tokensB.size === 0) return 1
+  let overlap = 0
+  for (const t of tokensA) {
+    if (tokensB.has(t)) overlap++
+  }
+  const union = tokensA.size + tokensB.size - overlap
+  return union === 0 ? 0 : overlap / union
+}
+
+/**
+ * Check a review against the previous review for anti-spin signals.
+ * Returns a termination reason string, or null if no spin detected.
+ */
+function checkAntiSpin(
+  review: string,
+  prevReview: string | undefined,
+  lastShouldContinues: boolean[]
+): string | null {
+  if (!prevReview) return null
+
+  // No-progress: >80% token overlap with previous review
+  const sim = textSimilarity(review, prevReview)
+  if (sim > 0.8) {
+    return `no-progress detected (review similarity: ${(sim * 100).toFixed(0)}%)`
+  }
+
+  // Flip-flop: alternating ITERATE/DONE pattern across last 4 reviews
+  if (lastShouldContinues.length >= 4) {
+    const recent = lastShouldContinues.slice(-4)
+    if (recent[0] === recent[2] && recent[1] === recent[3] && recent[0] !== recent[1]) {
+      return 'flip-flop detected (alternating ITERATE/DONE pattern)'
+    }
+  }
+
+  return null
+}
+
 async function execute(
   pieces: TemplateStringsArray,
   args: unknown[],
@@ -133,6 +195,7 @@ async function execute(
   const goal = build(pieces, args)
   const t0 = Date.now()
   const iterations: RalphIterationSummary[] = []
+  let terminationReason: string | undefined
 
   // Resolve per-phase models: plannerModel > model > Pi default
   const plannerModel = opts.plannerModel ?? opts.model
@@ -140,14 +203,39 @@ async function execute(
 
   if (!opts.quiet) {
     process.stderr.write(`Ρ: Ralph Loop — "${goal.slice(0, 80)}${goal.length > 80 ? '...' : ''}"\n`)
+    const guards: string[] = []
+    if (opts.antiSpin) guards.push('anti-spin: on')
+    guards.push(`streak: ${opts.streakMode ?? 1}`)
+    guards.push(`max: ${opts.maxIterations ?? 5}`)
+    if (opts.budgetCapUsd) guards.push(`budget: $${opts.budgetCapUsd}`)
+    process.stderr.write(`   ${guards.join(' | ')}\n`)
   }
 
   let currentGoal = goal
   let iteration = 1
+  let prevReview: string | undefined
+  const lastShouldContinues: boolean[] = []
+  let streakCount = 0
+  const streakTarget = opts.streakMode ?? 1
+  const antiSpin = opts.antiSpin ?? true
 
   while (iteration <= (opts.maxIterations ?? 5)) {
     if (!opts.quiet) {
       process.stderr.write(`Ρ: Iteration ${iteration}/${opts.maxIterations}\n`)
+    }
+
+    // Budget cap check — track estimated running cost
+    if (opts.budgetCapUsd !== undefined) {
+      // Each iteration costs ~$0.005-0.02 for a full analyze+plan+execute+review cycle.
+      // Conservative estimate: $0.015/call × 4 calls/iteration = $0.06/iteration.
+      const estimatedCost = iteration * 0.06
+      if (estimatedCost >= opts.budgetCapUsd) {
+        terminationReason = `budget exceeded (est. $${estimatedCost.toFixed(2)} >= $${opts.budgetCapUsd.toFixed(2)})`
+        if (!opts.quiet) {
+          process.stderr.write(`  ⛔ ${terminationReason} — stopping\n`)
+        }
+        break
+      }
     }
 
     // Confirm before each iteration (optional)
@@ -203,6 +291,7 @@ async function execute(
     )
 
     const shouldContinue = review.includes('ITERATE') && !review.includes('DONE')
+    lastShouldContinues.push(shouldContinue)
 
     iterations.push({
       iteration,
@@ -212,7 +301,36 @@ async function execute(
       shouldContinue,
     })
 
-    if (!shouldContinue) {
+    // Anti-spin check
+    if (antiSpin) {
+      const spinReason = checkAntiSpin(review, prevReview, lastShouldContinues)
+      if (spinReason) {
+        terminationReason = spinReason
+        if (!opts.quiet) {
+          process.stderr.write(`  ⛔ Anti-spin: ${spinReason}\n`)
+        }
+        break
+      }
+    }
+
+    // Streak mode: require N consecutive DONE reviews
+    if (shouldContinue) {
+      streakCount = 0
+    } else {
+      streakCount++
+      if (streakCount >= streakTarget) {
+        if (!opts.quiet && streakTarget > 1) {
+          process.stderr.write(`Ρ: Streak: ${streakCount}/${streakTarget} consecutive DONE — stopping\n`)
+        }
+        break
+      }
+      if (!opts.quiet && streakTarget > 1) {
+        process.stderr.write(`  ✓ Streak: ${streakCount}/${streakTarget}\n`)
+      }
+    }
+
+    // Default behavior: stop on first DONE (only when streak is 1)
+    if (!shouldContinue && streakTarget <= 1) {
       if (!opts.quiet)
         process.stderr.write(`Ρ: Quality threshold reached after ${iteration} iteration(s)\n`)
       break
@@ -220,6 +338,7 @@ async function execute(
 
     // Set up next iteration with review feedback
     currentGoal = `Continue improving. Previous plan: ${plan}\nReview feedback: ${review}\nOriginal goal: ${goal}`
+    prevReview = review
     iteration++
   }
 
@@ -234,12 +353,13 @@ async function execute(
   return new RalphOutput(
     summary,
     iterations.length,
-    iteration <= (opts.maxIterations ?? 5),
+    iteration <= (opts.maxIterations ?? 5) && !terminationReason,
     iterations,
+    terminationReason,
     t0,
     t1
   )
 }
 
-/** Ρ tag — Ralph Loop: iterative self-correcting loop */
+/** Ρ tag — Ralph Loop: iterative self-correcting loop with anti-spin, streak mode, and budget cap */
 export const Ρ = createPatternTag(defaults, execute)

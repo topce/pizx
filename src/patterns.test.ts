@@ -355,7 +355,7 @@ describe('Ρ (Rho) — Ralph Loop', () => {
     vi.mocked(completeSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
-        if (prompt.includes('Review')) {
+        if (prompt.includes('Review the implementation')) {
           return Promise.resolve(mockResult('Fully implemented. Quality is good.\nFINAL: DONE'))
         }
         return Promise.resolve(mockResult('Analysis and implementation completed.'))
@@ -378,7 +378,7 @@ describe('Ρ (Rho) — Ralph Loop', () => {
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         callCount++
-        if (prompt.includes('Review')) {
+        if (prompt.includes('Review the implementation')) {
           // First two reviews say ITERATE, third says DONE
           if (callCount < 6) {
             return Promise.resolve(mockResult('Needs improvement.\nFINAL: ITERATE'))
@@ -401,7 +401,7 @@ describe('Ρ (Rho) — Ralph Loop', () => {
     vi.mocked(completeSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
-        if (prompt.includes('Review')) {
+        if (prompt.includes('Review the implementation')) {
           return Promise.resolve(mockResult('Still needs work.\nFINAL: ITERATE'))
         }
         return Promise.resolve(mockResult('Analysis and implementation completed.'))
@@ -421,7 +421,7 @@ describe('Ρ (Rho) — Ralph Loop', () => {
     const iterations = [
       { iteration: 1, plan: 'plan1', result: 'result1', review: 'review1', shouldContinue: false },
     ]
-    const out = new RalphOutput('summary', 1, true, iterations, 1000, 1500)
+    const out = new RalphOutput('summary', 1, true, iterations, undefined, 1000, 1500)
     expect(out.iterationCount).toBe(1)
     expect(out.completed).toBe(true)
     expect(out.iterations[0].iteration).toBe(1)
@@ -1795,5 +1795,382 @@ describe('Pattern confirm gates — Critique (Ψ)', () => {
     expect(result.finalContent).toContain('generated content')
     // hitl: gates generate AND review — 2 calls
     expect(vi.mocked(createInterface)).toHaveBeenCalledTimes(2)
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Ρ (Rho) — Anti-spin, streak mode, and budget cap
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('Ρ (Rho) — Anti-spin', () => {
+  it('stops early on no-progress (identical reviews)', async () => {
+    let reviewCount = 0
+    vi.mocked(completeSimple).mockImplementation(
+      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+        const prompt = ctx?.messages?.[0]?.content ?? ''
+        if (prompt.includes('Review the implementation')) {
+          reviewCount++
+          return Promise.resolve(mockResult('Same issues remain unchanged. Final: ITERATE'))
+        }
+        return Promise.resolve(mockResult('Analysis done.'))
+      }
+    )
+    setupAgentSessionMock()
+
+    const { Ρ } = await import('./patterns/ralph.ts')
+    const result = await Ρ.quiet({ antiSpin: true, maxIterations: 5 })`refactor`
+
+    // Should stop after detecting no-progress (not run all 5)
+    expect(result.iterationCount).toBeLessThan(5)
+    expect(result.terminationReason).toBeDefined()
+    expect(result.terminationReason).toContain('no-progress')
+  })
+
+  it('completes normally when reviews improve each iteration', async () => {
+    let reviewIdx = 0
+    const reviews = [
+      'Several issues found. FINAL: ITERATE',
+      'Better but still has lint issues. FINAL: ITERATE',
+      'All issues resolved. FINAL: DONE',
+    ]
+    vi.mocked(completeSimple).mockImplementation(
+      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+        const prompt = ctx?.messages?.[0]?.content ?? ''
+        if (prompt.includes('Review the implementation')) {
+          return Promise.resolve(mockResult(reviews[reviewIdx++] ?? 'FINAL: DONE'))
+        }
+        return Promise.resolve(mockResult('Implementation done.'))
+      }
+    )
+    setupAgentSessionMock()
+
+    const { Ρ } = await import('./patterns/ralph.ts')
+    const result = await Ρ.quiet({ antiSpin: true, maxIterations: 5 })`refactor`
+
+    expect(result.completed).toBe(true)
+    expect(result.terminationReason).toBeUndefined()
+  })
+
+  it('detects flip-flop (alternating ITERATE/DONE pattern)', async () => {
+    let reviewCount = 0
+    vi.mocked(completeSimple).mockImplementation(
+      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+        const prompt = ctx?.messages?.[0]?.content ?? ''
+        if (prompt.includes('Review the implementation')) {
+          reviewCount++
+          const text = reviewCount % 2 === 1
+            ? 'Found issues. FINAL: ITERATE'
+            : 'Looks good. FINAL: DONE'
+          return Promise.resolve(mockResult(text))
+        }
+        return Promise.resolve(mockResult('Implementation done.'))
+      }
+    )
+    setupAgentSessionMock()
+
+    const { Ρ } = await import('./patterns/ralph.ts')
+    const result = await Ρ.quiet({ antiSpin: true, streakMode: 10, maxIterations: 10 })`refactor`
+
+    expect(result.terminationReason).toBeDefined()
+    expect(result.terminationReason).toContain('flip-flop')
+    expect(result.iterationCount).toBeLessThan(10)
+  })
+
+  it('antiSpin: false runs to max iterations even with identical reviews', async () => {
+    vi.mocked(completeSimple).mockImplementation(
+      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+        const prompt = ctx?.messages?.[0]?.content ?? ''
+        if (prompt.includes('Review the implementation')) {
+          return Promise.resolve(mockResult('Same issues. FINAL: ITERATE'))
+        }
+        return Promise.resolve(mockResult('Implementation attempted.'))
+      }
+    )
+    setupAgentSessionMock()
+
+    const { Ρ } = await import('./patterns/ralph.ts')
+    const result = await Ρ.quiet({ antiSpin: false, maxIterations: 3 })`refactor`
+
+    expect(result.iterationCount).toBe(3)
+    expect(result.completed).toBe(false)
+  })
+})
+
+describe('Ρ (Rho) — Streak mode', () => {
+  it('requires N consecutive DONE reviews (streakMode: 3)', async () => {
+    let reviewIdx = 0
+    const reviews = [
+      'Looking good. FINAL: DONE',     // streak 1
+      'Still good. FINAL: DONE',       // streak 2
+      'All clear. FINAL: DONE',        // streak 3 → stop
+    ]
+    vi.mocked(completeSimple).mockImplementation(
+      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+        const prompt = ctx?.messages?.[0]?.content ?? ''
+        if (prompt.includes('Review the implementation')) {
+          return Promise.resolve(mockResult(reviews[reviewIdx++] ?? 'FINAL: DONE'))
+        }
+        return Promise.resolve(mockResult('Implementation done.'))
+      }
+    )
+    setupAgentSessionMock()
+
+    const { Ρ } = await import('./patterns/ralph.ts')
+    const result = await Ρ.quiet({ streakMode: 3, maxIterations: 5 })`refactor`
+
+    expect(result.iterationCount).toBe(3)
+    expect(result.completed).toBe(true)
+  })
+
+  it('resets streak counter on ITERATE review', async () => {
+    let reviewIdx = 0
+    const reviews = [
+      'Looking good. FINAL: DONE',      // streak 1
+      'Found a minor issue. FINAL: ITERATE', // reset!
+      'Fixed. FINAL: DONE',            // streak 1
+      'Still clean. FINAL: DONE',      // streak 2
+      'Clean. FINAL: DONE',            // streak 3 → stop
+    ]
+    vi.mocked(completeSimple).mockImplementation(
+      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+        const prompt = ctx?.messages?.[0]?.content ?? ''
+        if (prompt.includes('Review the implementation')) {
+          return Promise.resolve(mockResult(reviews[reviewIdx++] ?? 'FINAL: DONE'))
+        }
+        return Promise.resolve(mockResult('Implementation done.'))
+      }
+    )
+    setupAgentSessionMock()
+
+    const { Ρ } = await import('./patterns/ralph.ts')
+    const result = await Ρ.quiet({ streakMode: 3, maxIterations: 8 })`refactor`
+
+    expect(result.iterationCount).toBe(5)
+    expect(result.completed).toBe(true)
+  })
+
+  it('streakMode: 1 behaves like default (stop on first DONE)', async () => {
+    vi.mocked(completeSimple).mockImplementation(
+      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+        const prompt = ctx?.messages?.[0]?.content ?? ''
+        if (prompt.includes('Review the implementation')) {
+          return Promise.resolve(mockResult('Done. FINAL: DONE'))
+        }
+        return Promise.resolve(mockResult('Implementation done.'))
+      }
+    )
+    setupAgentSessionMock()
+
+    const { Ρ } = await import('./patterns/ralph.ts')
+    const result = await Ρ.quiet({ streakMode: 1, maxIterations: 5 })`refactor`
+
+    expect(result.iterationCount).toBe(1)
+    expect(result.completed).toBe(true)
+  })
+})
+
+describe('Ρ (Rho) — Budget cap', () => {
+  it('stops when cumulative cost exceeds budgetCapUsd', async () => {
+    vi.mocked(completeSimple).mockImplementation(
+      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+        const prompt = ctx?.messages?.[0]?.content ?? ''
+        if (prompt.includes('Review the implementation')) {
+          return Promise.resolve(mockResult('Needs work. FINAL: ITERATE'))
+        }
+        return Promise.resolve(mockResult('Analysis done.'))
+      }
+    )
+    setupAgentSessionMock()
+
+    const { Ρ } = await import('./patterns/ralph.ts')
+    const result = await Ρ.quiet({ budgetCapUsd: 0.001, maxIterations: 5 })`refactor`
+
+    expect(result.terminationReason).toBeDefined()
+    expect(result.terminationReason).toContain('budget exceeded')
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// goal — Goal tag (contract-first with separate verifier)
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('goal — Goal tag', () => {
+  it('writes a contract and executes against it in one pass', async () => {
+    let callIdx = 0
+    vi.mocked(completeSimple).mockImplementation(
+      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+        const prompt = ctx?.messages?.[0]?.content ?? ''
+        callIdx++
+        if (callIdx === 1) {
+          // Contract writing
+          return Promise.resolve(mockResult(`## Exact End State\n- Feature is implemented\n- All tests pass\n\n## Verification Criteria\n- Run tests\n\n## What NOT to Touch\n- Nothing restricted\n\n## Stop Conditions\n- Max iterations: 3`))
+        }
+        if (prompt.includes('Verify this against the contract')) {
+          return Promise.resolve(mockResult('All checks pass. VERDICT: ALL_PASS'))
+        }
+        // Execution
+        return Promise.resolve(mockResult('Implementation completed successfully.'))
+      }
+    )
+
+    const { goal } = await import('./patterns/goal.ts')
+    const result = await goal.quiet({ maxIterations: 3 })`add feature X`
+
+    expect(result.passed).toBe(true)
+    expect(result.iterationCount).toBe(1)
+    expect(result.contract).toContain('Exact End State')
+    expect(result.contract).toContain('Verification Criteria')
+  })
+
+  it('iterates when verification fails', async () => {
+    let callIdx = 0
+    vi.mocked(completeSimple).mockImplementation(
+      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+        const prompt = ctx?.messages?.[0]?.content ?? ''
+        callIdx++
+        if (callIdx === 1) {
+          return Promise.resolve(mockResult(`## Exact End State
+- Feature is implemented
+
+## Verification Criteria
+- Run tests
+
+## What NOT to Touch
+- None
+
+## Stop Conditions
+- Max iterations: 3`))
+        }
+        if (prompt.includes('Verify this against the contract')) {
+          if (callIdx <= 4) {
+            return Promise.resolve(mockResult('Feature not fully implemented. VERDICT: HAS_FAILURES'))
+          }
+          return Promise.resolve(mockResult('All checks pass. VERDICT: ALL_PASS'))
+        }
+        return Promise.resolve(mockResult('Implementation attempted.'))
+      }
+    )
+
+    const { goal } = await import('./patterns/goal.ts')
+    const result = await goal.quiet({ maxIterations: 5 })`add feature X`
+
+    expect(result.iterationCount).toBeGreaterThan(1)
+    expect(result.passed).toBe(true)
+  })
+
+  it('stops early on anti-spin (identical verifications)', async () => {
+    let callIdx = 0
+    vi.mocked(completeSimple).mockImplementation(
+      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+        const prompt = ctx?.messages?.[0]?.content ?? ''
+        callIdx++
+        if (callIdx === 1) {
+          return Promise.resolve(mockResult(`## Exact End State
+- Done
+
+## Verification Criteria
+- Done
+
+## What NOT to Touch
+- None
+
+## Stop Conditions
+- Max iterations: 3`))
+        }
+        if (prompt.includes('Verify this against the contract')) {
+          return Promise.resolve(mockResult('Same issues remain. VERDICT: HAS_FAILURES'))
+        }
+        return Promise.resolve(mockResult('Implementation attempted.'))
+      }
+    )
+
+    const { goal } = await import('./patterns/goal.ts')
+    const result = await goal.quiet({ antiSpin: true, maxIterations: 5 })`add feature`
+
+    expect(result.terminationReason).toBeDefined()
+    expect(result.terminationReason).toContain('no-progress')
+    expect(result.iterationCount).toBeLessThan(5)
+  })
+
+  it('GoalOutput stores contract and iterations', async () => {
+    const { GoalOutput } = await import('./patterns/goal.ts')
+    const iterations = [
+      {
+        iteration: 1,
+        result: 'result text',
+        verification: 'VERDICT: ALL_PASS',
+        verdict: 'ALL_PASS' as const,
+      },
+    ]
+    const out = new GoalOutput(
+      'summary',
+      1,
+      true,
+      iterations,
+      'contract text',
+      undefined,
+      1000,
+      1500
+    )
+    expect(out.passed).toBe(true)
+    expect(out.iterationCount).toBe(1)
+    expect(out.contract).toBe('contract text')
+    expect(out.iterations[0].verdict).toBe('ALL_PASS')
+    expect(out.duration).toBe(500)
+  })
+
+  it('streakMode: 3 requires consecutive ALL_PASS', async () => {
+    let verifyCalls = 0
+    vi.mocked(completeSimple).mockImplementation(
+      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+        const prompt = ctx?.messages?.[0]?.content ?? ''
+        if (prompt.includes('Verify this against the contract')) {
+          verifyCalls++
+          return Promise.resolve(mockResult('All checks pass. VERDICT: ALL_PASS'))
+        }
+        // Contract writing and execution
+        return Promise.resolve(mockResult('OK'))
+      }
+    )
+
+    const { goal } = await import('./patterns/goal.ts')
+    const result = await goal.quiet({ streakMode: 3, antiSpin: false, maxIterations: 5 })`add feature`
+
+    expect(result.passed).toBe(true)
+    expect(result.iterationCount).toBe(3)
+    expect(verifyCalls).toBe(3)
+  })
+
+  it('hits max iterations without passing', async () => {
+    let callIdx = 0
+    vi.mocked(completeSimple).mockImplementation(
+      (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
+        const prompt = ctx?.messages?.[0]?.content ?? ''
+        callIdx++
+        if (callIdx === 1) {
+          return Promise.resolve(mockResult(`## Exact End State
+- Done
+
+## Verification Criteria
+- Done
+
+## What NOT to Touch
+- None
+
+## Stop Conditions
+- Max iterations: 3`))
+        }
+        if (prompt.includes('Verify this against the contract')) {
+          return Promise.resolve(mockResult('Not done. VERDICT: HAS_FAILURES'))
+        }
+        return Promise.resolve(mockResult('Tried to implement.'))
+      }
+    )
+
+    const { goal } = await import('./patterns/goal.ts')
+    const result = await goal.quiet({ antiSpin: false, maxIterations: 3 })`add feature`
+
+    expect(result.passed).toBe(false)
+    expect(result.iterationCount).toBe(3)
   })
 })

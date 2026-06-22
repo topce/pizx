@@ -22,6 +22,12 @@ await Ρ({ maxIterations: 3 })`refactor the auth module`
 // Tool-less mode (analysis only, no code changes)
 await Ρ({ useTools: false })`analyze test coverage gaps`
 
+// Anti-spin, streak mode, and budget cap (new in v0.9.0)
+await Ρ({ antiSpin: true, streakMode: 3, budgetCapUsd: 2.50 })`fix all lint issues`
+
+// Disable anti-spin to burn through all iterations
+await Ρ({ antiSpin: false, maxIterations: 5 })`explore alternative approaches`
+
 // Quiet mode
 await Ρ.quiet`fix all lint issues`
 
@@ -46,6 +52,11 @@ await Ρ({
 | `maxIterations` | `number` | `5` | Maximum loop iterations |
 | `useTools` | `boolean` | `true` | Whether execute phase uses coding agent tools |
 | `maxAgentTurns` | `number` | `10` | Max agent turns per execution phase |
+| `antiSpin` | `boolean` | `true` | Detect no-progress and flip-flop patterns; stop early instead of burning iterations |
+| `streakMode` | `number` | `1` | Require N consecutive "DONE" reviews before stopping (1 = current behavior, 3-10 recommended for reliability) |
+| `budgetCapUsd` | `number` | — | Stop when estimated cumulative cost exceeds this USD amount |
+
+All standard pattern options (`model`, `plannerModel`, `workerModel`, `quiet`, `maxTokens`, `thinkingLevel`, `system`, `timeoutMs`, `maxRetries`, `skills`, `confirm`, `apiKey`) are also supported.
 
 ## Output
 
@@ -55,6 +66,7 @@ class RalphOutput extends PatternOutput {
   iterationCount: number          // Number of iterations executed
   completed: boolean              // Whether quality threshold was met
   iterations: RalphIterationSummary[]  // Per-iteration details
+  terminationReason?: string      // Why it stopped early (anti-spin, budget)
   duration: number
 }
 
@@ -73,3 +85,46 @@ interface RalphIterationSummary {
 - Tasks where initial attempts may need refinement
 - Automated refactoring with quality verification
 - Any workflow that benefits from analyze→act→review cycles
+
+## Anti-Spin, Streak Mode, and Budget Cap
+
+### Anti-Spin (`antiSpin: true`, default)
+
+Detects two failure modes and stops early instead of burning through all `maxIterations`:
+- **No-progress:** Two consecutive reviews with >80% text similarity — the agent is stuck. Stops early.
+- **Flip-flop:** Alternating ITERATE/DONE pattern across 4 reviews — the agent oscillates. Stops early.
+
+```js
+const result = await Ρ({ antiSpin: true, maxIterations: 10 })`fix the bug`
+
+if (result.terminationReason) {
+  console.log(`Stopped: ${result.terminationReason}`)  // e.g., "no-progress detected (review similarity: 87%)"
+}
+```
+
+Disable with `antiSpin: false` when you want to run all iterations regardless.
+
+### Streak Mode (`streakMode: N`)
+
+Requires N consecutive "DONE" reviews before stopping, instead of stopping on the first one. One green run is luck; N consecutive is reliability.
+
+```js
+// Require 3 consecutive DONE reviews — moderate confidence
+await Ρ({ streakMode: 3 })`implement the feature`
+
+// Require 10 for production-critical work
+await Ρ({ streakMode: 10 })`fix the security vulnerability`
+```
+
+Default: `1` (current behavior — stop on first DONE).
+
+### Budget Cap (`budgetCapUsd: N`)
+
+Stops execution when the estimated cumulative cost exceeds the cap. Uses a conservative per-iteration estimate (~$0.06 for a full analyze+plan+execute+review cycle).
+
+```js
+await Ρ({ budgetCapUsd: 2.50, maxIterations: 20 })`refactor the entire codebase`
+// Will run at most ~41 iterations before the estimated $2.50 cap is hit
+```
+
+Exact per-call costs are available in `result.trace` after execution.

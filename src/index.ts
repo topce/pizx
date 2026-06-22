@@ -46,6 +46,7 @@
  *
  *   Α   — Adaptive (self-adjusting orchestration)
  *   Γ   — Graph (DAG-based execution)
+ *   goal — contract-first execution with separate verifier model
  */
 
 // ── Re-export all of zx ─────────────────────────────────────────────────────
@@ -136,6 +137,8 @@ export {
   Φ,
   Ψ,
   Ω,
+  // English-named patterns (no Greek letter)
+  goal,
 } from './patterns/index.ts'
 
 import { π } from './pi.ts'
