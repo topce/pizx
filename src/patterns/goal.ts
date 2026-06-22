@@ -43,6 +43,7 @@ import {
   type PatternOptions,
   PatternOutput,
 } from './types.ts'
+import { checkAntiSpin } from './utils.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -132,42 +133,6 @@ Then give a VERDICT on the FINAL LINE as:
 VERDICT: ALL_PASS | HAS_FAILURES | HAS_PARTIALS
 
 If HAS_FAILURES or HAS_PARTIALS, list what failed and what the builder should change.`
-
-// ── Anti-spin helpers ──────────────────────────────────────────────────────
-
-function textSimilarity(a: string, b: string): number {
-  const tokensA = new Set(a.toLowerCase().split(/\s+/).filter(Boolean))
-  const tokensB = new Set(b.toLowerCase().split(/\s+/).filter(Boolean))
-  if (tokensA.size === 0 && tokensB.size === 0) return 1
-  let overlap = 0
-  for (const t of tokensA) {
-    if (tokensB.has(t)) overlap++
-  }
-  const union = tokensA.size + tokensB.size - overlap
-  return union === 0 ? 0 : overlap / union
-}
-
-function checkAntiSpin(
-  verification: string,
-  prevVerification: string | undefined,
-  lastVerdicts: string[]
-): string | null {
-  if (!prevVerification) return null
-
-  const sim = textSimilarity(verification, prevVerification)
-  if (sim > 0.8) {
-    return `no-progress detected (verification similarity: ${(sim * 100).toFixed(0)}%)`
-  }
-
-  if (lastVerdicts.length >= 4) {
-    const recent = lastVerdicts.slice(-4)
-    if (recent[0] === recent[2] && recent[1] === recent[3] && recent[0] !== recent[1]) {
-      return 'flip-flop detected (alternating PASS/FAIL pattern)'
-    }
-  }
-
-  return null
-}
 
 // ── Execute ─────────────────────────────────────────────────────────────────
 

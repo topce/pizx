@@ -36,6 +36,7 @@ import {
   PatternOutput,
   pickModel,
 } from './types.ts'
+import { checkAntiSpin } from './utils.ts'
 
 // ── Options ─────────────────────────────────────────────────────────────────
 
@@ -145,48 +146,7 @@ const REVIEW_SYSTEM = `You are a quality assurance reviewer. Review the changes 
 
 Your final line MUST be either "FINAL: ITERATE" or "FINAL: DONE".`
 
-// ── Anti-spin detection helpers ────────────────────────────────────────────
-
-/** Compute a simple token-overlap similarity between two strings (0.0–1.0). */
-function textSimilarity(a: string, b: string): number {
-  const tokensA = new Set(a.toLowerCase().split(/\s+/).filter(Boolean))
-  const tokensB = new Set(b.toLowerCase().split(/\s+/).filter(Boolean))
-  if (tokensA.size === 0 && tokensB.size === 0) return 1
-  let overlap = 0
-  for (const t of tokensA) {
-    if (tokensB.has(t)) overlap++
-  }
-  const union = tokensA.size + tokensB.size - overlap
-  return union === 0 ? 0 : overlap / union
-}
-
-/**
- * Check a review against the previous review for anti-spin signals.
- * Returns a termination reason string, or null if no spin detected.
- */
-function checkAntiSpin(
-  review: string,
-  prevReview: string | undefined,
-  lastShouldContinues: boolean[]
-): string | null {
-  if (!prevReview) return null
-
-  // No-progress: >80% token overlap with previous review
-  const sim = textSimilarity(review, prevReview)
-  if (sim > 0.8) {
-    return `no-progress detected (review similarity: ${(sim * 100).toFixed(0)}%)`
-  }
-
-  // Flip-flop: alternating ITERATE/DONE pattern across last 4 reviews
-  if (lastShouldContinues.length >= 4) {
-    const recent = lastShouldContinues.slice(-4)
-    if (recent[0] === recent[2] && recent[1] === recent[3] && recent[0] !== recent[1]) {
-      return 'flip-flop detected (alternating ITERATE/DONE pattern)'
-    }
-  }
-
-  return null
-}
+// ── Execute ─────────────────────────────────────────────────────────────────
 
 async function execute(
   pieces: TemplateStringsArray,
