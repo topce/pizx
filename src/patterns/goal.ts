@@ -1,6 +1,9 @@
 /**
  * goal — Goal tag: contract-first execution with separate verifier model.
  *
+ * Aliased as γ (lowercase gamma) — distinct from Γ (uppercase gamma = Graph).
+ * Use `goal` or `γ` interchangeably.
+ *
  * Inspired by "WTF Is a Loop?" Parts 1 & 2 (Matt Van Horn, June 2026).
  *
  * Flow:
@@ -365,5 +368,9 @@ async function execute(
   )
 }
 
-/** goal tag — Contract-first execution with separate verifier model */
+/** goal tag — Contract-first execution with separate verifier model.
+ *  Aliased as γ (lowercase gamma). */
 export const goal = createPatternTag(defaults, execute)
+
+/** γ (lowercase gamma) — alias for goal tag */
+export const γ = goal

@@ -25,7 +25,7 @@ export { type ChiOptions, ChiOutput, LearningInsight, Χ } from './chi.ts'
 export { type CritiqueOptions, CritiqueOutput, CritiqueRound, Ψ } from './critique.ts'
 export { type DebateOptions, DebateOutput, DebatePerspective, Δ } from './debate.ts'
 export { FleetMemberOutput, type FleetOptions, FleetOutput, Φ } from './fleet.ts'
-export { type GoalIterationSummary, type GoalOptions, GoalOutput } from './goal.ts'
+export { type GoalIterationSummary, type GoalOptions, GoalOutput, goal, γ } from './goal.ts'
 export {
   type GraphEdge,
   type GraphNode,
@@ -92,7 +92,7 @@ export {
 //   team        → Ν (Nu — Self-Organizing Teams)
 //   learn       → Χ (Chi — Cross-Agent Learning)
 //   store       → Τ (Tau — Tool-Mediated Orchestration)
-//   goal        → goal (Goal — contract-first execution with separate verifier)
+//   goal / γ   → Goal (contract-first with separate verifier)
 //   codingAgent → Π (Capital Pi — unambiguous alias for the coding agent)
 
 import { Α as _Α } from './adaptive.ts'
@@ -111,8 +111,6 @@ import { Σ as _Σ } from './subagent.ts'
 import { Τ as _Τ } from './tau.ts'
 import { Θ as _Θ } from './thread.ts'
 
-import { goal as _goal } from './goal.ts'
-
 export const ralph = _Ρ
 export const fleet = _Φ
 export const subagent = _Σ
@@ -128,4 +126,3 @@ export const graph = _Γ
 export const team = _Ν
 export const learn = _Χ
 export const store = _Τ
-export { goal } from './goal.ts'

@@ -139,6 +139,7 @@ export {
   Ω,
   // English-named patterns (no Greek letter)
   goal,
+  γ,
 } from './patterns/index.ts'
 
 import { π } from './pi.ts'

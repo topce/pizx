@@ -1,11 +1,14 @@
-# goal — Contract-First Execution with Separate Verifier
+# goal / γ — Contract-First Execution with Separate Verifier
 
 A contract-first execution pattern that uses a SEPARATE verifier model to check work against a contract written BEFORE execution starts. Inspired by the "WTF Is a Loop?" articles (Matt Van Horn, June 2026).
+
+**Alias:** `γ` (lowercase gamma) — distinct from `Γ` (uppercase gamma = Graph). Use `goal` or `γ` interchangeably.
 
 ## Usage
 
 ```js
 import { goal } from '@topce/pizx'
+// or: import { γ } from '@topce/pizx'
 
 await goal`add error handling to the Fleet pattern`
 await goal({
