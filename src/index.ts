@@ -84,6 +84,8 @@ export {
   GraphNodeResult,
   type GraphOptions,
   GraphOutput,
+  // English-named patterns (no Greek letter)
+  goal,
   graph,
   learn,
   MemoryEntry,
@@ -137,8 +139,6 @@ export {
   Φ,
   Ψ,
   Ω,
-  // English-named patterns (no Greek letter)
-  goal,
   γ,
 } from './patterns/index.ts'
 

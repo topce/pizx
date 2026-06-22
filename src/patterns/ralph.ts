@@ -320,7 +320,9 @@ async function execute(
       streakCount++
       if (streakCount >= streakTarget) {
         if (!opts.quiet && streakTarget > 1) {
-          process.stderr.write(`Ρ: Streak: ${streakCount}/${streakTarget} consecutive DONE — stopping\n`)
+          process.stderr.write(
+            `Ρ: Streak: ${streakCount}/${streakTarget} consecutive DONE — stopping\n`
+          )
         }
         break
       }

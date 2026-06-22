@@ -2,6 +2,23 @@
 
 All notable changes to pizx are documented here.
 
+## [0.9.0] — 2025-06-22
+
+### Added
+
+- **Goal tag (`goal` / `γ`)** — Contract-first execution with separate verifier model. Writes a formal contract before execution, then verifies with a different model family. Implements the Clodex pattern from "WTF Is a Loop?" (Matt Van Horn, June 2026). Options: `verifierModel`, `maxIterations`, `budgetCapUsd`, `antiSpin`, `streakMode`.
+- **Ralph (Ρ) anti-spin detection** — `antiSpin` option (default: `true`) detects no-progress (>80% review overlap) and flip-flop (alternating ITERATE/DONE) patterns, stopping early instead of burning through all `maxIterations`.
+- **Ralph (Ρ) streak mode** — `streakMode` option (default: `1`) requires N consecutive DONE reviews before stopping. One green run is luck; N is reliability.
+- **Ralph (Ρ) budget cap** — `budgetCapUsd` option stops execution when estimated cumulative cost exceeds the cap.
+- **`RalphOutput.terminationReason`** — populated when anti-spin or budget cap stops the loop early.
+- **γ (lowercase gamma)** — Greek letter alias for `goal` tag; distinct from `Γ` (uppercase gamma = Graph).
+- **Docs**: `docs/goal.md` — full reference for the goal tag. `docs/ralph.md` — updated with anti-spin/streak/budget sections.
+- **Examples**: 5 new composed workflow examples + 2 English alias examples demonstrating all new features on pizx itself (dogfooding).
+
+### Changed
+
+- `RalphOutput` constructor signature: added optional `terminationReason` parameter after `iterations`.
+
 ## [0.8.0] — 2025-06-16
 
 ### Added

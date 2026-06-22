@@ -1804,12 +1804,12 @@ describe('Pattern confirm gates — Critique (Ψ)', () => {
 
 describe('Ρ (Rho) — Anti-spin', () => {
   it('stops early on no-progress (identical reviews)', async () => {
-    let reviewCount = 0
+    let _reviewCount = 0
     vi.mocked(completeSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('Review the implementation')) {
-          reviewCount++
+          _reviewCount++
           return Promise.resolve(mockResult('Same issues remain unchanged. Final: ITERATE'))
         }
         return Promise.resolve(mockResult('Analysis done.'))
@@ -1852,15 +1852,14 @@ describe('Ρ (Rho) — Anti-spin', () => {
   })
 
   it('detects flip-flop (alternating ITERATE/DONE pattern)', async () => {
-    let reviewCount = 0
+    let _reviewCount = 0
     vi.mocked(completeSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('Review the implementation')) {
-          reviewCount++
-          const text = reviewCount % 2 === 1
-            ? 'Found issues. FINAL: ITERATE'
-            : 'Looks good. FINAL: DONE'
+          _reviewCount++
+          const text =
+            _reviewCount % 2 === 1 ? 'Found issues. FINAL: ITERATE' : 'Looks good. FINAL: DONE'
           return Promise.resolve(mockResult(text))
         }
         return Promise.resolve(mockResult('Implementation done.'))
@@ -1900,9 +1899,9 @@ describe('Ρ (Rho) — Streak mode', () => {
   it('requires N consecutive DONE reviews (streakMode: 3)', async () => {
     let reviewIdx = 0
     const reviews = [
-      'Looking good. FINAL: DONE',     // streak 1
-      'Still good. FINAL: DONE',       // streak 2
-      'All clear. FINAL: DONE',        // streak 3 → stop
+      'Looking good. FINAL: DONE', // streak 1
+      'Still good. FINAL: DONE', // streak 2
+      'All clear. FINAL: DONE', // streak 3 → stop
     ]
     vi.mocked(completeSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
@@ -1925,11 +1924,11 @@ describe('Ρ (Rho) — Streak mode', () => {
   it('resets streak counter on ITERATE review', async () => {
     let reviewIdx = 0
     const reviews = [
-      'Looking good. FINAL: DONE',      // streak 1
+      'Looking good. FINAL: DONE', // streak 1
       'Found a minor issue. FINAL: ITERATE', // reset!
-      'Fixed. FINAL: DONE',            // streak 1
-      'Still clean. FINAL: DONE',      // streak 2
-      'Clean. FINAL: DONE',            // streak 3 → stop
+      'Fixed. FINAL: DONE', // streak 1
+      'Still clean. FINAL: DONE', // streak 2
+      'Clean. FINAL: DONE', // streak 3 → stop
     ]
     vi.mocked(completeSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
@@ -2003,7 +2002,11 @@ describe('goal — Goal tag', () => {
         callIdx++
         if (callIdx === 1) {
           // Contract writing
-          return Promise.resolve(mockResult(`## Exact End State\n- Feature is implemented\n- All tests pass\n\n## Verification Criteria\n- Run tests\n\n## What NOT to Touch\n- Nothing restricted\n\n## Stop Conditions\n- Max iterations: 3`))
+          return Promise.resolve(
+            mockResult(
+              `## Exact End State\n- Feature is implemented\n- All tests pass\n\n## Verification Criteria\n- Run tests\n\n## What NOT to Touch\n- Nothing restricted\n\n## Stop Conditions\n- Max iterations: 3`
+            )
+          )
         }
         if (prompt.includes('Verify this against the contract')) {
           return Promise.resolve(mockResult('All checks pass. VERDICT: ALL_PASS'))
@@ -2029,7 +2032,8 @@ describe('goal — Goal tag', () => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         callIdx++
         if (callIdx === 1) {
-          return Promise.resolve(mockResult(`## Exact End State
+          return Promise.resolve(
+            mockResult(`## Exact End State
 - Feature is implemented
 
 ## Verification Criteria
@@ -2039,11 +2043,14 @@ describe('goal — Goal tag', () => {
 - None
 
 ## Stop Conditions
-- Max iterations: 3`))
+- Max iterations: 3`)
+          )
         }
         if (prompt.includes('Verify this against the contract')) {
           if (callIdx <= 4) {
-            return Promise.resolve(mockResult('Feature not fully implemented. VERDICT: HAS_FAILURES'))
+            return Promise.resolve(
+              mockResult('Feature not fully implemented. VERDICT: HAS_FAILURES')
+            )
           }
           return Promise.resolve(mockResult('All checks pass. VERDICT: ALL_PASS'))
         }
@@ -2065,7 +2072,8 @@ describe('goal — Goal tag', () => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         callIdx++
         if (callIdx === 1) {
-          return Promise.resolve(mockResult(`## Exact End State
+          return Promise.resolve(
+            mockResult(`## Exact End State
 - Done
 
 ## Verification Criteria
@@ -2075,7 +2083,8 @@ describe('goal — Goal tag', () => {
 - None
 
 ## Stop Conditions
-- Max iterations: 3`))
+- Max iterations: 3`)
+          )
         }
         if (prompt.includes('Verify this against the contract')) {
           return Promise.resolve(mockResult('Same issues remain. VERDICT: HAS_FAILURES'))
@@ -2134,7 +2143,11 @@ describe('goal — Goal tag', () => {
     )
 
     const { goal } = await import('./patterns/goal.ts')
-    const result = await goal.quiet({ streakMode: 3, antiSpin: false, maxIterations: 5 })`add feature`
+    const result = await goal.quiet({
+      streakMode: 3,
+      antiSpin: false,
+      maxIterations: 5,
+    })`add feature`
 
     expect(result.passed).toBe(true)
     expect(result.iterationCount).toBe(3)
@@ -2148,7 +2161,8 @@ describe('goal — Goal tag', () => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         callIdx++
         if (callIdx === 1) {
-          return Promise.resolve(mockResult(`## Exact End State
+          return Promise.resolve(
+            mockResult(`## Exact End State
 - Done
 
 ## Verification Criteria
@@ -2158,7 +2172,8 @@ describe('goal — Goal tag', () => {
 - None
 
 ## Stop Conditions
-- Max iterations: 3`))
+- Max iterations: 3`)
+          )
         }
         if (prompt.includes('Verify this against the contract')) {
           return Promise.resolve(mockResult('Not done. VERDICT: HAS_FAILURES'))

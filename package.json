@@ -1,6 +1,6 @@
 {
   "name": "@topce/pizx",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "zx fork with native Pi AI integration — shell scripting with AI agents, multi-agent orchestration, and 15+ agent pattern template tags (Ralph, Fleet, Subagent, Debate, Pipeline, Orchestrator, Critique, Thread, Memory, Broadcast, Adaptive, Graph, Nu, Chi, Tau)",
   "type": "module",
   "main": "./dist/index.js",

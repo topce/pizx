@@ -251,20 +251,16 @@ async function execute(
 
     // Confirm before execution (optional)
     if (
-      !(await confirmPhase(
-        `Goal iteration ${iteration}/${maxIterations}`,
-        'dispatch',
-        true,
-        opts
-      ))
+      !(await confirmPhase(`Goal iteration ${iteration}/${maxIterations}`, 'dispatch', true, opts))
     ) {
       throw new Error("pizx/goal: Execution cancelled by user at phase 'dispatch'")
     }
 
     // Execute against the contract
-    const context = iteration === 1
-      ? 'This is the first execution. Execute the goal against the contract.'
-      : `Previous verification found issues. Fix them:\n${prevVerification}`
+    const context =
+      iteration === 1
+        ? 'This is the first execution. Execute the goal against the contract.'
+        : `Previous verification found issues. Fix them:\n${prevVerification}`
 
     if (!opts.quiet) process.stderr.write('  → Executing...\n')
     const result = await executeTask(
@@ -288,7 +284,9 @@ async function execute(
 
     // Parse verdict
     const verdictMatch = verification.match(/VERDICT:\s*(ALL_PASS|HAS_FAILURES|HAS_PARTIALS)/i)
-    const verdict = verdictMatch ? (verdictMatch[1].toUpperCase() as GoalIterationSummary['verdict']) : 'HAS_FAILURES'
+    const verdict = verdictMatch
+      ? (verdictMatch[1].toUpperCase() as GoalIterationSummary['verdict'])
+      : 'HAS_FAILURES'
     lastVerdicts.push(verdict)
 
     iterations.push({
@@ -319,7 +317,9 @@ async function execute(
       if (streakCount >= streakTarget) {
         allPassed = true
         if (!opts.quiet && streakTarget > 1) {
-          process.stderr.write(`✓ Streak: ${streakCount}/${streakTarget} consecutive ALL_PASS — done\n`)
+          process.stderr.write(
+            `✓ Streak: ${streakCount}/${streakTarget} consecutive ALL_PASS — done\n`
+          )
         }
         break
       }

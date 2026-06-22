@@ -9,10 +9,10 @@
  */
 
 import {
+  type Api,
   getEnvApiKey,
   getModels,
   getProviders,
-  type Api,
   type KnownProvider,
   type Model,
 } from '@earendil-works/pi-ai'
