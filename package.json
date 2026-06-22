@@ -111,14 +111,14 @@
     "node": ">=22.19.0"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.79.4",
-    "@earendil-works/pi-coding-agent": "0.79.4",
+    "@earendil-works/pi-ai": "0.79.10",
+    "@earendil-works/pi-coding-agent": "0.79.10",
     "zx": "8.8.5"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
     "@eslint/js": "^10.0.1",
-    "@types/node": "25.9.3",
+    "@types/node": "26.0.0",
     "@vitest/coverage-v8": "^4.1.9",
     "esbuild": "0.28.1",
     "eslint": "^10.5.0",
