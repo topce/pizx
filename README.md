@@ -724,6 +724,7 @@ See [`examples/`](examples/) for runnable examples of every pattern and feature:
 - [`pattern-workflow-generate-filter.mjs`](examples/pattern-workflow-generate-filter.mjs) — Generate → Score → Filter
 - [`pattern-workflow-fanout-synthesize.mjs`](examples/pattern-workflow-fanout-synthesize.mjs) — Fan-out → Synthesize
 - [`pattern-workflow-loop-until-done.mjs`](examples/pattern-workflow-loop-until-done.mjs) — Loop with quality gates
+- [`pattern-loop-engineering.mjs`](examples/pattern-loop-engineering.mjs) — Full loop engineering: triage → isolate → fix → verify → state persistence
 - [`pattern-workflow-tournament.mjs`](examples/pattern-workflow-tournament.mjs) — Bracket tournament selection
 
 ### Dogfooding Examples (pizx builds pizx)

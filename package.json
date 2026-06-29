@@ -74,6 +74,7 @@
     "example:execution-modes-en": "node dist/cli.js english-examples/execution-modes.mjs",
     "example:goal-en": "node dist/cli.js english-examples/goal.mjs",
     "example:ralph-guards-en": "node dist/cli.js english-examples/ralph-guards.mjs",
+    "example:loop-engineering": "node dist/cli.js examples/pattern-loop-engineering.mjs",
     "test:composition-fleet": "node dist/cli.js examples/test-composition-fleet.mjs",
     "test:composition-pipeline": "node dist/cli.js examples/test-composition-pipeline.mjs",
     "test:new-features": "npm run test:quality && npm run test:confirm && npm run test:confirm-all && npm run test:composition-fleet && npm run test:composition-pipeline"
