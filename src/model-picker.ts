@@ -14,6 +14,7 @@
 import type {
   Api,
   AssistantMessage,
+  AssistantMessageEvent,
   AssistantMessageEventStream,
   Context,
   Model,
@@ -95,13 +96,13 @@ function streamWithAuth(
   context: Context,
   options?: SimpleStreamOptions
 ): AssistantMessageEventStream {
-  let innerIterator: AsyncIterator<any> | null = null
+  let innerIterator: AsyncIterator<AssistantMessageEvent> | null = null
   let authResolved = false
 
   const stream = {
     [Symbol.asyncIterator]() {
       return {
-        async next(): Promise<IteratorResult<any>> {
+        async next(): Promise<IteratorResult<AssistantMessageEvent>> {
           if (!authResolved) {
             const auth = await reg.getApiKeyAndHeaders(model)
             if (!auth.ok)
@@ -109,8 +110,25 @@ function streamWithAuth(
                 done: false,
                 value: {
                   type: 'error',
-                  reason: 'error',
-                  error: { message: `Auth failed: ${auth.error}` },
+                  reason: 'error' as const,
+                  error: {
+                    role: 'assistant' as const,
+                    content: [],
+                    api: model.api,
+                    provider: model.provider,
+                    model: model.id,
+                    usage: {
+                      input: 0,
+                      output: 0,
+                      cacheRead: 0,
+                      cacheWrite: 0,
+                      totalTokens: 0,
+                      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+                    },
+                    stopReason: 'error' as const,
+                    errorMessage: `Auth failed: ${auth.error}`,
+                    timestamp: Date.now(),
+                  },
                 },
               }
             const inner = streamSimple(model, context, {
@@ -124,7 +142,7 @@ function streamWithAuth(
           // biome-ignore lint/style/noNonNullAssertion: innerIterator is guaranteed set after authResolved
           return innerIterator!.next()
         },
-        async return(value?: any) {
+        async return(value?: AssistantMessageEvent) {
           if (innerIterator?.return) {
             return innerIterator.return(value)
           }
@@ -132,8 +150,8 @@ function streamWithAuth(
         },
       }
     },
-  } as AssistantMessageEventStream
-  return stream
+  }
+  return stream as AssistantMessageEventStream
 }
 
 // ── Model registry helpers ──────────────────────────────────────────────────

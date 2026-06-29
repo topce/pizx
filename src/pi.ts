@@ -114,40 +114,22 @@ async function run(
         text += ev.delta
         if (!opts.quiet) process.stdout.write(ev.delta)
       } else if (ev.type === 'error') {
-        const errObj = (ev as { error?: any }).error
-        const errMsg =
-          errObj?.message ??
-          errObj?.error?.message ??
-          JSON.stringify(errObj)?.slice(0, 300) ??
-          'Unknown stream error'
+        const errMsg = ev.error.errorMessage ?? 'Unknown stream error'
         throw new Error(errMsg)
       } else if (ev.type === 'done') {
-        const msg = (
-          ev as {
-            message?: {
-              usage?: {
-                input: number
-                output: number
-                cacheRead: number
-                cacheWrite: number
-                totalTokens: number
-                cost: { total: number }
-              }
-            }
-          }
-        ).message
-        if (msg?.usage) {
+        const usage = ev.message?.usage
+        if (usage) {
           traceEntry = {
             call: 1,
             modelId: model.id,
             promptPreview: build(pieces, args).slice(0, 200),
             outputPreview: text.slice(0, 200),
-            inputTokens: msg.usage.input,
-            outputTokens: msg.usage.output,
-            cacheReadTokens: msg.usage.cacheRead,
-            cacheWriteTokens: msg.usage.cacheWrite,
-            totalTokens: msg.usage.totalTokens,
-            cost: msg.usage.cost.total,
+            inputTokens: usage.input,
+            outputTokens: usage.output,
+            cacheReadTokens: usage.cacheRead,
+            cacheWriteTokens: usage.cacheWrite,
+            totalTokens: usage.totalTokens,
+            cost: usage.cost.total,
             durationMs: Date.now() - t0,
           }
         }

@@ -418,7 +418,7 @@ describe('π tag (pi.ts)', () => {
       await π.quiet`test`
 
       // In quiet mode, stdout.write should NOT be called with the delta
-      const deltaCalls = stdoutSpy.mock.calls.filter((call) => call[0] === 'hidden')
+      const deltaCalls = stdoutSpy.mock.calls.filter((call: unknown[]) => call[0] === 'hidden')
       expect(deltaCalls).toHaveLength(0)
     })
 
@@ -797,7 +797,9 @@ describe('Π tag (pi-agent.ts)', () => {
       await Π.quiet({ model: 'test/model' })`test`
 
       // In quiet mode, stderr should not have the prompt info
-      const promptCalls = stderrSpy.mock.calls.filter((call) => String(call[0]).includes('Π:'))
+      const promptCalls = stderrSpy.mock.calls.filter((call: unknown[]) =>
+        String(call[0]).includes('Π:')
+      )
       expect(promptCalls).toHaveLength(0)
     })
   })

@@ -2,6 +2,22 @@
 
 All notable changes to pizx are documented here.
 
+## [0.9.2] — 2025-06-29
+
+### Added
+
+- **Loop engineering example** — `examples/pattern-loop-engineering.mjs` demonstrating iterative improvement on generated outputs with custom evaluation. Available via `npm run example:loop-engineering`.
+
+### Changed
+
+- **Dependency update** — `@earendil-works/pi-ai` and `@earendil-works/pi-coding-agent` updated to v0.80.2, bringing `ModelRegistry`-based model picking, `streamSimple`/`completeSimple` compat API, and fresh auth resolution.
+
+### Fixed
+
+- **Type-safe event stream wrapping** — `model-picker.ts` uses properly typed `AssistantMessageEvent` instead of `any` for stream iterator types and constructs valid `AssistantMessage` on auth errors.
+- **Simplified error handling in π** — `pi.ts` uses discriminated union narrowing for `error` and `done` events instead of unsafe `any` casts.
+- **Type annotations in core.test.ts** — explicit `unknown[]` parameter types for `mock.calls.filter` callbacks.
+
 ## [0.9.1] — 2025-06-22
 
 ### Fixed
