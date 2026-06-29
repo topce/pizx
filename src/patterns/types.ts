@@ -441,10 +441,9 @@ export async function confirmPhase(
 
 // ── Helper: make a factory function ─────────────────────────────────────────
 
-import { completeSimple } from '@earendil-works/pi-ai'
 import { createAgentSession } from '@earendil-works/pi-coding-agent'
 
-import { pickModel } from '../model-picker.ts'
+import { getModelsInstance, pickModel } from '../model-picker.ts'
 import { loadSkillContents } from '../skill-loader.ts'
 
 export { pickModel }
@@ -472,7 +471,7 @@ export async function ask(prompt: string, opts: Partial<PatternOptions> = {}): P
   }
 
   const t0 = Date.now()
-  const result = await completeSimple(
+  const result = await getModelsInstance().completeSimple(
     model,
     {
       systemPrompt,

@@ -15,8 +15,6 @@ vi.mock('@earendil-works/pi-ai', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@earendil-works/pi-ai')>()
   return {
     ...mod,
-    completeSimple: vi.fn(),
-    streamSimple: vi.fn(),
   }
 })
 
@@ -29,13 +27,18 @@ vi.mock('@earendil-works/pi-coding-agent', async (importOriginal) => {
 })
 
 // Mock model-picker — returns undefined by default; each test must set it up
+const mockCompleteSimple = vi.fn()
+const mockStreamSimple = vi.fn()
 vi.mock('./model-picker.ts', () => ({
   pickModel: vi.fn(),
+  getModelsInstance: vi.fn(() => ({
+    streamSimple: mockStreamSimple,
+    completeSimple: mockCompleteSimple,
+  })),
 }))
 
 // ── Imports ───────────────────────────────────────────────────────────────
 
-import { completeSimple } from '@earendil-works/pi-ai'
 import { createAgentSession } from '@earendil-works/pi-coding-agent'
 import { pickModel } from './model-picker.ts'
 
@@ -89,7 +92,7 @@ afterEach(() => {
  * an appropriate fake response based on keywords in the prompt.
  */
 function setupSmartMock(customMatchers?: Record<string, string>) {
-  vi.mocked(completeSimple).mockImplementation(
+  vi.mocked(mockCompleteSimple).mockImplementation(
     (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
       const prompt = ctx?.messages?.[0]?.content ?? ''
 
@@ -259,7 +262,7 @@ describe('Δ (Delta) — Debate', () => {
     expect(result.perspectives.length).toBeGreaterThanOrEqual(1)
     expect(result.conclusion).toBeTruthy()
     expect(result.rounds).toBe(1)
-    expect(completeSimple).toHaveBeenCalled()
+    expect(mockCompleteSimple).toHaveBeenCalled()
   })
 
   it('executes multi-round debate with rebuttals', async () => {
@@ -291,7 +294,7 @@ describe('Δ (Delta) — Debate', () => {
   it('handles failed perspectives gracefully', async () => {
     // First perspective call fails, rest succeed
     let callCount = 0
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, _ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         callCount++
         // First perspective call fails; synthesis (last call) succeeds normally
@@ -352,7 +355,7 @@ describe('Δ (Delta) — Debate', () => {
 describe('Ρ (Rho) — Ralph Loop', () => {
   it('executes a loop completing in one iteration', async () => {
     // Use a mock that returns FINAL: DONE for reviews
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('Review the implementation')) {
@@ -374,7 +377,7 @@ describe('Ρ (Rho) — Ralph Loop', () => {
 
   it('executes multiple iterations when continuing', async () => {
     let callCount = 0
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         callCount++
@@ -398,7 +401,7 @@ describe('Ρ (Rho) — Ralph Loop', () => {
   })
 
   it('hits max iterations when quality not met', async () => {
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('Review the implementation')) {
@@ -455,7 +458,7 @@ describe('Φ (Phi) — Fleet', () => {
 
   it('handles task failures gracefully', async () => {
     let callCount = 0
-    vi.mocked(completeSimple).mockImplementation(() => {
+    vi.mocked(mockCompleteSimple).mockImplementation(() => {
       callCount++
       if (callCount === 2) {
         return Promise.reject(new Error('Task failed'))
@@ -546,7 +549,7 @@ describe('Σ (Sigma) — Subagents', () => {
 
   it('handles sub-task failures', async () => {
     let callCount = 0
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         callCount++
@@ -678,7 +681,7 @@ describe('Ω (Omega) — Orchestrator', () => {
 
   it('parses sub-tasks from plan text', async () => {
     // Mock to return a plan with numbered sub-tasks
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
 
@@ -711,7 +714,7 @@ describe('Ω (Omega) — Orchestrator', () => {
 
   it('handles worker failures', async () => {
     let callCount = 0
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         callCount++
@@ -831,7 +834,7 @@ describe('Β (Beta) — Broadcast', () => {
 
   it('handles worker failures', async () => {
     let callCount = 0
-    vi.mocked(completeSimple).mockImplementation(() => {
+    vi.mocked(mockCompleteSimple).mockImplementation(() => {
       callCount++
       if (callCount === 2) {
         return Promise.reject(new Error('Broadcast worker error'))
@@ -864,7 +867,7 @@ describe('Α (Alpha) — Adaptive', () => {
 
   it('stops when quality threshold is met', async () => {
     // Return SCORE above threshold for first evaluation
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
 
@@ -890,7 +893,7 @@ describe('Α (Alpha) — Adaptive', () => {
 
   it('supports SKIP_NEXT adaptation', async () => {
     let evalCount = 0
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
 
@@ -918,7 +921,7 @@ describe('Α (Alpha) — Adaptive', () => {
 
   it('supports ADD adaptation', async () => {
     let evalCount = 0
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
 
@@ -1019,7 +1022,7 @@ describe('Γ (Gamma) — Graph', () => {
 describe('Ν (Nu) — Self-Organizing Teams', () => {
   it('negotiates roles and executes', async () => {
     // Need a specific mock for Nu's negotiate/execute/synthesize flow
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
 
@@ -1059,7 +1062,7 @@ describe('Ν (Nu) — Self-Organizing Teams', () => {
     ]
 
     // Mock: when roles are provided, no negotiation needed
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('synthesize') || prompt.includes('Synthesize')) {
@@ -1082,7 +1085,7 @@ describe('Ν (Nu) — Self-Organizing Teams', () => {
 describe('Χ (Chi) — Cross-Agent Learning', () => {
   /** Helper: set up mock to return CATEGORY-formatted response for Chi analysis */
   function setupChiMock() {
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, _ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         // Chi sends the input as the user prompt; the response must contain
         // CATEGORY blocks for parseInsights to extract them
@@ -1153,7 +1156,7 @@ describe('Χ (Chi) — Cross-Agent Learning', () => {
 describe('Τ (Tau) — Tool-Mediated Orchestration', () => {
   it('executes shared store pattern', async () => {
     // Mock Tau's specific workflow: define schema → round writes → consolidate
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
 
@@ -1270,7 +1273,7 @@ describe('Quality check integration', () => {
   it('Δ runs quality check when enabled', async () => {
     // Ensure the quality review call returns a parsable response
     let callCount = 0
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         callCount++
@@ -1666,8 +1669,8 @@ describe('Pattern confirm gates — Ralph (Ρ)', () => {
   }
 
   it('passes through with confirm: true when user approves (semi, major)', async () => {
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('analysis'))
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('plan with FINAL: DONE'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('analysis'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('plan with FINAL: DONE'))
     mockStdin('y')
 
     const { Ρ } = await import('./patterns/ralph.ts')
@@ -1685,8 +1688,8 @@ describe('Pattern confirm gates — Ralph (Ρ)', () => {
   })
 
   it('passes through with confirm: { hitl: true } (gates every iteration)', async () => {
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('analysis'))
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('plan with FINAL: DONE'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('analysis'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('plan with FINAL: DONE'))
     mockStdin('y')
 
     const { Ρ } = await import('./patterns/ralph.ts')
@@ -1695,8 +1698,8 @@ describe('Pattern confirm gates — Ralph (Ρ)', () => {
   })
 
   it('skips gate with confirm: false (auto)', async () => {
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('analysis'))
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('plan with FINAL: DONE'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('analysis'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('plan with FINAL: DONE'))
 
     const { Ρ } = await import('./patterns/ralph.ts')
     const result = await Ρ({ confirm: false, maxIterations: 1, useTools: false })`test goal`
@@ -1715,10 +1718,10 @@ describe('Pattern confirm gates — Debate (Δ)', () => {
 
   it('passes through with confirm: true (semi — gates round 1 only)', async () => {
     // Round 1: 3 perspectives (parallel) + synthesis
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('perspective 1'))
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('perspective 2'))
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('perspective 3'))
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('conclusion'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('perspective 1'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('perspective 2'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('perspective 3'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('conclusion'))
     mockStdin('y')
 
     const { Δ } = await import('./patterns/debate.ts')
@@ -1737,14 +1740,14 @@ describe('Pattern confirm gates — Debate (Δ)', () => {
 
   it('gates round 2 only in hitl (semi skips minor phases)', async () => {
     // Round 1: 3 perspectives + round 2: 3 rebuttals + synthesis
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('p1'))
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('p2'))
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('p3'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('p1'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('p2'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('p3'))
     // Round 2: confirm gates here (minor, hitl only) — we use semi so it skips
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('r2-p1'))
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('r2-p2'))
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('r2-p3'))
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('conclusion'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('r2-p1'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('r2-p2'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('r2-p3'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('conclusion'))
     mockStdin('y') // round 1 gate
 
     const { Δ } = await import('./patterns/debate.ts')
@@ -1765,8 +1768,8 @@ describe('Pattern confirm gates — Critique (Ψ)', () => {
   }
 
   it('passes through with confirm: true (semi — gates generate, skips review)', async () => {
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('generated content'))
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('critique feedback'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('generated content'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('critique feedback'))
     mockStdin('y')
 
     const { Ψ } = await import('./patterns/critique.ts')
@@ -1786,8 +1789,8 @@ describe('Pattern confirm gates — Critique (Ψ)', () => {
   })
 
   it('gates review phase in hitl mode', async () => {
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('generated content'))
-    vi.mocked(completeSimple).mockResolvedValueOnce(mockResult('critique feedback'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('generated content'))
+    vi.mocked(mockCompleteSimple).mockResolvedValueOnce(mockResult('critique feedback'))
     mockStdin('y')
 
     const { Ψ } = await import('./patterns/critique.ts')
@@ -1805,7 +1808,7 @@ describe('Pattern confirm gates — Critique (Ψ)', () => {
 describe('Ρ (Rho) — Anti-spin', () => {
   it('stops early on no-progress (identical reviews)', async () => {
     let _reviewCount = 0
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('Review the implementation')) {
@@ -1833,7 +1836,7 @@ describe('Ρ (Rho) — Anti-spin', () => {
       'Better but still has lint issues. FINAL: ITERATE',
       'All issues resolved. FINAL: DONE',
     ]
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('Review the implementation')) {
@@ -1853,7 +1856,7 @@ describe('Ρ (Rho) — Anti-spin', () => {
 
   it('detects flip-flop (alternating ITERATE/DONE pattern)', async () => {
     let _reviewCount = 0
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('Review the implementation')) {
@@ -1876,7 +1879,7 @@ describe('Ρ (Rho) — Anti-spin', () => {
   })
 
   it('antiSpin: false runs to max iterations even with identical reviews', async () => {
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('Review the implementation')) {
@@ -1903,7 +1906,7 @@ describe('Ρ (Rho) — Streak mode', () => {
       'Still good. FINAL: DONE', // streak 2
       'All clear. FINAL: DONE', // streak 3 → stop
     ]
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('Review the implementation')) {
@@ -1930,7 +1933,7 @@ describe('Ρ (Rho) — Streak mode', () => {
       'Still clean. FINAL: DONE', // streak 2
       'Clean. FINAL: DONE', // streak 3 → stop
     ]
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('Review the implementation')) {
@@ -1949,7 +1952,7 @@ describe('Ρ (Rho) — Streak mode', () => {
   })
 
   it('streakMode: 1 behaves like default (stop on first DONE)', async () => {
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('Review the implementation')) {
@@ -1970,7 +1973,7 @@ describe('Ρ (Rho) — Streak mode', () => {
 
 describe('Ρ (Rho) — Budget cap', () => {
   it('stops when cumulative cost exceeds budgetCapUsd', async () => {
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('Review the implementation')) {
@@ -1996,7 +1999,7 @@ describe('Ρ (Rho) — Budget cap', () => {
 describe('goal — Goal tag', () => {
   it('writes a contract and executes against it in one pass', async () => {
     let callIdx = 0
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         callIdx++
@@ -2027,7 +2030,7 @@ describe('goal — Goal tag', () => {
 
   it('iterates when verification fails', async () => {
     let callIdx = 0
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         callIdx++
@@ -2067,7 +2070,7 @@ describe('goal — Goal tag', () => {
 
   it('stops early on anti-spin (identical verifications)', async () => {
     let callIdx = 0
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         callIdx++
@@ -2130,7 +2133,7 @@ describe('goal — Goal tag', () => {
 
   it('streakMode: 3 requires consecutive ALL_PASS', async () => {
     let verifyCalls = 0
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('Verify this against the contract')) {
@@ -2156,7 +2159,7 @@ describe('goal — Goal tag', () => {
 
   it('hits max iterations without passing', async () => {
     let callIdx = 0
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         callIdx++
@@ -2190,7 +2193,7 @@ describe('goal — Goal tag', () => {
   })
 
   it('stops when cumulative cost exceeds budgetCapUsd', async () => {
-    vi.mocked(completeSimple).mockImplementation(
+    vi.mocked(mockCompleteSimple).mockImplementation(
       (_model: any, ctx: { messages?: { content?: string }[] }, _opts?: any) => {
         const prompt = ctx?.messages?.[0]?.content ?? ''
         if (prompt.includes('## Exact End State')) {

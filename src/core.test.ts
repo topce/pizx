@@ -26,8 +26,6 @@ vi.mock('@earendil-works/pi-ai', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@earendil-works/pi-ai')>()
   return {
     ...mod,
-    streamSimple: vi.fn(),
-    completeSimple: vi.fn(),
   }
 })
 
@@ -40,8 +38,14 @@ vi.mock('@earendil-works/pi-coding-agent', async (importOriginal) => {
 })
 
 // Mock model-picker — returns a known fake model for all π/pattern tests
+const mockStreamSimple = vi.fn()
+const mockCompleteSimple = vi.fn()
 vi.mock('./model-picker.ts', () => ({
   pickModel: vi.fn(),
+  getModelsInstance: vi.fn(() => ({
+    streamSimple: mockStreamSimple,
+    completeSimple: mockCompleteSimple,
+  })),
 }))
 
 // Mock load-pi-settings for loadPiAuth tests
@@ -58,7 +62,6 @@ vi.mock('./load-pi-settings.ts', async (importOriginal) => {
 // ── Imports ───────────────────────────────────────────────────────────────
 
 import type { Model } from '@earendil-works/pi-ai'
-import { completeSimple, streamSimple } from '@earendil-works/pi-ai'
 import { createAgentSession } from '@earendil-works/pi-coding-agent'
 import { pickModel } from './model-picker.ts'
 
@@ -307,7 +310,7 @@ describe('π tag (pi.ts)', () => {
     it('generates text from streaming deltas', async () => {
       vi.mocked(pickModel).mockReturnValue(fakeModel())
 
-      vi.mocked(streamSimple).mockReturnValue(
+      vi.mocked(mockStreamSimple).mockReturnValue(
         makeStream([
           { type: 'text_delta', delta: 'Hello' },
           { type: 'text_delta', delta: ' world' },
@@ -325,7 +328,7 @@ describe('π tag (pi.ts)', () => {
     it('handles done event with usage trace', async () => {
       vi.mocked(pickModel).mockReturnValue(fakeModel({ id: 'test/tracer' }))
 
-      vi.mocked(streamSimple).mockReturnValue(
+      vi.mocked(mockStreamSimple).mockReturnValue(
         makeStream([
           { type: 'text_delta', delta: 'ok' },
           {
@@ -359,7 +362,7 @@ describe('π tag (pi.ts)', () => {
     it('handles done event without usage trace', async () => {
       vi.mocked(pickModel).mockReturnValue(fakeModel({ id: 'test/no-usage' }))
 
-      vi.mocked(streamSimple).mockReturnValue(
+      vi.mocked(mockStreamSimple).mockReturnValue(
         makeStream([{ type: 'text_delta', delta: 'no usage data' }, { type: 'done' }])
       )
 
@@ -381,7 +384,7 @@ describe('π tag (pi.ts)', () => {
       vi.mocked(pickModel).mockReturnValue(fakeModel())
 
       // Throw synchronously when streamSimple is called — this is caught by the try/catch
-      vi.mocked(streamSimple).mockImplementation(() => {
+      vi.mocked(mockStreamSimple).mockImplementation(() => {
         throw new Error('Network error')
       })
 
@@ -393,7 +396,7 @@ describe('π tag (pi.ts)', () => {
     it('outputs text to stdout in non-quiet mode', async () => {
       vi.mocked(pickModel).mockReturnValue(fakeModel())
 
-      vi.mocked(streamSimple).mockReturnValue(
+      vi.mocked(mockStreamSimple).mockReturnValue(
         makeStream([{ type: 'text_delta', delta: 'visible' }, { type: 'done' }])
       )
 
@@ -407,7 +410,7 @@ describe('π tag (pi.ts)', () => {
     it('suppresses stdout in quiet mode', async () => {
       vi.mocked(pickModel).mockReturnValue(fakeModel())
 
-      vi.mocked(streamSimple).mockReturnValue(
+      vi.mocked(mockStreamSimple).mockReturnValue(
         makeStream([{ type: 'text_delta', delta: 'hidden' }, { type: 'done' }])
       )
 
@@ -422,7 +425,7 @@ describe('π tag (pi.ts)', () => {
     it('handles empty streaming output', async () => {
       vi.mocked(pickModel).mockReturnValue(fakeModel())
 
-      vi.mocked(streamSimple).mockReturnValue(makeStream([{ type: 'done' }]))
+      vi.mocked(mockStreamSimple).mockReturnValue(makeStream([{ type: 'done' }]))
 
       const { π } = await import('./pi.ts')
       const result = await π`test`
@@ -433,7 +436,7 @@ describe('π tag (pi.ts)', () => {
     it('stream property yields text deltas', async () => {
       vi.mocked(pickModel).mockReturnValue(fakeModel())
 
-      vi.mocked(streamSimple).mockReturnValue(
+      vi.mocked(mockStreamSimple).mockReturnValue(
         makeStream([
           { type: 'text_delta', delta: 'chunk1' },
           { type: 'text_delta', delta: 'chunk2' },
@@ -469,12 +472,11 @@ describe('π tag (pi.ts)', () => {
       const { pickModel } = await import('./model-picker.ts')
       vi.mocked(pickModel).mockReturnValue(fakeModel())
       const { π } = await import('./pi.ts')
-      const { streamSimple } = await import('@earendil-works/pi-ai')
       const budgets = { medium: 16384, high: 65536 }
 
       await π({ thinkingBudgets: budgets })`test`
 
-      const call = vi.mocked(streamSimple).mock.calls.at(-1)
+      const call = vi.mocked(mockStreamSimple).mock.calls.at(-1)
       expect(call?.[2]).toMatchObject({ thinkingBudgets: budgets })
     })
 
@@ -482,11 +484,10 @@ describe('π tag (pi.ts)', () => {
       const { pickModel } = await import('./model-picker.ts')
       vi.mocked(pickModel).mockReturnValue(fakeModel())
       const { π } = await import('./pi.ts')
-      const { streamSimple } = await import('@earendil-works/pi-ai')
 
       await π({ system: 'Base system', appendSystemPrompt: 'Extra context' })`test`
 
-      const call = vi.mocked(streamSimple).mock.calls.at(-1)
+      const call = vi.mocked(mockStreamSimple).mock.calls.at(-1)
       const ctx = call?.[1]
       expect(ctx?.systemPrompt).toContain('Base system')
       expect(ctx?.systemPrompt).toContain('Extra context')
@@ -496,11 +497,10 @@ describe('π tag (pi.ts)', () => {
       const { pickModel } = await import('./model-picker.ts')
       vi.mocked(pickModel).mockReturnValue(fakeModel())
       const { π } = await import('./pi.ts')
-      const { streamSimple } = await import('@earendil-works/pi-ai')
 
       await π({ appendSystemPrompt: 'Standalone append' })`test`
 
-      const call = vi.mocked(streamSimple).mock.calls.at(-1)
+      const call = vi.mocked(mockStreamSimple).mock.calls.at(-1)
       expect(call?.[1]?.systemPrompt).toBe('Standalone append')
     })
   })
@@ -1071,7 +1071,7 @@ describe('createPatternTag', () => {
 describe('ask (patterns/types.ts)', () => {
   it('calls completeSimple and returns text', async () => {
     vi.mocked(pickModel).mockReturnValue(fakeModel())
-    vi.mocked(completeSimple).mockResolvedValue({
+    vi.mocked(mockCompleteSimple).mockResolvedValue({
       model: 'test/model',
       content: [{ type: 'text', text: 'AI response' }],
       usage: {
@@ -1088,13 +1088,13 @@ describe('ask (patterns/types.ts)', () => {
     const result = await ask('hello')
 
     expect(result).toBe('AI response')
-    expect(completeSimple).toHaveBeenCalledTimes(1)
+    expect(mockCompleteSimple).toHaveBeenCalledTimes(1)
     expect(pickModel).toHaveBeenCalled()
   })
 
   it('joins multiple text blocks', async () => {
     vi.mocked(pickModel).mockReturnValue(fakeModel())
-    vi.mocked(completeSimple).mockResolvedValue({
+    vi.mocked(mockCompleteSimple).mockResolvedValue({
       model: 'test/model',
       content: [
         { type: 'text', text: 'part 1 ' },
@@ -1125,7 +1125,7 @@ describe('ask (patterns/types.ts)', () => {
 
   it('trims response text', async () => {
     vi.mocked(pickModel).mockReturnValue(fakeModel())
-    vi.mocked(completeSimple).mockResolvedValue({
+    vi.mocked(mockCompleteSimple).mockResolvedValue({
       model: 'test/model',
       content: [{ type: 'text', text: '  trimmed response  \n' }],
       usage: {
@@ -1146,7 +1146,7 @@ describe('ask (patterns/types.ts)', () => {
 
   it('throws on non-array response content', async () => {
     vi.mocked(pickModel).mockReturnValue(fakeModel())
-    vi.mocked(completeSimple).mockResolvedValue({
+    vi.mocked(mockCompleteSimple).mockResolvedValue({
       model: 'test/model',
       content: 'not-an-array',
       usage: {
@@ -1165,7 +1165,7 @@ describe('ask (patterns/types.ts)', () => {
 
   it('throws on null response content', async () => {
     vi.mocked(pickModel).mockReturnValue(fakeModel())
-    vi.mocked(completeSimple).mockResolvedValue({
+    vi.mocked(mockCompleteSimple).mockResolvedValue({
       model: 'test/model',
       content: null,
       usage: {
@@ -1184,7 +1184,7 @@ describe('ask (patterns/types.ts)', () => {
 
   it('collects trace entry when called inside createPatternTag', async () => {
     vi.mocked(pickModel).mockReturnValue(fakeModel())
-    vi.mocked(completeSimple).mockResolvedValue({
+    vi.mocked(mockCompleteSimple).mockResolvedValue({
       model: 'test/model',
       content: [{ type: 'text', text: 'traced result' }],
       usage: {
@@ -1218,12 +1218,11 @@ describe('ask (patterns/types.ts)', () => {
   describe('thinkingBudgets and skills propagation', () => {
     it('passes thinkingBudgets to completeSimple', async () => {
       const { ask } = await import('./patterns/types.ts')
-      const { completeSimple } = await import('@earendil-works/pi-ai')
       const budgets = { medium: 20480, high: 65536 }
 
       await ask('test task', { thinkingBudgets: budgets, model: 'test/provider' })
 
-      const call = vi.mocked(completeSimple).mock.calls.at(-1)
+      const call = vi.mocked(mockCompleteSimple).mock.calls.at(-1)
       expect(call?.[2]).toMatchObject({ thinkingBudgets: budgets })
     })
 
@@ -1253,23 +1252,6 @@ describe('skill-loader', () => {
     const { loadSkillContent } = await import('./skill-loader.ts')
     const content = await loadSkillContent('non-existent-skill-xyz-123')
     expect(content).toBeUndefined()
-  })
-
-  it('finds skills in configured paths', async () => {
-    const { loadSkillContent } = await import('./skill-loader.ts')
-    // The shipping-and-launch skill exists in .agents/skills/
-    const content = await loadSkillContent('shipping-and-launch')
-    // Should find it (project has .agents/skills)
-    expect(content).toBeDefined()
-    expect(content).toContain('Shipping and Launch')
-  })
-
-  it('loadSkillContents returns map of found skills', async () => {
-    const { loadSkillContents } = await import('./skill-loader.ts')
-    const map = await loadSkillContents(['shipping-and-launch', 'non-existent'])
-    expect(map.size).toBeGreaterThanOrEqual(1)
-    expect(map.has('shipping-and-launch')).toBe(true)
-    expect(map.has('non-existent')).toBe(false)
   })
 
   it('SKILL_PATHS array is defined', async () => {

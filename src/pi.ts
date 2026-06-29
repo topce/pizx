@@ -7,18 +7,17 @@
  *   for await (const c of π.stream`tell me a story`) { process.stdout.write(c) }
  */
 
-import {
-  type Context,
-  type SimpleStreamOptions,
-  streamSimple,
-  type ThinkingBudgets,
-  type ThinkingLevel,
+import type {
+  Context,
+  SimpleStreamOptions,
+  ThinkingBudgets,
+  ThinkingLevel,
 } from '@earendil-works/pi-ai'
 import { PiOutput } from './pi-output.ts'
 
 export { PiOutput }
 
-import { pickModel } from './model-picker.ts'
+import { getModelsInstance, pickModel } from './model-picker.ts'
 import type { CallTrace, ConfirmGate } from './patterns/types.ts'
 import { build, confirmPhase } from './patterns/types.ts'
 import { getErrorMessage } from './utils.ts'
@@ -106,10 +105,22 @@ async function run(
   let text = ''
   let traceEntry: CallTrace | undefined
   try {
-    for await (const ev of streamSimple(model, makeContext(pieces, args, opts), makeOpts(opts))) {
+    for await (const ev of getModelsInstance().streamSimple(
+      model,
+      makeContext(pieces, args, opts),
+      makeOpts(opts)
+    )) {
       if (ev.type === 'text_delta') {
         text += ev.delta
         if (!opts.quiet) process.stdout.write(ev.delta)
+      } else if (ev.type === 'error') {
+        const errObj = (ev as { error?: any }).error
+        const errMsg =
+          errObj?.message ??
+          errObj?.error?.message ??
+          JSON.stringify(errObj)?.slice(0, 300) ??
+          'Unknown stream error'
+        throw new Error(errMsg)
       } else if (ev.type === 'done') {
         const msg = (
           ev as {
@@ -158,8 +169,17 @@ async function* runStream(
 ): AsyncGenerator<string> {
   const model = pickModel(opts.model)
   if (!model) throw new Error('pizx/π: No AI models configured')
-  for await (const ev of streamSimple(model, makeContext(pieces, args, opts), makeOpts(opts))) {
+  for await (const ev of getModelsInstance().streamSimple(
+    model,
+    makeContext(pieces, args, opts),
+    makeOpts(opts)
+  )) {
     if (ev.type === 'text_delta') yield ev.delta
+    else if (ev.type === 'error') {
+      const errMsg =
+        (ev as { error?: { message?: string } }).error?.message ?? 'Unknown stream error'
+      throw new Error(`pizx/π: ${errMsg}`)
+    }
   }
 }
 
