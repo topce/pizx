@@ -1,6 +1,6 @@
 {
   "name": "@topce/pizx",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "zx fork with native Pi AI integration — shell scripting with AI agents, multi-agent orchestration, and 15+ agent pattern template tags (Ralph, Fleet, Subagent, Debate, Pipeline, Orchestrator, Critique, Thread, Memory, Broadcast, Adaptive, Graph, Nu, Chi, Tau)",
   "type": "module",
   "main": "./dist/index.js",
@@ -112,20 +112,20 @@
     "node": ">=22.19.0"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.80.2",
-    "@earendil-works/pi-coding-agent": "0.80.2",
+    "@earendil-works/pi-ai": "0.80.6",
+    "@earendil-works/pi-coding-agent": "0.80.6",
     "zx": "8.8.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.1",
+    "@biomejs/biome": "2.5.3",
     "@eslint/js": "^10.0.1",
-    "@types/node": "26.0.1",
+    "@types/node": "26.1.1",
     "@vitest/coverage-v8": "^4.1.9",
     "esbuild": "0.28.1",
-    "eslint": "^10.5.0",
+    "eslint": "^10.7.0",
     "globals": "^17.7.0",
     "typescript": "6.0.3",
-    "typescript-eslint": "^8.62.0",
-    "vitest": "4.1.9"
+    "typescript-eslint": "^8.63.0",
+    "vitest": "4.1.10"
   }
 }

@@ -2,6 +2,12 @@
 
 All notable changes to pizx are documented here.
 
+## [0.9.3] — 2026-07-11
+
+### Changed
+
+- **Dependency update** — `@earendil-works/pi-ai` and `@earendil-works/pi-coding-agent` bumped to v0.80.6, `@biomejs/biome` to v2.5.3, `@types/node` to v26.1.1, `eslint` to v10.7.0, `typescript-eslint` to v8.63.0, `vitest` to v4.1.10, `@vitest/coverage-v8` to v4.1.10.
+
 ## [0.9.2] — 2025-06-29
 
 ### Added
