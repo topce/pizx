@@ -2,6 +2,64 @@
 
 All notable changes to pizx are documented here.
 
+## [1.1.0] — 2026-08-29
+
+### Added
+
+- **α letter (any ACP agent)** — a new built-in letter (aliases `acp`,
+  `agent`) that drives any ACP v1 compatible coding agent through the
+  official `@agentclientprotocol/sdk`: `await α({ server: ['kiro-cli',
+  'acp'] })`…``. `server` is a required command array — no default, no pi
+  involvement; π/Π are untouched. Auto-approved tool permissions,
+  `.stream` support, and honest client-side file-system handlers
+  ([docs/acp.md](docs/acp.md)).
+- **ACP tracing** — `tool-call` trace events per agent tool-call progress
+  update, plus an `llm-call` event when the agent reports token usage, all
+  under the α span.
+- **CLI additions** — `--acp <prompt>` quick-ask with `--acp-server <line>`
+  (e.g. `pizx --acp --acp-server "kiro-cli acp" "fix the bugs"`).
+- **Offline mock ACP server** — `src/testing/acp-mock-server.mjs` fixtures
+  the agent side of the protocol so the client is tested without network or
+  real agent CLIs.
+
+## [1.0.0] — 2026-08-23
+
+### Breaking
+
+- **Cordis rewrite** — the core is rebuilt on `@cordisjs/core`: services
+  (`trace`, `cache`, `llm`, `letters`), plugin composition, and effect-based
+  cleanup replace the old module-global architecture.
+- **Patterns removed from core** — the 16 hardcoded pattern tags (Ρ Φ Σ Δ Λ Ψ
+  Ω Θ Μ Β Α Γ Ν Χ Τ + `goal`) are gone; letters are now user plugins
+  (see `examples/plugins/ralph.mjs`). Old code remains on the 0.9 branch.
+- **π/Π are letters** — same mechanism as user letters: schemastery-validated
+  options, span tracing, and a shared session pool for Π.
+- `configurePi`/`configureAgent`/`closeAgent` replaced by app-scoped config
+  (`createPizx({...})`, `app.dispose()`).
+
+### Added
+
+- **User-defined letters** — `ctx.letters.define()` + `pizx.config.mjs`
+  plugin composition; every letter gets option chaining, `.quiet`/`.cache`
+  variants, streaming, tracing, and caching for free
+  ([docs/extension.md](docs/extension.md)).
+- **Tracing & log export** — span-based run tracing with disjoint
+  input/output/cache token accounting, JSONL/JSON export, `--trace` summary,
+  `--export-log` (flushed even when the script crashes)
+  ([docs/trace.md](docs/trace.md)).
+- **Local result cache** — content-addressed cache for side-effect-free
+  letters (per call, app-wide, `--cache`), TTL + LRU eviction, `cache-hit`
+  trace events.
+- **CLI additions** — `--trace`, `--export-log [path]`, `--cache/--no-cache`,
+  `--config <file>`, `--letters`.
+- **Options validation** — schemastery schemas on π/Π and user letters with
+  boundary validation and type inference.
+
+### Fixed
+
+- **d.ts emission** — `tsconfig.build.json` now overrides `noEmit`, so type
+  declarations are actually published.
+
 ## [0.9.3] — 2026-07-11
 
 ### Changed
@@ -185,6 +243,14 @@ All notable changes to pizx are documented here.
 - `pizx/globals` module for script mode.
 - Build pipeline with esbuild + TypeScript declarations.
 
+[1.1.0]: https://github.com/topce/pizx/releases/tag/v1.1.0
+[1.0.0]: https://github.com/topce/pizx/releases/tag/v1.0.0
+[0.9.3]: https://github.com/topce/pizx/releases/tag/v0.9.3
+[0.9.2]: https://github.com/topce/pizx/releases/tag/v0.9.2
+[0.9.1]: https://github.com/topce/pizx/releases/tag/v0.9.1
+[0.9.0]: https://github.com/topce/pizx/releases/tag/v0.9.0
+[0.8.0]: https://github.com/topce/pizx/releases/tag/v0.8.0
+[0.7.0]: https://github.com/topce/pizx/releases/tag/v0.7.0
 [0.6.1]: https://github.com/topce/pizx/releases/tag/v0.6.1
 [0.6.0]: https://github.com/topce/pizx/releases/tag/v0.6.0
 [0.5.0]: https://github.com/topce/pizx/releases/tag/v0.5.0

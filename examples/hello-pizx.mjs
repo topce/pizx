@@ -20,7 +20,7 @@ console.log(`  $ whoami          → ${chalk.green(whoami)}`)
 console.log(`  $ uname -s        → ${chalk.green(platform)}`)
 
 // 2. π — pi-ai text generation (returns PiOutput with metadata)
-const slogan = await π({ model: MODEL, maxTokens: 512 })`
+const slogan = await π({ model: MODEL, maxTokens: 1024 })`
 write a one-line slogan for a CLI tool called "pizx"
 that combines shell scripting with AI.
 `

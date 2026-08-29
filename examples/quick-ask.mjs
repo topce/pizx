@@ -31,7 +31,7 @@ console.log(`   model: ${chalk.dim(answer.modelUsed)}  duration: ${chalk.dim(ans
 const strict = await π.quiet({ model: MODEL })`
 Respond with ONLY the number 42. No other text.
 `
-console.log(` Quiet mode: ${chalk.green(strict.trim())}`)
+console.log(` Quiet mode: ${chalk.green(strict.text.trim())}`)
 console.log(`   model: ${chalk.dim(strict.modelUsed)}`)
 
 console.log(chalk.dim('\n ✓ quick-ask complete\n'))

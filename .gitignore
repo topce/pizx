@@ -27,3 +27,7 @@ coverage/
 graphify-out/
 social-content
 skills-lock.json
+
+# pizx runtime data
+.pizx/
+.npm-cache

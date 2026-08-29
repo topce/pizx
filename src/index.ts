@@ -1,160 +1,105 @@
 /**
- * pizx — zx fork with native Pi AI integration
+ * pizx — a zx fork with native Pi AI integration, built on cordis.
+ *
+ *   #!/usr/bin/env pizx
+ *   const answer = await π`what is the capital of France?`
+ *   await Π`fix the TypeScript errors in src/`
+ *
+ * π (small pi) and Π (capital pi) are the built-in letters. Any plugin —
+ * yours included — can define more letters; they show up here and in
+ * pizx/globals automatically. Every invocation is traced; export the run
+ * with exportLog() / --export-log, and make repeated calls cheap with
+ * cache: true / --cache.
  *
  * @example
  * ```js
- * #!/usr/bin/env pizx
- * const branch = (await $`git branch --show-current`).stdout.trim()
- * const explanation = await π`explain this code in simple terms: ${code}`
- * await Π`fix the TypeScript errors in src/ and run tests`
+ * import { createPizx } from '@topce/pizx'
  *
- * // Agent patterns
- * await Ρ`iteratively improve the error handling`
- * await Φ`review all files in src/`
- * await Σ`analyze security across the codebase`
- * const debate = await Δ`what architecture should we use?`
- * const doc = await Λ`analyze → document → review`
- * const polished = await Ψ`write a README`
- * await Ω`build a complete auth system`
- *
- * // Communication patterns
- * await Θ`collaborate on the architecture`
- * await Μ`brainstorm features for the project`
- * await Β`gather expert feedback on the design`
- *
- * // Orchestration topologies
- * await Α`iterate on this algorithm until optimal`
- * await Γ`research → analyze → validate → document`
+ * const app = await createPizx({ cache: true })
+ * const answer = await app.π`what is 7! + 5?`
+ * console.log(answer.text, answer.fromCache)
+ * console.log(app.traceSummary())
+ * await app.dispose()
  * ```
- *
- * API:
- *   $   — shell commands (unchanged from zx)
- *   π   — pi-ai text generation (small pi)
- *   Π   — pi-coding-agent with tools (capital pi)
- *
- *   Ρ   — Ralph Loop (iterative improvement)
- *   Φ   — Fleet (parallel agents)
- *   Σ   — Subagents (hierarchical delegation)
- *   Δ   — Debate (multi-perspective convergence)
- *   Λ   — Pipeline (sequential chain)
- *   Ψ   — Critique (generate → critique → improve)
- *   Ω   — Orchestrator (plan → dispatch → synthesize)
- *
- *   Θ   — Thread (multi-agent conversation)
- *   Μ   — Memory (shared blackboard)
- *   Β   — Broadcast (one-to-many messaging)
- *
- *   Α   — Adaptive (self-adjusting orchestration)
- *   Γ   — Graph (DAG-based execution)
- *   goal — contract-first execution with separate verifier model
  */
 
 // ── Re-export all of zx ─────────────────────────────────────────────────────
 // All standard zx APIs pass through unchanged.
 export * from 'zx'
-
-// ── pizx additions ─────────────────────────────────────────────────────────
-
+// ── ACP client (α) ───────────────────────────────────────────────────────────
 export {
-  type AdaptiveOptions,
-  AdaptiveOutput,
-  AdaptiveStep,
-  // English word aliases
-  adaptive,
-  type BroadcastOptions,
-  BroadcastOutput,
-  BroadcastResponse,
-  broadcast,
-  type CallTrace,
-  type CritiqueOptions,
-  CritiqueOutput,
-  CritiqueRound,
-  createPatternTag,
-  critique,
-  type DebateOptions,
-  DebateOutput,
-  DebatePerspective,
-  debate,
-  FleetMemberOutput,
-  type FleetOptions,
-  FleetOutput,
-  fleet,
-  type GraphEdge,
-  type GraphNode,
-  GraphNodeResult,
-  type GraphOptions,
-  GraphOutput,
-  // English-named patterns (no Greek letter)
-  goal,
-  graph,
-  learn,
-  MemoryEntry,
-  type MemoryOptions,
-  MemoryOutput,
-  memory,
-  type OrchestratorOptions,
-  OrchestratorOutput,
-  OrchestratorWorkerResult,
-  orchestrator,
-  type PatternFn,
-  type PatternOptions,
-  PatternOutput,
-  PatternPromise,
-  type PhaseEntry,
-  type PipelineOptions,
-  PipelineOutput,
-  PipelineStageResult,
-  pipeline,
-  type QualityReviewResult,
-  type RalphIterationSummary,
-  type RalphOptions,
-  RalphOutput,
-  ralph,
-  type SubagentOptions,
-  SubagentOutput,
-  SubagentResult,
-  store,
-  subagent,
-  type TagOutput,
-  type TaskDescriptor,
-  ThreadMessage,
-  type ThreadOptions,
-  ThreadOutput,
-  team,
-  thread,
-  validateOptions,
-  type WorkerResult,
-  // Orchestration topologies
-  Α,
-  Β,
-  Γ,
-  Δ,
-  // Communication patterns
-  Θ,
-  Λ,
-  Μ,
-  // Agent patterns
-  Ρ,
-  Σ,
-  Φ,
-  Ψ,
-  Ω,
-  γ,
-} from './patterns/index.ts'
-
-import { π } from './pi.ts'
-
-export { configurePi, type PiFn, type PiOptions, PiOutput, type PiPromise } from './pi.ts'
+  type AcpRunOptions,
+  type AcpRunResult,
+  type AcpToolEvent,
+  type AcpUsage,
+  runAcpPrompt,
+  streamAcpPrompt,
+} from './core/acp-client.ts'
+// ── Core services ───────────────────────────────────────────────────────────
 export {
-  type AgentOptions,
-  AgentOutput,
-  AgentPromise,
-  closeAgent,
-  configureAgent,
+  Cache,
+  type CacheConfig,
+  type CacheKeyInput,
+  pickCacheRelevantOpts,
+} from './core/cache.ts'
+// ── Application ─────────────────────────────────────────────────────────────
+export { createPizx, type Pizx, type PizxConfig } from './core/context.ts'
+// ── Built-in letters (default app) ──────────────────────────────────────────
+export {
+  acp,
+  agent,
+  ai,
+  codingAgent,
+  configureDefaultApp,
+  disposeDefaultApp,
+  getDefaultApp,
+  Pi,
+  pi,
+  piAgent,
   Π,
-  Π as Pi,
-  /** Unambiguous alias for Π — the Pi coding agent with file tools. Prefer this over `Pi` to avoid case-sensitivity confusion with `pi` (text generation). */
-  Π as piAgent,
-} from './pi-agent.ts'
-export { loadSkillContent, loadSkillContents, SKILL_PATHS } from './skill-loader.ts'
-export { π, π as pi, π as ai }
+  α,
+  π,
+} from './core/default-app.ts'
+export { Letters, type RegisteredLetter } from './core/letters.ts'
+export {
+  type AskOptions,
+  type AskResult,
+  Llm,
+  type LlmConfig,
+  loadPiAuth,
+} from './core/llm.ts'
+
+// ── Letter authoring ────────────────────────────────────────────────────────
+export {
+  createLetterTag,
+  type LetterDefinition,
+  type LetterEnv,
+  type LetterFn,
+  LetterOutput,
+  LetterPromise,
+} from './core/tags.ts'
+export {
+  type AcpToolCallEvent,
+  type CacheEvent,
+  type LetterEndEvent,
+  type LetterStartEvent,
+  type LlmCallEvent,
+  type RunEndEvent,
+  type RunStartEvent,
+  type RunTotals,
+  Trace,
+  type TraceConfig,
+  type TraceErrorEvent,
+  type TraceEvent,
+  TraceSpan,
+} from './core/trace.ts'
+// ── Utilities ───────────────────────────────────────────────────────────────
+export {
+  build,
+  type ConfirmGate,
+  type ConfirmMode,
+  confirmPhase,
+  getErrorMessage,
+  resolveMode,
+  shouldGate,
+} from './core/utils.ts'

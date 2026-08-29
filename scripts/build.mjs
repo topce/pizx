@@ -1,5 +1,4 @@
 import * as esbuild from 'esbuild'
-import { readFileSync, watch } from 'node:fs'
 
 const isWatch = process.argv.includes('--watch')
 
@@ -13,10 +12,15 @@ const opts = {
   outdir: 'dist',
   external: [
     'zx',
+    '@agentclientprotocol/sdk',
     '@earendil-works/pi-ai',
     '@earendil-works/pi-coding-agent',
     '@earendil-works/pi-agent-core',
     '@earendil-works/pi-tui',
+    '@cordisjs/core',
+    'schemastery',
+    'cosmokit',
+    '@standard-schema/spec',
     // Node built-ins handled automatically by esbuild
   ],
   sourcemap: true,

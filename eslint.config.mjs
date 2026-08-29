@@ -12,6 +12,8 @@ export default tseslint.config(
       'scripts/**',
       '**/*.test.ts',
       '**/*.test.tsx',
+      // Plain-JS fixture executed as a child process by the test suite.
+      'src/testing/acp-mock-server.mjs',
     ],
   },
   js.configs.recommended,
