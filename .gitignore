@@ -31,3 +31,6 @@ skills-lock.json
 # pizx runtime data
 .pizx/
 .npm-cache
+
+# npm pack artifacts
+*.tgz
