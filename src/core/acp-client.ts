@@ -19,7 +19,7 @@
 
 import { type ChildProcess, spawn } from 'node:child_process'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
+import { dirname, isAbsolute, relative, resolve } from 'node:path'
 import { Readable, Writable } from 'node:stream'
 import type {
   ReadTextFileRequest,
@@ -30,6 +30,7 @@ import type {
 } from '@agentclientprotocol/sdk'
 import * as acp from '@agentclientprotocol/sdk'
 import { version as pizxVersion } from '../../package.json'
+import { isPizxError, PizxError } from './errors.ts'
 import { getErrorMessage } from './utils.ts'
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -104,11 +105,12 @@ async function wrapError(
 ): Promise<Error> {
   const message = err instanceof Error ? err.message : String(err)
 
-  if (message.startsWith(PREFIX)) return err as Error
+  if (isPizxError(err)) return err
 
   // A failed spawn surfaces as an ENOENT-style error event.
   if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') {
-    return new Error(
+    return new PizxError(
+      'ACP',
       `${PREFIX}: cannot start ACP server '${serverLabel(server)}': command not found — ` +
         'install the agent CLI or pass a working { server: [...] } command',
       { cause: err }
@@ -126,21 +128,24 @@ async function wrapError(
 
   const tail = stderrTail.trim()
   if (child.exitCode !== null && child.exitCode !== 0) {
-    return new Error(
+    return new PizxError(
+      'ACP',
       `${PREFIX}: ACP server '${serverLabel(server)}' exited with code ${child.exitCode}` +
         (tail ? `:\n${tail}` : ''),
       { cause: err }
     )
   }
   if (child.signalCode) {
-    return new Error(
+    return new PizxError(
+      'ACP',
       `${PREFIX}: ACP server '${serverLabel(server)}' was killed by signal ${child.signalCode}` +
         (tail ? `:\n${tail}` : ''),
       { cause: err }
     )
   }
   if (child.exitCode === 0) {
-    return new Error(
+    return new PizxError(
+      'ACP',
       `${PREFIX}: ACP server '${serverLabel(server)}' closed the connection unexpectedly ` +
         `(exit code 0) — the agent may be unauthenticated, misconfigured, or unsupported in this environment` +
         (tail ? `:\n${tail}` : ''),
@@ -149,12 +154,14 @@ async function wrapError(
   }
 
   if (/auth|authenticate/i.test(message)) {
-    return new Error(`${PREFIX}: the agent requires authentication, which is not supported yet`, {
-      cause: err,
-    })
+    return new PizxError(
+      'ACP',
+      `${PREFIX}: the agent requires authentication, which is not supported yet`,
+      { cause: err }
+    )
   }
 
-  return new Error(`${PREFIX}: ACP agent failed: ${message}`, { cause: err })
+  return new PizxError('ACP', `${PREFIX}: ACP agent failed: ${message}`, { cause: err })
 }
 
 function autoApprove(params: RequestPermissionRequest): acp.RequestPermissionResponse {
@@ -167,19 +174,43 @@ function autoApprove(params: RequestPermissionRequest): acp.RequestPermissionRes
   return { outcome: { outcome: 'selected', optionId: option.optionId } }
 }
 
-async function handleReadTextFile(params: ReadTextFileRequest): Promise<acp.ReadTextFileResponse> {
-  const content = await readFile(params.path, 'utf-8')
+/**
+ * Resolve an agent-requested path against the session `cwd` and require it to
+ * stay inside that directory. Agent input is untrusted, so this is the
+ * boundary check that keeps a configured ACP server from reading/writing
+ * arbitrary files as the invoking user.
+ */
+function resolveWithin(root: string, target: string): string {
+  const resolved = resolve(root, target)
+  const rel = relative(root, resolved)
+  if (rel === '..' || rel.startsWith('../') || isAbsolute(rel)) {
+    throw new PizxError(
+      'ACP',
+      `${PREFIX}: path '${target}' is outside the session working directory`
+    )
+  }
+  return resolved
+}
+
+async function handleReadTextFile(
+  params: ReadTextFileRequest,
+  cwd: string
+): Promise<acp.ReadTextFileResponse> {
+  const path = resolveWithin(cwd, params.path)
+  const content = await readFile(path, 'utf-8')
   const lines = content.split('\n')
-  const start = params.line ? params.line - 1 : 0
-  const end = params.limit ? start + params.limit : lines.length
+  const start = Math.max(0, (params.line ?? 1) - 1)
+  const end = params.limit && params.limit > 0 ? start + params.limit : lines.length
   return { content: lines.slice(start, end).join('\n') }
 }
 
 async function handleWriteTextFile(
-  params: WriteTextFileRequest
+  params: WriteTextFileRequest,
+  cwd: string
 ): Promise<acp.WriteTextFileResponse> {
-  await mkdir(dirname(params.path), { recursive: true })
-  await writeFile(params.path, params.content, 'utf-8')
+  const path = resolveWithin(cwd, params.path)
+  await mkdir(dirname(path), { recursive: true })
+  await writeFile(path, params.content, 'utf-8')
   return {}
 }
 
@@ -227,7 +258,8 @@ async function connectAndPrompt(opts: AcpRunOptions): Promise<AcpRunResult> {
     killTimer = setTimeout(() => {
       child.kill('SIGKILL')
       reject(
-        new Error(
+        new PizxError(
+          'ACP',
           `${PREFIX}: ACP server '${serverLabel(opts.server)}' timed out after ${opts.timeoutMs}ms`
         )
       )
@@ -246,8 +278,12 @@ async function connectAndPrompt(opts: AcpRunOptions): Promise<AcpRunResult> {
     return acp
       .client({ name: 'pizx' })
       .onRequest(acp.methods.client.session.requestPermission, ({ params }) => autoApprove(params))
-      .onRequest(acp.methods.client.fs.readTextFile, ({ params }) => handleReadTextFile(params))
-      .onRequest(acp.methods.client.fs.writeTextFile, ({ params }) => handleWriteTextFile(params))
+      .onRequest(acp.methods.client.fs.readTextFile, ({ params }) =>
+        handleReadTextFile(params, cwd)
+      )
+      .onRequest(acp.methods.client.fs.writeTextFile, ({ params }) =>
+        handleWriteTextFile(params, cwd)
+      )
       .connectWith(stream, async (ctx) => {
         await ctx.request(acp.methods.agent.initialize, {
           protocolVersion: acp.PROTOCOL_VERSION,
@@ -310,7 +346,8 @@ async function connectAndPrompt(opts: AcpRunOptions): Promise<AcpRunResult> {
 /** Run one prompt turn against an ACP server; returns the aggregated text. */
 export async function runAcpPrompt(opts: AcpRunOptions): Promise<AcpRunResult> {
   if (!opts.server || opts.server.length === 0) {
-    throw new Error(
+    throw new PizxError(
+      'VALIDATION',
       `${PREFIX}: no ACP server specified — pass { server: ['kiro-cli', 'acp'] } or any other ` +
         'ACP-compatible agent command'
     )
@@ -329,7 +366,8 @@ export async function runAcpPrompt(opts: AcpRunOptions): Promise<AcpRunResult> {
 /** Stream one prompt turn against an ACP server, yielding text chunks. */
 export async function* streamAcpPrompt(opts: AcpRunOptions): AsyncGenerator<string> {
   if (!opts.server || opts.server.length === 0) {
-    throw new Error(
+    throw new PizxError(
+      'VALIDATION',
       `${PREFIX}: no ACP server specified — pass { server: ['kiro-cli', 'acp'] } or any other ` +
         'ACP-compatible agent command'
     )

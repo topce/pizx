@@ -289,7 +289,13 @@ export interface LlmConfig {
   cache?: boolean
 }
 
-export interface AskOptions {
+/**
+ * Options shared by every LLM-call surface (`ask`, `stream`, and the π/Π/α
+ * letters). The π/Π schemastery schemas are the runtime source of truth for the
+ * letters; this is the TypeScript contract those surfaces share, so a new
+ * field added to one surface is kept in lock-step with the others.
+ */
+export interface LlmCallOptions {
   model?: string
   system?: string
   appendSystemPrompt?: string
@@ -299,6 +305,9 @@ export interface AskOptions {
   timeoutMs?: number
   maxRetries?: number
   apiKey?: string
+}
+
+export interface AskOptions extends LlmCallOptions {
   /** Record the call in the current trace span. Default true. */
   trace?: boolean
 }
@@ -498,7 +507,7 @@ export class Llm extends Service<LlmConfig> {
 
   // ── Coding agent (Π) ──────────────────────────────────────────────────────
 
-  /** Get (or reuse) a shared agent session keyed by model/tools/skills. */
+  /** Get (or reuse) a shared agent session keyed by every behavior-affecting option. */
   async agentSession(opts: {
     cwd?: string
     model?: string
@@ -508,7 +517,6 @@ export class Llm extends Service<LlmConfig> {
     system?: string
     appendSystemPrompt?: string
     skills?: string[]
-    maxTurns?: number
   }): Promise<{ session: AgentSession; modelId: string }> {
     const model = await this.pick(opts.model ?? this.config.model)
     if (!model) {
@@ -517,6 +525,7 @@ export class Llm extends Service<LlmConfig> {
     const key = JSON.stringify({
       model: model.id,
       cwd: opts.cwd ?? process.cwd(),
+      thinkingLevel: opts.thinkingLevel ?? this.config.thinkingLevel ?? 'medium',
       tools: [...(opts.tools ?? [])].sort(),
       excludeTools: [...(opts.excludeTools ?? [])].sort(),
       skills: [...(opts.skills ?? [])].sort(),

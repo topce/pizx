@@ -31,7 +31,7 @@ console.log(`    duration: ${chalk.dim(slogan.duration + 'ms')}`)
 console.log(`    chars: ${chalk.dim(slogan.length)}`)
 
 // 3. Π — pi coding agent with tools (returns AgentOutput)
-const agentResult = await Π({ model: MODEL, maxTurns: 5, quiet: true })`
+const agentResult = await Π({ model: MODEL, quiet: true })`
 List all .mjs files in the examples/ directory and tell me:
 - How many there are
 - Which one is the largest

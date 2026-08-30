@@ -3,6 +3,9 @@
  * network and no real agent CLI is required.
  */
 
+import { mkdtemp, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import type { AcpToolEvent, AcpUsage } from './acp-client.ts'
@@ -88,6 +91,37 @@ describe('runAcpPrompt', () => {
     await expect(
       runAcpPrompt({ server: mockServer(), prompt: 'hello', env: mockEnv('auth') })
     ).rejects.toThrow(/authentication, which is not supported yet/)
+  })
+})
+
+describe('ACP client file-system handlers (M2)', () => {
+  it('serves read requests for paths inside the session cwd', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'pizx-acp-fs-'))
+    await writeFile(join(dir, 'inside.txt'), 'secret-inside', 'utf-8')
+    const result = await runAcpPrompt({
+      server: mockServer(),
+      prompt: 'hello',
+      cwd: dir,
+      env: mockEnv('fs-inside'),
+    })
+    expect(result.text).toContain('secret-inside')
+  })
+
+  it('rejects read requests for paths outside the session cwd', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'pizx-acp-fs-'))
+    const outside = await mkdtemp(join(tmpdir(), 'pizx-acp-out-'))
+    const outsideFile = join(outside, 'secret.txt')
+    await writeFile(outsideFile, 'TOP-SECRET-OUTSIDE', 'utf-8')
+
+    const result = await runAcpPrompt({
+      server: mockServer(),
+      prompt: 'hello',
+      cwd: dir,
+      env: { ...mockEnv('fs-outside'), MOCK_ACP_OUTSIDE_PATH: outsideFile },
+    })
+
+    expect(result.text).toContain('ERR:')
+    expect(result.text).not.toContain('TOP-SECRET-OUTSIDE')
   })
 })
 

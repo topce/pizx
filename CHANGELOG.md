@@ -2,6 +2,63 @@
 
 All notable changes to pizx are documented here.
 
+## [1.2.0] — 2026-08-30
+
+API/interface hardening pass (see `docs/api-audit.md`).
+
+### Fixed
+
+- **Named-import options are no longer dropped (C1)** — `forwardTag` re-applies
+  chained options to the resolved target letter, so
+  `import { π } from '@topce/pizx'; π({ model: '…' })` now forwards `model` (and
+  `.stream` forwards base options too). Previously every option silently no-oped
+  for library consumers; CLI/globals mode was unaffected.
+- **Structured error contract (H1)** — introduced `PizxError` with a stable
+  machine-readable `code` (`VALIDATION | AUTH | AGENT | ACP | CANCELLED |
+  INTERNAL`) and `isPizxError`. π/Π/α and the ACP client now throw `PizxError`
+  and re-wrap only foreign errors via `instanceof`, instead of matching message
+  prefixes. The dead `wrapLetterError` helper was removed.
+- **Session-pool key (H3)** — the Π session key now includes `thinkingLevel`, so
+  a second call with a different thinking level no longer silently reuses the
+  wrong session.
+- **Confirm gate validated at the boundary (M1)** — `confirm` is now a strict
+  schema (`confirmGateSchema`) that rejects `{ hitl: false }`, extra keys, and
+  garbage; `resolveMode` now tests key truthiness (`{ hitl: false }` → `auto`).
+- **ACP file-system sandboxing (M2)** — agent-requested `fs/read_text_file` /
+  `fs/write_text_file` paths are constrained to the session `cwd`, and
+  `line`/`limit` are clamped.
+- **Config, trace, and skill-loader fixes (L2, L7, L8)** — `app.config` now
+  matches the normalized `ctx.config`; trace `exportLog` caches invalidate when
+  new events are recorded; `loadSkillContent` warns on unreadable (non-ENOENT)
+  skills as its docs promised.
+
+### Added
+
+- Exported `PizxError`, `isPizxError`, `PizxErrorCode`, `LlmCallOptions`,
+  `confirmGateSchema`, and the `PiOpts` / `AgentOpts` / `AlphaOpts` option types.
+- `Pizx.letter()` / `Pizx.define()` are generic, and `app.π` / `app.Π` /
+  `app.α` are typed with their option schemas (L3).
+- Restored the 0.4.0 public API accidentally dropped in 1.0: `loadSkillContent`,
+  `loadSkillContents`, `SKILL_PATHS`, and `resolveConfigValue` (M3).
+- The π/Π/α alias list is now re-exported from one source; `pizx/globals` also
+  re-exports `configureDefaultApp` / `disposeDefaultApp` (L5).
+
+### Changed
+
+- `LetterOutput.modelId` is the canonical model field; `modelUsed` remains as a
+  deprecated alias. `LetterOutput.isFromCache` is canonical; `fromCache` remains
+  as a deprecated alias. `trace` / `turnCount` are now read-only accessors (L1,
+  M4, L4).
+- `LetterDefinition.cacheable` (default `true`) is the canonical flag;
+  `cache: false` remains as a deprecated alias (L6).
+
+### Removed
+
+- **`maxTurns` (H2)** — the Π option was documented but had no effect (the
+  pi-coding-agent SDK exposes no turn cap). It was removed from the Π schema and
+  the session pool, and no longer appears in `docs/capital-pi.md` or the
+  examples.
+
 ## [1.1.0] — 2026-08-29
 
 ### Added
@@ -243,6 +300,7 @@ All notable changes to pizx are documented here.
 - `pizx/globals` module for script mode.
 - Build pipeline with esbuild + TypeScript declarations.
 
+[1.2.0]: https://github.com/topce/pizx/releases/tag/v1.2.0
 [1.1.0]: https://github.com/topce/pizx/releases/tag/v1.1.0
 [1.0.0]: https://github.com/topce/pizx/releases/tag/v1.0.0
 [0.9.3]: https://github.com/topce/pizx/releases/tag/v0.9.3

@@ -71,9 +71,10 @@ await Π({ tools: ['read', 'bash', 'edit'] })`refactor the auth module`
 await α({ server: ['kiro-cli', 'acp'] })`fix the TypeScript errors in src/`
 ```
 
-All three return a `LetterOutput`: `text`, `modelUsed`, `fromCache`, timing,
-and token/cost getters — plus `output.trace` with the LLM calls of that
-invocation. Full option tables: [π](docs/pi.md), [Π](docs/capital-pi.md),
+All three return a `LetterOutput`: `text`, `modelId` (alias `modelUsed`),
+`isFromCache` (alias `fromCache`), timing, and token/cost getters — plus
+`output.trace` with the LLM calls of that invocation. Full option tables:
+[π](docs/pi.md), [Π](docs/capital-pi.md),
 [α](docs/acp.md). α is independent of pi entirely: install the agent CLI you
 want (e.g. [Kiro](https://kiro.dev/docs/cli/acp/)) and pass its command.
 

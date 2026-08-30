@@ -60,8 +60,9 @@ script with `α({ server: [...] })` instead.)
 ## Result — `LetterOutput`
 
 Same contract as π/Π: `text`, `startTime`/`endTime`/`duration`, plus
-`turnCount` = number of distinct tool calls the agent reported. `modelUsed` is
-the server label, prefixed for trace attribution: `acp:<server command line>`.
+`turnCount` = number of distinct tool calls the agent reported. `modelId`
+(alias `modelUsed`) is the server label, prefixed for trace attribution:
+`acp:<server command line>`.
 Token getters (`inputTokens`, `outputTokens`, …) are populated **only when
 the agent reports usage** in its prompt response (an experimental ACP field);
 otherwise they are `0`.
@@ -71,8 +72,9 @@ otherwise they are `0`.
 Tool permissions are **auto-approved**: α picks the agent's `allow_always`
 option when offered, else `allow_once`, else cancels the request. File-system
 operations the agent delegates to the client (`fs/read_text_file`,
-`fs/write_text_file`) are served honestly from the local filesystem. The
-send-time `confirm` gate (above) is the safety net for scripting.
+`fs/write_text_file`) are served from the local filesystem but are **sandboxed
+to the session `cwd`** — paths outside it are rejected. The send-time `confirm`
+gate (above) is the additional safety net for scripting.
 
 ## Tracing
 

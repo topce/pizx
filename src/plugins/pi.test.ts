@@ -40,7 +40,8 @@ describe('π letter plugin', () => {
 
     const out = await π`hello`
     expect(out.text).toBe('hello from fake')
-    expect(out.modelUsed).toBe(FAKE_MODEL.id)
+    expect(out.modelId).toBe(FAKE_MODEL.id)
+    expect(out.modelUsed).toBe(FAKE_MODEL.id) // deprecated alias
     expect(out.trace).toHaveLength(0) // usage recording lives in the real Llm service
     expect(write).toHaveBeenCalled()
     expect(out.duration).toBeGreaterThanOrEqual(0)
@@ -66,6 +67,15 @@ describe('π letter plugin', () => {
     await bootPi()
     const π = mustLetter('π')
     expect(() => π({ maxTokens: -5 })`q`).toThrow(/maxTokens/)
+  })
+
+  it('validates the confirm gate at the boundary (M1)', async () => {
+    await bootPi()
+    const π = mustLetter('π')
+    expect(() => π({ confirm: { hitl: false } })`q`).toThrow(/confirm/)
+    // The auto gate never prompts, so this runs the letter end-to-end.
+    const out = await π({ confirm: { auto: true } })`q`
+    expect(out.text).toBe('hello from fake')
   })
 
   it('streams via π.stream', async () => {

@@ -22,6 +22,7 @@ import process from 'node:process'
 import url, { fileURLToPath } from 'node:url'
 import { chalk, VERSION as zxVersion } from 'zx'
 import { createPizx, type Pizx } from './core/context.ts'
+import { isPizxError } from './core/errors.ts'
 import { getErrorMessage } from './core/utils.ts'
 
 const require = createRequire(import.meta.url)
@@ -206,6 +207,13 @@ function injectGlobals(app: Pizx): void {
   }
 }
 
+/** Render an error for the CLI: pizx errors print as-is, foreign errors get the `pizx:` prefix. */
+function displayMessage(err: unknown): string {
+  const message = getErrorMessage(err)
+  if (isPizxError(err) || message.startsWith('pizx:')) return message
+  return `pizx: ${message}`
+}
+
 // ── Print mode ──────────────────────────────────────────────────────────────
 
 async function runPrintMode(flags: Flags, args: string[]): Promise<void> {
@@ -279,7 +287,7 @@ async function runScriptMode(flags: Flags, scriptPath: string): Promise<void> {
   } catch (err) {
     const message = getErrorMessage(err)
     app.ctx.trace.record({ kind: 'error', message: `script failed: ${message}` })
-    console.error(message.startsWith('pizx:') ? message : `pizx: ${message}`)
+    console.error(displayMessage(err))
     await finishRun(app, flags)
     process.exit(1)
   }
@@ -373,8 +381,7 @@ const invokedAsMain = (() => {
 
 if (invokedAsMain) {
   main().catch((err) => {
-    const message = getErrorMessage(err)
-    console.error(message.startsWith('pizx:') ? message : `pizx: ${message}`)
+    console.error(displayMessage(err))
     process.exit(1)
   })
 }

@@ -17,7 +17,7 @@
  *
  * const app = await createPizx({ cache: true })
  * const answer = await app.π`what is 7! + 5?`
- * console.log(answer.text, answer.fromCache)
+ * console.log(answer.text, answer.isFromCache)
  * console.log(app.traceSummary())
  * await app.dispose()
  * ```
@@ -45,30 +45,23 @@ export {
 // ── Application ─────────────────────────────────────────────────────────────
 export { createPizx, type Pizx, type PizxConfig } from './core/context.ts'
 // ── Built-in letters (default app) ──────────────────────────────────────────
-export {
-  acp,
-  agent,
-  ai,
-  codingAgent,
-  configureDefaultApp,
-  disposeDefaultApp,
-  getDefaultApp,
-  Pi,
-  pi,
-  piAgent,
-  Π,
-  α,
-  π,
-} from './core/default-app.ts'
+// The π/Π/α names and their English aliases live in one place (default-app.ts)
+// and are re-exported wholesale from both entry points.
+export * from './core/default-app.ts'
+// ── Structured errors ────────────────────────────────────────────────────────
+export { isPizxError, PizxError, type PizxErrorCode } from './core/errors.ts'
 export { Letters, type RegisteredLetter } from './core/letters.ts'
 export {
   type AskOptions,
   type AskResult,
   Llm,
+  type LlmCallOptions,
   type LlmConfig,
   loadPiAuth,
+  resolveConfigValue,
 } from './core/llm.ts'
-
+// ── Skill loading ────────────────────────────────────────────────────────────
+export { loadSkillContent, loadSkillContents, SKILL_PATHS } from './core/skill-loader.ts'
 // ── Letter authoring ────────────────────────────────────────────────────────
 export {
   createLetterTag,
@@ -98,6 +91,7 @@ export {
   build,
   type ConfirmGate,
   type ConfirmMode,
+  confirmGateSchema,
   confirmPhase,
   getErrorMessage,
   resolveMode,

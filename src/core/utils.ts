@@ -4,6 +4,7 @@
 
 import { createHash, randomBytes } from 'node:crypto'
 import { createInterface } from 'node:readline'
+import Schema from 'schemastery'
 
 /** Extract a string message from any error-like value. */
 export function getErrorMessage(err: unknown): string {
@@ -40,12 +41,35 @@ export type ConfirmGate =
 
 export type ConfirmMode = 'auto' | 'semi' | 'hitl'
 
+/**
+ * Boundary schema for the `confirm` option (π/Π/α).
+ *
+ * Accepts a boolean or an object with **exactly one** of `hitl`/`semi`/`auto`
+ * set to `true`. Schemastery object schemas are loose (they accept extra keys),
+ * so a plain union would let `{ hitl: false }` through; the transform enforces
+ * the one-key-true contract explicitly.
+ */
+export const confirmGateSchema = Schema.transform(Schema.any(), (value: unknown) => {
+  if (typeof value === 'boolean') return value
+  if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+    const gate = value as Record<string, unknown>
+    const trueKeys = (['hitl', 'semi', 'auto'] as const).filter((k) => gate[k] === true)
+    const extraKeys = Object.keys(gate).filter((k) => k !== 'hitl' && k !== 'semi' && k !== 'auto')
+    if (trueKeys.length === 1 && extraKeys.length === 0) {
+      return { [trueKeys[0]]: true } as ConfirmGate
+    }
+  }
+  throw new Error(
+    'confirm must be a boolean or exactly one of { hitl: true }, { semi: true }, { auto: true }'
+  )
+})
+
 /** Resolve the confirm union to a simple mode string. `true` maps to 'semi'. */
 export function resolveMode(confirm: boolean | ConfirmGate | undefined): ConfirmMode {
   if (confirm === undefined || confirm === false) return 'auto'
   if (confirm === true) return 'semi'
-  if ('hitl' in confirm) return 'hitl'
-  if ('semi' in confirm) return 'semi'
+  if ('hitl' in confirm && confirm.hitl === true) return 'hitl'
+  if ('semi' in confirm && confirm.semi === true) return 'semi'
   return 'auto'
 }
 

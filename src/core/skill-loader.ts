@@ -13,6 +13,7 @@
 import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { getErrorMessage } from './utils.ts'
 
 /** Search paths for skills, matching skill.sh order. */
 export const SKILL_PATHS: string[] = [
@@ -40,8 +41,14 @@ export async function loadSkillContent(name: string): Promise<string | undefined
     const candidate = join(base, name, 'SKILL.md')
     try {
       return await readFile(candidate, 'utf-8')
-    } catch {
-      // ENOENT → try next path. EACCES / other → warn, then try next.
+    } catch (err) {
+      // ENOENT → not found, try the next path. Anything else (EACCES, EISDIR,
+      // …) means the file exists but is unreadable — surface that as documented.
+      if ((err as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+        console.warn(
+          `pizx: skill '${name}' found but unreadable (${candidate}): ${getErrorMessage(err)}`
+        )
+      }
     }
   }
   return undefined

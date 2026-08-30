@@ -16,7 +16,7 @@ console.log(chalk.bold(`\n Π — pi-coding-agent with tools (${MODEL})\n`))
 
 // ── Simple agent prompt ─────────────────────────────────────────────────────
 // Π gets read/bash/edit/write tools automatically.
-const agentResult = await Π({ model: MODEL, maxTurns: 8, quiet: true })`
+const agentResult = await Π({ model: MODEL, quiet: true })`
 List files in the current directory group by type:
 - .mjs files (scripts)
 - .ts files (source)

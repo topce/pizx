@@ -24,6 +24,7 @@ const respondError = (id, code, message) => send({ jsonrpc: '2.0', id, error: { 
 let sessionId = 'mock-session-1'
 let promptId = null
 let pendingPermissionId = null
+let pendingFsId = null
 
 function finishTurn(extraChunk) {
   send({
@@ -133,7 +134,56 @@ rl.on('line', (line) => {
       })
       return
     }
+    if (mode === 'fs-inside' || mode === 'fs-outside') {
+      pendingFsId = 7001
+      send({
+        jsonrpc: '2.0',
+        id: pendingFsId,
+        method: 'fs/read_text_file',
+        params: {
+          sessionId,
+          path:
+            mode === 'fs-outside'
+              ? (process.env.MOCK_ACP_OUTSIDE_PATH ?? '/etc/hostname')
+              : 'inside.txt',
+        },
+      })
+      return
+    }
     finishTurn()
+    return
+  }
+
+  // A response to our own outbound fs/read_text_file request.
+  if (pendingFsId !== null && msg.id === pendingFsId) {
+    pendingFsId = null
+    if (msg.error) {
+      send({
+        jsonrpc: '2.0',
+        method: 'session/update',
+        params: {
+          sessionId,
+          update: {
+            sessionUpdate: 'agent_message_chunk',
+            content: { type: 'text', text: `ERR:${msg.error.message}` },
+          },
+        },
+      })
+      respond(promptId, { stopReason: 'end_turn' })
+    } else {
+      send({
+        jsonrpc: '2.0',
+        method: 'session/update',
+        params: {
+          sessionId,
+          update: {
+            sessionUpdate: 'agent_message_chunk',
+            content: { type: 'text', text: `OK:${JSON.stringify(msg.result)}` },
+          },
+        },
+      })
+      respond(promptId, { stopReason: 'end_turn' })
+    }
     return
   }
 

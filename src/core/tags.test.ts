@@ -5,7 +5,7 @@ import { Context } from '@cordisjs/core'
 import Schema from 'schemastery'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { FAKE_MODEL, mountTestCore } from '../testing/helpers.ts'
-import { type LetterFn, LetterOutput } from './tags.ts'
+import { forwardTag, type LetterFn, LetterOutput } from './tags.ts'
 
 let ctx: Context
 let cacheDir: string
@@ -55,7 +55,10 @@ describe('letter tags (createLetterTag runner)', () => {
     const out = await η`hello`
     expect(out).toBeInstanceOf(LetterOutput)
     expect(out.text).toBe('hello')
-    expect(out.modelUsed).toBeUndefined()
+    expect(out.modelId).toBeUndefined()
+    expect(out.modelUsed).toBeUndefined() // deprecated alias
+    expect(out.isFromCache).toBe(false)
+    expect(out.fromCache).toBe(false) // deprecated alias
     expect(`${out}`).toBe('hello')
     expect(out.valueOf()).toBe('hello')
     expect(out.trace).toHaveLength(1)
@@ -210,5 +213,47 @@ describe('letter tags (createLetterTag runner)', () => {
     const η = defineEcho()
     const out = await η`sum of ${1} and ${2}`
     expect(out.text).toBe('sum of 1 and 2')
+  })
+})
+
+describe('forwardTag (named-import forwarding)', () => {
+  it('re-applies chained options to the resolved target (C1)', async () => {
+    mountTestCore(ctx)
+    await ctx.start()
+    let received: { suffix?: string } | undefined
+    ctx.letters.define('λ', {
+      options: Schema.object({ suffix: Schema.string() }),
+      run: (_prompt, opts: { suffix?: string }) => {
+        received = opts
+        return `λ:${opts.suffix ?? ''}`
+      },
+    })
+    const λ = mustLetter('λ')
+    const fwd = forwardTag('λ', async (n) => (n === 'λ' ? λ : undefined), { suffix: '!' })
+
+    const out = await fwd`hey`
+    expect(out.text).toBe('λ:!')
+    expect(received).toEqual({ suffix: '!' })
+  })
+
+  it('re-applies base options to the forwarded .stream (C1)', async () => {
+    mountTestCore(ctx)
+    await ctx.start()
+    let received: { suffix?: string } | undefined
+    ctx.letters.define('μ', {
+      options: Schema.object({ suffix: Schema.string() }),
+      run: (_prompt, opts: { suffix?: string }) => `μ:${opts.suffix ?? ''}`,
+      stream: async function* (prompt: string, opts: { suffix?: string }) {
+        received = opts
+        yield `${prompt}${opts.suffix ?? ''}`
+      },
+    })
+    const μ = mustLetter('μ')
+    const fwd = forwardTag('μ', async (n) => (n === 'μ' ? μ : undefined), { suffix: '?' })
+
+    const chunks: string[] = []
+    for await (const chunk of fwd.stream`x`) chunks.push(chunk)
+    expect(chunks).toEqual(['x?'])
+    expect(received).toEqual({ suffix: '?' })
   })
 })

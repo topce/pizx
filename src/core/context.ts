@@ -8,10 +8,10 @@
 
 import { pathToFileURL } from 'node:url'
 import { Context, type Plugin } from '@cordisjs/core'
-import { acpPlugin } from '../plugins/acp.ts'
+import { type AlphaOpts, acpPlugin } from '../plugins/acp.ts'
 import { corePlugin } from '../plugins/core.ts'
-import { piPlugin } from '../plugins/pi.ts'
-import { piAgentPlugin } from '../plugins/pi-agent.ts'
+import { type PiOpts, piPlugin } from '../plugins/pi.ts'
+import { type AgentOpts, piAgentPlugin } from '../plugins/pi-agent.ts'
 import type { CacheConfig } from './cache.ts'
 import type { LlmConfig } from './llm.ts'
 import type { LetterDefinition, LetterFn } from './tags.ts'
@@ -41,15 +41,20 @@ export interface Pizx {
   /** Boot configuration. */
   config: PizxConfig
   /** The π letter (text generation) — also available as ctx.letters.get('π'). */
-  π: LetterFn
+  π: LetterFn<PiOpts>
   /** The Π letter (coding agent) — also available as ctx.letters.get('Π'). */
-  Π: LetterFn
+  Π: LetterFn<AgentOpts>
   /** The α letter (any ACP agent) — also available as ctx.letters.get('α'). */
-  α: LetterFn
+  α: LetterFn<AlphaOpts>
   /** Look up any registered letter (user-defined ones included). */
-  letter(name: string): LetterFn | undefined
+  letter<T extends Record<string, unknown> = Record<string, unknown>>(
+    name: string
+  ): LetterFn<T> | undefined
   /** Imperatively register a new letter. Prefer a plugin for reusable letters. */
-  define(name: string, def: LetterDefinition): LetterFn
+  define<T extends Record<string, unknown> = Record<string, unknown>>(
+    name: string,
+    def: LetterDefinition<T>
+  ): LetterFn<T>
   /** Export the run trace as JSONL (default) or JSON. */
   exportLog(format?: 'jsonl' | 'json'): string
   /** Human-readable trace summary. */
@@ -73,7 +78,8 @@ export interface Pizx {
  */
 export async function createPizx(config: PizxConfig = {}): Promise<Pizx> {
   const ctx = new Context()
-  ctx.config = { cache: false, ...config }
+  const normalized: PizxConfig = { cache: false, ...config }
+  ctx.config = normalized
 
   ctx.plugin(corePlugin, {
     trace: config.traceConfig,
@@ -100,7 +106,7 @@ export async function createPizx(config: PizxConfig = {}): Promise<Pizx> {
 
   const app: Pizx = {
     ctx,
-    config,
+    config: normalized,
     π,
     Π,
     α,

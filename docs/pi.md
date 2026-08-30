@@ -42,10 +42,11 @@ cached.fromCache // true on the second identical call
 
 ## Result — `LetterOutput`
 
-`text`, `modelUsed`, `fromCache`, `startTime`/`endTime`/`duration`, and
-token/cost getters (`inputTokens`, `outputTokens`, `cacheReadTokens`,
-`cacheWriteTokens`, `totalTokens`, `totalCost`) summed from the invocation's
-trace. Coerces to its text (`toString`, `valueOf`, template literals).
+`text`, `modelId` (alias `modelUsed`), `isFromCache` (alias `fromCache`),
+`startTime`/`endTime`/`duration`, and token/cost getters (`inputTokens`,
+`outputTokens`, `cacheReadTokens`, `cacheWriteTokens`, `totalTokens`,
+`totalCost`) summed from the invocation's trace. Coerces to its text
+(`toString`, `valueOf`, template literals).
 
 ## How it works
 

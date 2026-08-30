@@ -17,9 +17,10 @@ import type { Plugin } from '@cordisjs/core'
 import Schema from 'schemastery'
 import type { AcpToolEvent, AcpUsage } from '../core/acp-client.ts'
 import { runAcpPrompt, streamAcpPrompt } from '../core/acp-client.ts'
+import { isPizxError, PizxError } from '../core/errors.ts'
 import type { LetterEnv } from '../core/tags.ts'
 import { LetterOutput } from '../core/tags.ts'
-import { confirmPhase, getErrorMessage } from '../core/utils.ts'
+import { confirmGateSchema, confirmPhase, getErrorMessage } from '../core/utils.ts'
 
 const PREFIX = 'pizx/α'
 
@@ -31,16 +32,20 @@ const options = Schema.object({
   env: Schema.dict(Schema.string()).description('Extra environment variables for the server'),
   quiet: Schema.boolean().default(false).description('Suppress streaming output'),
   timeoutMs: Schema.natural().description('Kill the server after this many ms'),
-  confirm: Schema.any().description('Confirmation gate: true | { semi } | { hitl } | { auto }'),
+  confirm: confirmGateSchema.description(
+    'Confirmation gate: true | { semi } | { hitl } | { auto }'
+  ),
 })
 
-type AlphaOpts = ReturnType<typeof options>
+export type AlphaOpts = ReturnType<typeof options>
 
 function requireServer(opts: AlphaOpts): string[] {
   if (!opts.server || opts.server.length === 0) {
-    throw new Error(
+    throw new PizxError(
+      'VALIDATION',
       `${PREFIX}: no ACP server specified — pass { server: ['kiro-cli', 'acp'] } or any other ` +
-        'ACP-compatible agent command'
+        'ACP-compatible agent command',
+      { letter: 'α' }
     )
   }
   return opts.server
@@ -83,7 +88,9 @@ async function run(prompt: string, opts: AlphaOpts, env: LetterEnv): Promise<Let
       opts
     ))
   ) {
-    throw new Error(`${PREFIX}: Execution cancelled by user at phase 'send'`)
+    throw new PizxError('CANCELLED', `${PREFIX}: Execution cancelled by user at phase 'send'`, {
+      letter: 'α',
+    })
   }
 
   if (!opts.quiet) {
@@ -121,12 +128,14 @@ async function run(prompt: string, opts: AlphaOpts, env: LetterEnv): Promise<Let
       if (result.text.trim()) process.stdout.write('\n')
     }
     const output = new LetterOutput(text, `acp:${label}`, false, t0, t1)
-    output.turnCount = result.toolCallCount
+    output._setTurnCount(result.toolCallCount)
     return output
   } catch (err) {
-    const message = getErrorMessage(err)
-    if (message.startsWith(PREFIX)) throw err
-    throw new Error(`${PREFIX}: agent failed: ${message}`, { cause: err })
+    if (isPizxError(err)) throw err
+    throw new PizxError('ACP', `${PREFIX}: agent failed: ${getErrorMessage(err)}`, {
+      letter: 'α',
+      cause: err,
+    })
   }
 }
 

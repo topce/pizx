@@ -201,4 +201,15 @@ describe('Trace service', () => {
     }) as LlmCallEvent
     expect(span.llmCalls).toEqual([event])
   })
+
+  it('re-exports fresh JSONL after new events are recorded (L7)', async () => {
+    const trace = await startTrace()
+    const first = trace.exportLog('jsonl')
+    expect(first).not.toContain('"letter":"after"')
+
+    trace.span('after', 'q').end('ok', 'ans')
+    const second = trace.exportLog('jsonl')
+    expect(second).not.toBe(first)
+    expect(second).toContain('"letter":"after"')
+  })
 })

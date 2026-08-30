@@ -66,5 +66,5 @@ export function apply(ctx) {
   `--cache` / `PIZX_CACHE=1`) get a content-addressed key
   (`sha256(letter | model | system | prompt | cache-relevant opts)`); hits
   skip the LLM entirely and are recorded as `cache-hit` with
-  `output.fromCache === true`. Entries live in `.pizx/cache` (24h TTL, LRU
+  `output.isFromCache === true`. Entries live in `.pizx/cache` (24h TTL, LRU
   eviction). Side-effect letters (`cache: false`, like Π) are never cached.

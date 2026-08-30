@@ -14,9 +14,10 @@
 import type { Plugin } from '@cordisjs/core'
 import type { ThinkingLevel, Usage } from '@earendil-works/pi-ai'
 import Schema from 'schemastery'
+import { isPizxError, PizxError } from '../core/errors.ts'
 import type { LetterEnv } from '../core/tags.ts'
 import { LetterOutput } from '../core/tags.ts'
-import { confirmPhase, getErrorMessage } from '../core/utils.ts'
+import { confirmGateSchema, confirmPhase, getErrorMessage } from '../core/utils.ts'
 
 const options = Schema.object({
   cwd: Schema.string().description('Working directory for the agent'),
@@ -33,7 +34,6 @@ const options = Schema.object({
     'Token budgets per thinking level (token-based providers only)'
   ),
   quiet: Schema.boolean().default(false).description('Suppress status output'),
-  maxTurns: Schema.natural().default(10).description('Maximum agent turns'),
   tools: Schema.array(Schema.string()).description('Tools to enable (default: all)'),
   excludeTools: Schema.array(Schema.string()).description('Tools to disable'),
   system: Schema.string().description('Custom system prompt (replaces Pi default)'),
@@ -42,10 +42,12 @@ const options = Schema.object({
   timeoutMs: Schema.natural().description('Timeout in ms for each LLM call'),
   maxRetries: Schema.natural().description('Max retries for transient failures'),
   apiKey: Schema.string().description('API key overriding environment lookup'),
-  confirm: Schema.any().description('Confirmation gate: true | { semi } | { hitl } | { auto }'),
+  confirm: confirmGateSchema.description(
+    'Confirmation gate: true | { semi } | { hitl } | { auto }'
+  ),
 })
 
-type AgentOpts = ReturnType<typeof options>
+export type AgentOpts = ReturnType<typeof options>
 
 interface AgentMessage {
   role: string
@@ -92,7 +94,9 @@ async function run(prompt: string, opts: AgentOpts, env: LetterEnv): Promise<Let
       opts
     ))
   ) {
-    throw new Error("pizx/Π: Execution cancelled by user at phase 'send'")
+    throw new PizxError('CANCELLED', "pizx/Π: Execution cancelled by user at phase 'send'", {
+      letter: 'Π',
+    })
   }
 
   if (!opts.quiet) {
@@ -110,7 +114,6 @@ async function run(prompt: string, opts: AgentOpts, env: LetterEnv): Promise<Let
       system: opts.system,
       appendSystemPrompt: opts.appendSystemPrompt,
       skills: opts.skills,
-      maxTurns: opts.maxTurns,
     })
 
     await session.sendUserMessage(prompt)
@@ -133,12 +136,14 @@ async function run(prompt: string, opts: AgentOpts, env: LetterEnv): Promise<Let
       process.stderr.write(`  Π: done (${turnCount} assistant turn(s))\n`)
     }
     const output = new LetterOutput(text || '(no assistant response)', modelId, false, t0, t1)
-    output.turnCount = turnCount
+    output._setTurnCount(turnCount)
     return output
   } catch (err) {
-    const message = getErrorMessage(err)
-    if (message.startsWith('pizx/Π')) throw err
-    throw new Error(`pizx/Π: agent failed: ${message}`, { cause: err })
+    if (isPizxError(err)) throw err
+    throw new PizxError('AGENT', `pizx/Π: agent failed: ${getErrorMessage(err)}`, {
+      letter: 'Π',
+      cause: err,
+    })
   }
 }
 

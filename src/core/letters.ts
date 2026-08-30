@@ -8,7 +8,6 @@
 
 import { type Context, type Plugin, Service } from '@cordisjs/core'
 import { createLetterTag, type LetterDefinition, type LetterFn } from './tags.ts'
-import { getErrorMessage } from './utils.ts'
 
 export type { LetterDefinition, LetterEnv, LetterFn, LetterOutput, LetterPromise } from './tags.ts'
 
@@ -62,7 +61,7 @@ export class Letters extends Service {
       name,
       aliases: [...(def.aliases ?? [])],
       description: def.description ?? '',
-      cacheable: def.cache !== false,
+      cacheable: def.cacheable ?? def.cache !== false,
       fn: undefined as unknown as LetterFn,
       owner: ownerName,
     }
@@ -110,10 +109,4 @@ export class Letters extends Service {
       )
     }
   }
-}
-
-/** Human-readable error when a letter throws at the boundary. */
-export function wrapLetterError(name: string, err: unknown): Error {
-  const message = getErrorMessage(err)
-  return new Error(`pizx/${name}: ${message}`, { cause: err })
 }

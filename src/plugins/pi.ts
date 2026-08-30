@@ -11,9 +11,10 @@
 import type { Plugin } from '@cordisjs/core'
 import type { Context as PiContext, ThinkingLevel } from '@earendil-works/pi-ai'
 import Schema from 'schemastery'
+import { isPizxError, PizxError } from '../core/errors.ts'
 import type { LetterEnv } from '../core/tags.ts'
 import { LetterOutput } from '../core/tags.ts'
-import { confirmPhase } from '../core/utils.ts'
+import { confirmGateSchema, confirmPhase, getErrorMessage } from '../core/utils.ts'
 
 const options = Schema.object({
   model: Schema.string().description('Model id, e.g. anthropic/claude-sonnet-4-5'),
@@ -31,10 +32,12 @@ const options = Schema.object({
   maxRetries: Schema.natural().description('Max retries for transient failures'),
   apiKey: Schema.string().description('API key overriding environment lookup'),
   cache: Schema.boolean().description('Cache this call (also enabled app-wide)'),
-  confirm: Schema.any().description('Confirmation gate: true | { semi } | { hitl } | { auto }'),
+  confirm: confirmGateSchema.description(
+    'Confirmation gate: true | { semi } | { hitl } | { auto }'
+  ),
 })
 
-type PiOpts = ReturnType<typeof options>
+export type PiOpts = ReturnType<typeof options>
 
 function makeContext(prompt: string, opts: PiOpts): PiContext {
   const systemParts: string[] = []
@@ -47,7 +50,9 @@ function makeContext(prompt: string, opts: PiOpts): PiContext {
 }
 
 function modelError(): Error {
-  return new Error('pizx/π: No AI models configured. Run `pi auth login` first.')
+  return new PizxError('AUTH', 'pizx/π: No AI models configured. Run `pi auth login` first.', {
+    letter: 'π',
+  })
 }
 
 async function run(prompt: string, opts: PiOpts, env: LetterEnv): Promise<LetterOutput> {
@@ -63,7 +68,9 @@ async function run(prompt: string, opts: PiOpts, env: LetterEnv): Promise<Letter
       opts
     ))
   ) {
-    throw new Error("pizx/π: Execution cancelled by user at phase 'send'")
+    throw new PizxError('CANCELLED', "pizx/π: Execution cancelled by user at phase 'send'", {
+      letter: 'π',
+    })
   }
 
   const t0 = Date.now()
@@ -85,9 +92,11 @@ async function run(prompt: string, opts: PiOpts, env: LetterEnv): Promise<Letter
       }
     }
   } catch (err) {
-    if (err instanceof Error && err.message.startsWith('pizx/π:')) throw err
-    const message = err instanceof Error ? err.message : String(err)
-    throw new Error(`pizx/π: AI generation failed: ${message}`, { cause: err })
+    if (isPizxError(err)) throw err
+    throw new PizxError('INTERNAL', `pizx/π: AI generation failed: ${getErrorMessage(err)}`, {
+      letter: 'π',
+      cause: err,
+    })
   }
   if (!opts.quiet && text) process.stdout.write('\n')
   return new LetterOutput(text.trim(), model.id, false, t0, Date.now())
@@ -108,7 +117,13 @@ async function* stream(prompt: string, opts: PiOpts, env: LetterEnv): AsyncGener
   })) {
     if (ev.type === 'text_delta') yield ev.delta
     else if (ev.type === 'error') {
-      throw new Error(`pizx/π: ${ev.error.errorMessage ?? 'Unknown stream error'}`)
+      throw new PizxError(
+        'INTERNAL',
+        `pizx/π: ${ev.error.errorMessage ?? 'Unknown stream error'}`,
+        {
+          letter: 'π',
+        }
+      )
     }
   }
 }

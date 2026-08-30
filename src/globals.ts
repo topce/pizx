@@ -9,19 +9,7 @@
  * app.define()) are injected too — names and aliases both.
  */
 
-import {
-  acp,
-  agent,
-  ai,
-  codingAgent,
-  getDefaultApp,
-  Pi,
-  pi,
-  piAgent,
-  Π,
-  α,
-  π,
-} from './core/default-app.ts'
+import { getDefaultApp } from './core/default-app.ts'
 
 const app = await getDefaultApp()
 
@@ -31,18 +19,7 @@ for (const entry of app.ctx.letters.entries()) {
   for (const alias of entry.aliases) g[alias] = entry.fn
 }
 
-export { getDefaultApp } from './core/default-app.ts'
-export {
-  acp,
-  agent,
-  ai,
-  app,
-  codingAgent,
-  // English aliases
-  Pi,
-  pi,
-  piAgent,
-  Π,
-  α,
-  π,
-}
+// The π/Π/α names and aliases (plus configureDefaultApp/disposeDefaultApp) are
+// re-exported from the single source in default-app.ts; only `app` is added here.
+export * from './core/default-app.ts'
+export { app }

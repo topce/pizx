@@ -15,29 +15,67 @@ import { build, getErrorMessage } from './utils.ts'
 
 /** The result object returned by every letter tag. */
 export class LetterOutput {
-  /** LLM calls made during this invocation (filled by the runner). */
-  public trace: LlmCallEvent[] = []
+  private _trace: LlmCallEvent[] = []
+  private _modelId: string | undefined
+  private _fromCache: boolean
+  private _turnCount: number | undefined
 
   constructor(
     /** Full result text */
     public readonly text: string,
     /** Model id that produced the output, when known */
-    public readonly modelUsed?: string,
+    modelId?: string,
     /** True when served from the local cache (no LLM call was made) */
-    public readonly fromCache: boolean = false,
+    fromCache: boolean = false,
     /** Start timestamp (ms) */
     public readonly startTime: number = Date.now(),
     /** End timestamp (ms) */
     public readonly endTime: number = Date.now()
-  ) {}
+  ) {
+    this._modelId = modelId
+    this._fromCache = fromCache
+  }
+
+  /** Model id that produced the output, when known. */
+  get modelId(): string | undefined {
+    return this._modelId
+  }
+
+  /** @deprecated Use {@link modelId} instead. */
+  get modelUsed(): string | undefined {
+    return this._modelId
+  }
+
+  /** LLM calls made during this invocation (filled by the runner). */
+  get trace(): readonly LlmCallEvent[] {
+    return this._trace
+  }
+
+  /** True when served from the local cache (no LLM call was made). */
+  get isFromCache(): boolean {
+    return this._fromCache
+  }
+
+  /** @deprecated Use {@link isFromCache} instead. */
+  get fromCache(): boolean {
+    return this._fromCache
+  }
 
   /** Number of agent turns (agent letters only; undefined otherwise). */
-  public turnCount?: number
+  get turnCount(): number | undefined {
+    return this._turnCount
+  }
 
   /** @internal — attach the invocation span's trace and model. */
   _attach(span: TraceSpan): this {
-    this.trace = [...span.llmCalls]
-    if (!this.modelUsed && span.model) (this as { modelUsed?: string }).modelUsed = span.model
+    this._trace = [...span.llmCalls]
+    if (this._modelId === undefined && span.model) this._modelId = span.model
+    return this
+  }
+
+  /** @internal — record the agent turn count (agent letters only). */
+  _setTurnCount(count: number): this {
+    this._turnCount = count
     return this
   }
 
@@ -46,31 +84,31 @@ export class LetterOutput {
   }
 
   get inputTokens(): number {
-    return this.trace.reduce((s, t) => s + t.inputTokens, 0)
+    return this._trace.reduce((s, t) => s + t.inputTokens, 0)
   }
 
   get outputTokens(): number {
-    return this.trace.reduce((s, t) => s + t.outputTokens, 0)
+    return this._trace.reduce((s, t) => s + t.outputTokens, 0)
   }
 
   get cacheReadTokens(): number {
-    return this.trace.reduce((s, t) => s + t.cacheReadTokens, 0)
+    return this._trace.reduce((s, t) => s + t.cacheReadTokens, 0)
   }
 
   get cacheWriteTokens(): number {
-    return this.trace.reduce((s, t) => s + t.cacheWriteTokens, 0)
+    return this._trace.reduce((s, t) => s + t.cacheWriteTokens, 0)
   }
 
   get totalTokens(): number {
-    return this.trace.reduce((s, t) => s + t.totalTokens, 0)
+    return this._trace.reduce((s, t) => s + t.totalTokens, 0)
   }
 
   get totalCost(): number {
-    return this.trace.reduce((s, t) => s + t.costUsd, 0)
+    return this._trace.reduce((s, t) => s + t.costUsd, 0)
   }
 
   get cacheHits(): number {
-    return this.trace.length === 0 && this.fromCache ? 1 : 0
+    return this._trace.length === 0 && this._fromCache ? 1 : 0
   }
 
   toString(): string {
@@ -122,7 +160,12 @@ export interface LetterDefinition<TOpts = Record<string, unknown>> {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options?: (value: any) => TOpts
-  /** Side-effect-free letters may be cached; agents must set false. */
+  /**
+   * Whether this letter's results may be served from the local result cache.
+   * Default true (cacheable); set false for side-effectful letters.
+   */
+  cacheable?: boolean
+  /** @deprecated Use `cacheable: false` to mark a side-effectful letter non-cacheable. */
   cache?: false
   /** Execute the letter. Return text or a LetterOutput. */
   run(
@@ -171,9 +214,9 @@ async function runLetter(
     : undefined
   const env: LetterEnv = { ctx, pieces, args, span }
 
+  const cacheable = def.cacheable ?? def.cache !== false
   const cacheWanted =
-    def.cache !== false &&
-    (rawOpts.cache === true || (rawOpts.cache !== false && (cache?.enabled ?? false)))
+    cacheable && (rawOpts.cache === true || (rawOpts.cache !== false && (cache?.enabled ?? false)))
 
   const t0 = Date.now()
   let output: LetterOutput
@@ -337,7 +380,9 @@ export function forwardTag(
             if (!tag) {
               throw new Error(`pizx: letter '${name}' is not registered (missing plugin?)`)
             }
-            return tag(pieces as TemplateStringsArray, ...args)
+            // Re-apply the chained options onto the resolved target. Without this,
+            // named-import usage (π({ model })) would silently drop every option.
+            return tag({ ...base })(pieces as TemplateStringsArray, ...args)
           })
           .then(resolve, reject)
       })
@@ -360,7 +405,7 @@ export function forwardTag(
     ): AsyncGenerator<string> {
       const tag = await getLetter(name)
       if (!tag) throw new Error(`pizx: letter '${name}' is not registered (missing plugin?)`)
-      yield* tag.stream(pieces, ...args)
+      yield* tag({ ...base }).stream(pieces, ...args)
     }
 
     return fn

@@ -281,6 +281,7 @@ export class Trace extends Service<TraceConfig> {
     this.events.push(full)
     if ('spanId' in full && full.spanId) this.spans.get(full.spanId)?._attach(full)
     this.ctx.emit('pizx/trace', full)
+    this.invalidateCaches()
     return full
   }
 
@@ -341,8 +342,14 @@ export class Trace extends Service<TraceConfig> {
         ts: Date.now(),
         totals: this.totals(),
       })
+      this.invalidateCaches()
     }
     return this.events
+  }
+
+  private invalidateCaches(): void {
+    this.jsonlCache = ''
+    this.jsonCache = ''
   }
 
   /** Export the run as a JSONL (default) or JSON string, including run-end. */

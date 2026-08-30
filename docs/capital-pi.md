@@ -11,7 +11,7 @@ local cache.
 ```js
 await Π`fix the TypeScript errors in src/ and run tests`
 
-await Π({ tools: ['read', 'bash', 'edit'], maxTurns: 8 })`refactor the auth module`
+await Π({ tools: ['read', 'bash', 'edit'] })`refactor the auth module`
 
 await Π.quiet()`update import paths to the new module layout`
 ```
@@ -23,7 +23,6 @@ await Π.quiet()`update import paths to the new module layout`
 | `model` | string | provider default | |
 | `cwd` | string | `process.cwd()` | agent working directory |
 | `tools` / `excludeTools` | string[] | all / none | tool selection |
-| `maxTurns` | number | `10` | agent turn cap |
 | `thinkingLevel` | `'off' \| 'minimal' \| 'low' \| 'medium' \| 'high' \| 'xhigh'` | `'medium'` | |
 | `system` / `appendSystemPrompt` | string | — | prompt overrides |
 | `skills` | string[] | — | skill names loaded from skill paths |
