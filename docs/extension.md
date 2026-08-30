@@ -1,9 +1,10 @@
 # Defining Your Own Letters
 
 pizx is built on [cordis](https://github.com/cordiverse/cordis), the plugin
-framework behind Koishi and the DeepSeek harness. The core ships exactly two
-letters — **π** (text generation) and **Π** (coding agent) — and everything
-else is a plugin. This guide shows how to write your own.
+framework behind Koishi and the DeepSeek harness. The core ships three
+letters — **π** (text generation), **Π** (coding agent), and **α** (any
+ACP-compatible agent; see [docs/acp.md](acp.md)) — and everything else is a
+plugin. This guide shows how to write your own.
 
 A **letter** is a template tag:
 

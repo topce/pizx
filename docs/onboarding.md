@@ -1,8 +1,8 @@
 # pizx Onboarding Guide
 
 > **A zx fork with native Pi AI integration on cordis** — shell scripting,
-> AI text generation, a coding agent, user-definable letters, traceable runs
-> with JSONL export, and a local result cache.
+> AI text generation, a coding agent, an ACP agent, user-definable letters,
+> traceable runs with JSONL export, and a local result cache.
 
 ## Table of Contents
 
@@ -22,7 +22,7 @@
 | **Version** | 1.0.0 |
 | **License** | MIT |
 | **Languages** | TypeScript, JavaScript, Markdown, Shell |
-| **Frameworks** | cordis (`@cordisjs/core`), Pi AI, Pi Coding Agent, zx, schemastery, Vitest, Biome, esbuild |
+| **Frameworks** | cordis (`@cordisjs/core`), Pi AI, Pi Coding Agent, Agent Client Protocol (ACP), zx, schemastery, Vitest, Biome, esbuild |
 | **Prerequisites** | Node.js ≥ 22.19.0, Pi AI (`pi auth login`) |
 
 ## Architecture
@@ -40,6 +40,7 @@
 ├──────────────────────────────────────────────────────────┤
 │ letters (each a cordis plugin)                           │
 │   π  — text generation      Π — coding agent             │
+│   α  — any ACP agent (server required)                   │
 │   …your plugins: Σ, Ρ, anything                          │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -51,7 +52,7 @@ mechanism, one trace, one cache.
 
 ## Key Concepts
 
-- **Letter** — a template tag (`π`, `Π`, your `Σ`). See
+- **Letter** — a template tag (`π`, `Π`, `α`, your `Σ`). See
   [docs/extension.md](extension.md) to define your own.
 - **Service** — a named capability on `ctx` (`ctx.llm`, `ctx.trace`,
   `ctx.cache`, `ctx.letters`). Cordis gates plugin startup on `inject`.
@@ -76,11 +77,14 @@ const answer = await π`what is the capital of France?`
 echo(answer)
 
 await Π`fix the TypeScript errors in src/`
+
+await α({ server: ['kiro-cli', 'acp'] })`run the linter and fix issues`
 ```
 
 ```bash
 pizx script.mjs               # run a script (letters are globals)
 pizx -p "your prompt"         # quick query
+pizx --acp --acp-server "kiro-cli acp" "your prompt"   # quick ACP agent query
 pizx --trace script.mjs       # token/cache/cost summary at the end
 pizx --export-log script.mjs  # JSONL run log in .pizx/logs/
 pizx --cache script.mjs       # enable the local result cache
@@ -99,9 +103,11 @@ pizx --letters                # list registered letters
 | `src/core/tags.ts` | `createLetterTag`, `LetterOutput`, `LetterPromise` |
 | `src/plugins/pi.ts` | the π letter |
 | `src/plugins/pi-agent.ts` | the Π letter |
+| `src/plugins/acp.ts` | the α letter |
 | `src/plugins/core.ts` | mounts the four services |
 | `src/index.ts` / `src/globals.ts` | package entry / global injection |
 | `src/cli.ts` | the `pizx` CLI |
 | `examples/plugins/` | example user letters (`summarize.mjs`, `ralph.mjs`) |
 | `docs/extension.md` | authoring guide for user letters |
+| `docs/acp.md` | the α letter reference |
 | `docs/trace.md` | trace format, export, cache-friendliness |

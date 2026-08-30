@@ -1,8 +1,8 @@
 # Π (capital pi) — Pi Coding Agent
 
 Capital pi: run pi-coding-agent with file/bash tools as a zx-style template
-tag. Π is a **letter** (like π and any user-defined letter), registered by the
-built-in `pizx-pi-agent` plugin. Because agent runs mutate the filesystem, the
+tag. Π is a **letter** (like π, α, and any user-defined letter), registered by
+the built-in `pizx-pi-agent` plugin. Because agent runs mutate the filesystem, the
 letter is declared `cache: false` — its results are never served from the
 local cache.
 

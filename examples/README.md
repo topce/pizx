@@ -16,7 +16,7 @@ pizx --acp --acp-server "kiro-cli acp" "list the source files"   # ACP quick que
 ## User-defined letters
 
 ```bash
-pizx --letters examples/custom-letter.mjs       # Σ/Ρ listed alongside π/Π
+pizx --letters examples/custom-letter.mjs       # Σ/Ρ listed alongside π/Π/α
 pizx --trace --export-log examples/custom-letter.mjs
 ```
 

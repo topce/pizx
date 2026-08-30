@@ -12,6 +12,7 @@ AsyncLocalStorage, so concurrent letters never interleave).
 | `run-start` / `run-end` | `runId`, node/pizx versions, aggregate `totals` |
 | `letter-start` / `letter-end` | `spanId`, `parentSpanId`, letter name, prompt, status, output preview, duration |
 | `llm-call` | `modelId`, `inputTokens`, `outputTokens`, `cacheReadTokens`, `cacheWriteTokens`, `totalTokens`, `costUsd`, `durationMs` |
+| `tool-call` | ACP agent (α) tool activity — `server`, `toolCallId`, `title`, `status` |
 | `cache-hit` / `cache-miss` | the content-addressed cache `key` |
 | `error` | message, optional `spanId` |
 
@@ -59,7 +60,10 @@ export function apply(ctx) {
 ## Cache-hit friendliness
 
 - **Observability** — every `llm-call` records provider prompt-cache
-  read/write tokens, and `--trace` prints the cache hit ratio.
+  read/write tokens, and `--trace` prints the cache hit ratio. α (ACP)
+  invocations record `tool-call` events per agent tool update and an
+  `llm-call` when the agent reports usage, so external agents are as
+  observable as π/Π.
 - **Stable prompts** — letters share one agent session per model/tools (Π),
   so provider caches stay warm across invocations.
 - **Local result cache** — cacheable letters with `cache: true` (or
@@ -67,4 +71,5 @@ export function apply(ctx) {
   (`sha256(letter | model | system | prompt | cache-relevant opts)`); hits
   skip the LLM entirely and are recorded as `cache-hit` with
   `output.isFromCache === true`. Entries live in `.pizx/cache` (24h TTL, LRU
-  eviction). Side-effect letters (`cache: false`, like Π) are never cached.
+  eviction). Side-effect letters (`cache: false`, like Π and α) are never
+  cached.
