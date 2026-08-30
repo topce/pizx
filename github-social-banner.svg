@@ -4,10 +4,35 @@
       <stop offset="0%" stop-color="#0d1117"/>
       <stop offset="100%" stop-color="#161b22"/>
     </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#21262d" stroke-width="1"/>
+    </pattern>
   </defs>
+
+  <!-- background -->
   <rect width="1280" height="640" fill="url(#bg)"/>
-  <text x="640" y="200" text-anchor="middle" fill="#58a6ff" font-family="monospace" font-size="72" font-weight="bold">pizx</text>
-  <text x="640" y="280" text-anchor="middle" fill="#8b949e" font-family="monospace" font-size="28">zx fork with native Pi AI integration</text>
-  <text x="640" y="420" text-anchor="middle" fill="#c9d1d9" font-family="monospace" font-size="32" letter-spacing="12">π Π  Ρ Φ Σ Δ Λ Ψ Ω γ  Θ Μ Β  Α Γ Ν Χ Τ</text>
-  <text x="640" y="500" text-anchor="middle" fill="#58a6ff" font-family="monospace" font-size="24">16 agent patterns · goal tag · anti-spin · streak mode · budget cap</text>
+  <rect width="1280" height="640" fill="url(#grid)" opacity="0.35"/>
+
+  <!-- title -->
+  <text x="640" y="150" text-anchor="middle" fill="#58a6ff" font-family="monospace" font-size="84" font-weight="bold">pizx</text>
+  <text x="640" y="228" text-anchor="middle" fill="#8b949e" font-family="monospace" font-size="28">zx fork with native Pi AI integration</text>
+  <text x="640" y="264" text-anchor="middle" fill="#6e7681" font-family="monospace" font-size="21">on the cordis plugin framework</text>
+
+  <!-- the letters -->
+  <rect x="280" y="310" width="720" height="150" rx="12" fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+
+  <text x="478" y="408" text-anchor="middle" fill="#c9d1d9" font-family="monospace" font-size="92" font-weight="bold">π</text>
+  <text x="478" y="448" text-anchor="middle" fill="#8b949e" font-family="monospace" font-size="19">text generation</text>
+
+  <text x="640" y="408" text-anchor="middle" fill="#58a6ff" font-family="monospace" font-size="92" font-weight="bold">Π</text>
+  <text x="640" y="448" text-anchor="middle" fill="#8b949e" font-family="monospace" font-size="19">coding agent</text>
+
+  <text x="802" y="408" text-anchor="middle" fill="#c9d1d9" font-family="monospace" font-size="92" font-weight="bold">α</text>
+  <text x="802" y="448" text-anchor="middle" fill="#8b949e" font-family="monospace" font-size="19">any ACP agent</text>
+
+  <!-- your letters -->
+  <text x="640" y="530" text-anchor="middle" fill="#58a6ff" font-family="monospace" font-size="26">+ your letters — define them as plugins</text>
+
+  <!-- features -->
+  <text x="640" y="590" text-anchor="middle" fill="#6e7681" font-family="monospace" font-size="21">traceable runs · JSONL log export · local result cache</text>
 </svg>
