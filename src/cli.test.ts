@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseArgs } from './cli.ts'
+import { parseArgs, shouldPrintResult } from './cli.ts'
 
 describe('cli parseArgs', () => {
   it('parses simple flags', () => {
@@ -57,5 +57,25 @@ describe('cli parseArgs', () => {
     expect(flags.acp).toBe(true)
     expect(flags.acpServer).toBeUndefined()
     expect(positional).toEqual(['hello'])
+  })
+})
+
+describe('shouldPrintResult', () => {
+  // Non-quiet + streamed (cache miss): run() already streamed to stdout,
+  // so the CLI must NOT print again (would duplicate the answer).
+  it('does not print when streamed live (non-quiet, not cached)', () => {
+    expect(shouldPrintResult(false, false)).toBe(false)
+  })
+
+  // The regression this fixes: a cache hit skips run()/streaming, so without
+  // this the second run of the same prompt printed nothing.
+  it('prints on a cache hit even in non-quiet mode', () => {
+    expect(shouldPrintResult(false, true)).toBe(true)
+  })
+
+  // Quiet mode suppresses streaming, so the CLI always prints the final text.
+  it('prints in quiet mode regardless of cache', () => {
+    expect(shouldPrintResult(true, false)).toBe(true)
+    expect(shouldPrintResult(true, true)).toBe(true)
   })
 })

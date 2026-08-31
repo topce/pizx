@@ -32,6 +32,19 @@ const VERSION = pkg.version
 // A token ending with one of these is a script to run, not a log path.
 const SCRIPT_EXT_RE = /\.(m|c)?[jt]s$/
 
+/**
+ * Decide whether quick-ask modes (`-p`, `--acp`) should print the result text
+ * themselves.
+ *
+ * In non-quiet mode the answer is streamed to stdout as it is produced. But a
+ * cache hit skips the letter's run()/streaming entirely, so nothing reaches
+ * stdout — we must print the stored text. In quiet mode streaming is
+ * suppressed, so we always print the final text.
+ */
+export function shouldPrintResult(quiet: boolean, fromCache: boolean): boolean {
+  return quiet || fromCache
+}
+
 // ── Arg parsing ─────────────────────────────────────────────────────────────
 
 interface Flags {
@@ -232,7 +245,8 @@ async function runPrintMode(flags: Flags, args: string[]): Promise<void> {
 
     const tag = Object.keys(opts).length > 0 ? app.π(opts) : app.π
     const result = await tag`${prompt}`
-    if (flags.quiet) process.stdout.write(`${result.toString()}\n`)
+    if (shouldPrintResult(flags.quiet, result.isFromCache))
+      process.stdout.write(`${result.toString()}\n`)
   } finally {
     await finishRun(app, flags)
   }
@@ -257,7 +271,8 @@ async function runAcpMode(flags: Flags, args: string[]): Promise<void> {
   const app = await bootApp(flags)
   try {
     const result = await app.α({ server })`${prompt}`
-    if (flags.quiet) process.stdout.write(`${result.toString()}\n`)
+    if (shouldPrintResult(flags.quiet, result.isFromCache))
+      process.stdout.write(`${result.toString()}\n`)
   } finally {
     await finishRun(app, flags)
   }
