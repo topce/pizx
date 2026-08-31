@@ -16,7 +16,7 @@ A **letter plugin** is a cordis plugin that registers one on `ctx.letters`:
 
 ```js
 // plugins/summarize.mjs
-import Schema from 'schemastery'
+import { Schema } from '@topce/pizx' // re-exported schemastery ('schemastery' also works)
 
 export const name = 'summarize'
 export const inject = ['letters', 'llm']
@@ -68,6 +68,39 @@ app.define('Σ', { run: (prompt) => `handled: ${prompt}` })
 
 Once loaded, the letter is available as a global in scripts (no imports
 needed), shows up in `pizx --letters`, and works exactly like the built-ins.
+
+## Developing with a global install
+
+The built-in letters work fine from a global install (`npm i -g @topce/pizx`) —
+the CLI injects `π`/`Π`/`α` and you need no local `node_modules`. Plugin
+development is the exception: pizx loads your `pizx.config.mjs` **by path**, so
+any bare imports inside your plugin (`schemastery`, `@topce/pizx`) resolve
+against a *local* `node_modules`, not the global one. A plugin that
+`import`s `schemastery` from a loose file with no local install fails with
+`ERR_MODULE_NOT_FOUND`.
+
+- **Dependency-free plugin** — works with a pure global install because it
+  imports nothing. `options` is optional, so skip the schema:
+
+  ```js
+  // pizx.config.mjs
+  export const plugins = [{
+    name: 'shout',
+    inject: ['letters', 'llm'],
+    apply(ctx) {
+      ctx.letters.define('Σ', {
+        aliases: ['shout'],
+        run: async (prompt, _opts, env) =>
+          (await env.ctx.llm.ask(`Summarize:\n${prompt}`)).text.toUpperCase(),
+      })
+    },
+  }]
+  ```
+
+- **Install locally (recommended for real plugins)** — `npm install @topce/pizx`
+  in a project (or `npm link @topce/pizx`). Then `import { Schema } from
+  '@topce/pizx'`, type imports, and the `/// <reference types="@topce/pizx/globals" />`
+  directive all resolve, giving you validated options and editor types.
 
 ## The LetterDefinition contract
 

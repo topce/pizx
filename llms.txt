@@ -1,0 +1,24 @@
+# pizx
+
+> A zx fork with native Pi AI integration on the cordis plugin framework — AI-powered shell scripting for Node.js. Scripts get template-tag "letters" as globals: π (text generation), Π (coding agent), and α (any ACP-compatible agent), plus user-definable letters. Runs are traceable and exportable as JSONL, and cacheable letters hit a local result cache.
+
+pizx scripts start with `#!/usr/bin/env pizx` and use `$`, `π`, `Π`, `α` (and any
+letters you define) as globals. pizx is also usable as a library via
+`createPizx()` or `import '@topce/pizx/globals'`. The π/Π letters use Pi
+credentials (`pi auth login`); α drives an external ACP server and needs no pi.
+
+## Docs
+
+- [AGENTS.md](AGENTS.md): Canonical guide for AI agents writing pizx scripts and CLI invocations — script template, the letters and ASCII aliases, LetterOutput shape, options, and the CLI --json/exit-code contract.
+- [README](README.md): Project overview, quick start, feature tour, and CLI reference.
+- [π reference](docs/pi.md): The π text-generation letter and its options.
+- [Π reference](docs/capital-pi.md): The Π coding-agent letter, tools, and options.
+- [α reference](docs/acp.md): The α ACP-agent letter and its server configuration.
+- [Defining letters](docs/extension.md): The cordis plugin API for custom letters.
+- [Trace & logs](docs/trace.md): JSONL event format, log export, and cache behavior.
+- [Onboarding](docs/onboarding.md): Architecture and file map.
+
+## Optional
+
+- [API audit](docs/api-audit.md): Notes on the public API surface.
+- [α design idea](docs/ideas/acp-alpha.md): Rationale and roadmap for the ACP letter.

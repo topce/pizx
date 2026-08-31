@@ -22,7 +22,9 @@ import process from 'node:process'
 import url, { fileURLToPath } from 'node:url'
 import { chalk, VERSION as zxVersion } from 'zx'
 import { createPizx, type Pizx } from './core/context.ts'
-import { isPizxError } from './core/errors.ts'
+import { isPizxError, PizxError, type PizxErrorCode } from './core/errors.ts'
+import type { RegisteredLetter } from './core/letters.ts'
+import type { LetterOutput } from './core/tags.ts'
 import { getErrorMessage } from './core/utils.ts'
 
 const require = createRequire(import.meta.url)
@@ -57,6 +59,8 @@ interface Flags {
   letters: boolean
   cache: boolean
   noCache: boolean
+  noColor: boolean
+  json: boolean
   model?: string
   system?: string
   config?: string
@@ -75,6 +79,8 @@ export function parseArgs(argv: string[]): { flags: Flags; positional: string[] 
     letters: false,
     cache: false,
     noCache: false,
+    noColor: false,
+    json: false,
     exportLog: undefined,
     quiet: false,
   }
@@ -113,6 +119,12 @@ export function parseArgs(argv: string[]): { flags: Flags; positional: string[] 
         break
       case '--no-cache':
         flags.noCache = true
+        break
+      case '--no-color':
+        flags.noColor = true
+        break
+      case '--json':
+        flags.json = true
         break
       case '--export-log':
         // Consume the next token as the log path only when it is not a
@@ -162,16 +174,18 @@ function printHelp() {
    pizx --letters               List registered letters
 
  ${chalk.bold('Options')}
-   -p, --print <prompt>   Send to pi-ai and print response
-   --acp <prompt>         Send to an ACP agent (needs --acp-server)
+   -p, --print <prompt>   Send to pi-ai and print response ("-" = read stdin)
+   --acp <prompt>         Send to an ACP agent (needs --acp-server; "-" = stdin)
    --acp-server <line>    ACP server command line, e.g. "kiro-cli acp"
    -m, --model <id>       Model to use (e.g. anthropic/claude-sonnet-4-5)
    --system <text>        System context for pi-ai
    --trace                Print a token/cache/cost summary when done
    --export-log [path]    Export the run trace as JSONL (default .pizx/logs/)
    --cache / --no-cache   Enable/disable the local result cache
+   --no-color             Disable ANSI color in output (also via NO_COLOR)
    --config <file>        Load letter plugins from a config file
    --letters              List registered letters and their descriptions
+   --json                 Machine-readable JSON output (implies --quiet/--no-color)
    -q, --quiet            Suppress status output
    -v, --version          Print version
    -h, --help             This help
@@ -196,7 +210,10 @@ function printHelp() {
    # Any ACP agent (e.g. Kiro) — no pi involved:
    await \`α\`({ server: ['kiro-cli', 'acp'] })\`fix the TypeScript errors in src/\`
 
- ${chalk.dim('https://github.com/topce/pizx')}
+ ${chalk.bold('Exit codes')}
+   0 ok · 1 error · 2 usage · 3 auth · 4 agent · 5 acp · 6 cancelled · 7 internal
+
+ ${chalk.dim('https://github.com/topce/pizx — agents: see AGENTS.md')}
 `)
 }
 
@@ -227,13 +244,139 @@ function displayMessage(err: unknown): string {
   return `pizx: ${message}`
 }
 
+// ── Exit codes & error reporting ─────────────────────────────────────────────
+
+/**
+ * Stable process exit codes keyed by `PizxError.code`. Agents branch on these
+ * without parsing stderr. Success is `0`; a non-PizxError (foreign/unknown)
+ * failure is `1`.
+ */
+export const EXIT_CODES: Record<PizxErrorCode, number> = {
+  VALIDATION: 2,
+  AUTH: 3,
+  AGENT: 4,
+  ACP: 5,
+  CANCELLED: 6,
+  INTERNAL: 7,
+}
+
+/** Map any thrown value to a process exit code. */
+export function exitCodeFor(err: unknown): number {
+  return isPizxError(err) ? EXIT_CODES[err.code] : 1
+}
+
+/**
+ * Print an error to stderr and return its exit code. Emits a `{ error: {...} }`
+ * JSON envelope when `--json` is set, otherwise a human-readable message.
+ */
+export function reportError(err: unknown, flags: Flags): number {
+  if (flags.json) {
+    process.stderr.write(`${JSON.stringify(errorToJson(err))}\n`)
+  } else {
+    process.stderr.write(`${displayMessage(err)}\n`)
+  }
+  return exitCodeFor(err)
+}
+
+/**
+ * Whether ANSI color should be disabled for this run. True when `--json` or
+ * `--no-color` is passed, or the `NO_COLOR` environment variable is set to a
+ * non-empty value (https://no-color.org).
+ */
+export function shouldDisableColor(flags: Flags, env: NodeJS.ProcessEnv = process.env): boolean {
+  return flags.json || flags.noColor || Boolean(env.NO_COLOR)
+}
+
+/**
+ * Whether the prompt should be read from stdin instead of argv. True when the
+ * prompt is an explicit `-`, or empty while stdin is piped (not a TTY). An
+ * empty prompt on an interactive TTY returns false so the CLI never hangs.
+ */
+export function shouldReadStdin(prompt: string, isTTY: boolean | undefined): boolean {
+  if (prompt === '-') return true
+  return prompt === '' && !isTTY
+}
+
+/** Read all of stdin as a UTF-8 string. */
+async function readStdin(): Promise<string> {
+  const { text } = await import('node:stream/consumers')
+  return text(process.stdin)
+}
+
+// ── JSON serialization (--json) ──────────────────────────────────────────────
+
+export interface ResultJson {
+  text: string
+  modelId: string | undefined
+  fromCache: boolean
+  durationMs: number
+  tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; total: number }
+  costUsd: number
+}
+
+export interface ErrorJson {
+  error: { code: PizxErrorCode | 'UNKNOWN'; message: string }
+}
+
+export interface LetterJson {
+  name: string
+  aliases: string[]
+  cacheable: boolean
+  description: string
+}
+
+/** Serialize a letter result as the stable `--json` envelope. */
+export function resultToJson(o: LetterOutput): ResultJson {
+  return {
+    text: o.text,
+    modelId: o.modelId,
+    fromCache: o.isFromCache,
+    durationMs: o.duration,
+    tokens: {
+      input: o.inputTokens,
+      output: o.outputTokens,
+      cacheRead: o.cacheReadTokens,
+      cacheWrite: o.cacheWriteTokens,
+      total: o.totalTokens,
+    },
+    costUsd: o.totalCost,
+  }
+}
+
+/** Serialize any thrown value as `{ error: { code, message } }`. */
+export function errorToJson(err: unknown): ErrorJson {
+  return {
+    error: {
+      code: isPizxError(err) ? err.code : 'UNKNOWN',
+      message: getErrorMessage(err),
+    },
+  }
+}
+
+/** Serialize the letter registry for `pizx --letters --json`. */
+export function lettersToJson(
+  entries: readonly Pick<RegisteredLetter, 'name' | 'aliases' | 'cacheable' | 'description'>[]
+): LetterJson[] {
+  return entries.map((e) => ({
+    name: e.name,
+    aliases: [...e.aliases],
+    cacheable: e.cacheable,
+    description: e.description,
+  }))
+}
+
 // ── Print mode ──────────────────────────────────────────────────────────────
 
 async function runPrintMode(flags: Flags, args: string[]): Promise<void> {
-  const prompt = args.join(' ') || ''
+  let prompt = args.join(' ') || ''
+  if (shouldReadStdin(prompt, process.stdin.isTTY)) {
+    prompt = (await readStdin()).trim()
+  }
   if (!prompt) {
-    console.error('pizx: no prompt provided. Use: pizx -p "your prompt"')
-    process.exit(1)
+    throw new PizxError(
+      'VALIDATION',
+      'pizx: no prompt provided. Use: pizx -p "your prompt" (or pipe via stdin)'
+    )
   }
 
   const app = await bootApp(flags)
@@ -241,12 +384,15 @@ async function runPrintMode(flags: Flags, args: string[]): Promise<void> {
     const opts: Record<string, unknown> = { cache: flags.cache || undefined }
     if (flags.model) opts.model = flags.model
     if (flags.system) opts.system = flags.system
-    if (flags.quiet) opts.quiet = true
+    if (flags.quiet || flags.json) opts.quiet = true
 
     const tag = Object.keys(opts).length > 0 ? app.π(opts) : app.π
     const result = await tag`${prompt}`
-    if (shouldPrintResult(flags.quiet, result.isFromCache))
+    if (flags.json) {
+      process.stdout.write(`${JSON.stringify(resultToJson(result))}\n`)
+    } else if (shouldPrintResult(flags.quiet, result.isFromCache)) {
       process.stdout.write(`${result.toString()}\n`)
+    }
   } finally {
     await finishRun(app, flags)
   }
@@ -255,24 +401,33 @@ async function runPrintMode(flags: Flags, args: string[]): Promise<void> {
 // ── ACP quick-ask mode ───────────────────────────────────────────────────────
 
 async function runAcpMode(flags: Flags, args: string[]): Promise<void> {
-  const prompt = args.join(' ') || ''
+  let prompt = args.join(' ') || ''
+  if (shouldReadStdin(prompt, process.stdin.isTTY)) {
+    prompt = (await readStdin()).trim()
+  }
   if (!prompt) {
-    console.error('pizx: no prompt provided. Use: pizx --acp "your prompt"')
-    process.exit(1)
+    throw new PizxError(
+      'VALIDATION',
+      'pizx: no prompt provided. Use: pizx --acp "your prompt" (or pipe via stdin)'
+    )
   }
   const server = (flags.acpServer ?? '').split(/\s+/).filter(Boolean)
   if (server.length === 0) {
-    console.error(
+    throw new PizxError(
+      'VALIDATION',
       'pizx: --acp needs an ACP server. Use: pizx --acp --acp-server "kiro-cli acp" "your prompt"'
     )
-    process.exit(1)
   }
 
   const app = await bootApp(flags)
   try {
-    const result = await app.α({ server })`${prompt}`
-    if (shouldPrintResult(flags.quiet, result.isFromCache))
+    const alphaOpts = flags.quiet || flags.json ? { server, quiet: true } : { server }
+    const result = await app.α(alphaOpts)`${prompt}`
+    if (flags.json) {
+      process.stdout.write(`${JSON.stringify(resultToJson(result))}\n`)
+    } else if (shouldPrintResult(flags.quiet, result.isFromCache)) {
       process.stdout.write(`${result.toString()}\n`)
+    }
   } finally {
     await finishRun(app, flags)
   }
@@ -302,9 +457,9 @@ async function runScriptMode(flags: Flags, scriptPath: string): Promise<void> {
   } catch (err) {
     const message = getErrorMessage(err)
     app.ctx.trace.record({ kind: 'error', message: `script failed: ${message}` })
-    console.error(displayMessage(err))
+    const code = reportError(err, flags)
     await finishRun(app, flags)
-    process.exit(1)
+    process.exit(code)
   }
   await finishRun(app, flags)
 }
@@ -330,6 +485,10 @@ async function finishRun(app: Pizx, flags: Flags): Promise<void> {
 async function runLettersMode(flags: Flags): Promise<void> {
   const app = await bootApp(flags)
   try {
+    if (flags.json) {
+      process.stdout.write(`${JSON.stringify(lettersToJson(app.ctx.letters.entries()))}\n`)
+      return
+    }
     for (const entry of app.ctx.letters.entries()) {
       const aliases = entry.aliases.length > 0 ? ` (aliases: ${entry.aliases.join(', ')})` : ''
       console.log(
@@ -346,6 +505,8 @@ async function runLettersMode(flags: Flags): Promise<void> {
 
 async function main() {
   const { flags, positional } = parseArgs(process.argv.slice(2))
+
+  if (shouldDisableColor(flags)) chalk.level = 0
 
   if (flags.version) {
     console.log(`pizx/${VERSION} (zx/${zxVersion}) node/${process.version}`)
@@ -396,7 +557,7 @@ const invokedAsMain = (() => {
 
 if (invokedAsMain) {
   main().catch((err) => {
-    console.error(displayMessage(err))
-    process.exit(1)
+    const { flags } = parseArgs(process.argv.slice(2))
+    process.exit(reportError(err, flags))
   })
 }

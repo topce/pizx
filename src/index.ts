@@ -23,6 +23,10 @@
  * ```
  */
 
+// ── schemastery ──────────────────────────────────────────────────────────────
+// Re-exported so plugin authors can `import { Schema } from '@topce/pizx'`
+// instead of adding a separate `schemastery` dependency for letter option schemas.
+export { default as Schema } from 'schemastery'
 // ── Re-export all of zx ─────────────────────────────────────────────────────
 // All standard zx APIs pass through unchanged.
 export * from 'zx'

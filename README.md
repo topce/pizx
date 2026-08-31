@@ -155,14 +155,23 @@ await app.dispose()
 ```bash
 pizx script.mjs                # run a script ($, π, Π, α and your letters as globals)
 pizx -p "your prompt"          # quick pi-ai query
+echo "your prompt" | pizx -p - # read the prompt from stdin
 pizx --acp --acp-server "kiro-cli acp" "your prompt"  # quick ACP agent query
 pizx --model <id> script.mjs   # model for the run
 pizx --config ./cfg.mjs s.mjs  # load plugins from a config file
 pizx --letters                 # list registered letters
 pizx --cache | --no-cache      # toggle the local result cache
+pizx --json -p "your prompt"   # machine-readable output (implies --quiet/--no-color)
+pizx --no-color script.mjs     # disable ANSI color (also honors NO_COLOR)
 pizx --trace --export-log s.mjs
 pizx --version | --help
 ```
+
+Machine-readable output for agents: `--json` emits a result envelope
+(`{ text, modelId, fromCache, durationMs, tokens, costUsd }`) or, with
+`--letters`, the letter registry; failures print `{ error: { code, message } }`
+to stderr and exit with a distinct code (`2` usage · `3` auth · `4` agent ·
+`5` acp · `6` cancelled · `7` internal). See [AGENTS.md](AGENTS.md).
 
 ## Programmatic use
 
@@ -181,6 +190,7 @@ await app.dispose()
 
 ## Docs
 
+- [AGENTS.md](AGENTS.md) — guide for AI agents writing pizx code (script template, letters, `--json`, exit codes)
 - [Onboarding](docs/onboarding.md) — architecture and file map
 - [Defining letters](docs/extension.md) — the plugin API
 - [Trace & logs](docs/trace.md) — event format, export, cache-friendliness

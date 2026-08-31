@@ -2,6 +2,53 @@
 
 All notable changes to pizx are documented here.
 
+## [1.3.0] — 2026-08-31
+
+Agent-friendliness pass: machine-readable CLI output, distinct exit codes, and
+first-class docs/types for AI agents writing pizx code. Backward compatible.
+
+### Added
+
+- **`--json` output** — `-p`, `--acp`, and `--letters` emit a single JSON
+  object/array on stdout (streaming suppressed). Result envelope:
+  `{ text, modelId, fromCache, durationMs, tokens { input, output, cacheRead,
+  cacheWrite, total }, costUsd }`; `--letters --json` emits the letter registry
+  (`[{ name, aliases, cacheable, description }]`); failures print
+  `{ error: { code, message } }` on stderr. Exported serializers
+  `resultToJson` / `errorToJson` / `lettersToJson`. `--json` implies `--quiet`
+  and `--no-color`.
+- **Distinct process exit codes** — keyed by `PizxError.code` via `exitCodeFor`:
+  `0` ok, `1` unknown/foreign, `2` `VALIDATION`, `3` `AUTH`, `4` `AGENT`,
+  `5` `ACP`, `6` `CANCELLED`, `7` `INTERNAL`.
+- **stdin prompts** — `pizx -p -` (or an empty prompt on a pipe) reads the
+  prompt from stdin, so agents can avoid shell-escaping large prompts.
+- **`--no-color`** — disable ANSI color for clean machine output; also honors
+  the `NO_COLOR` environment variable.
+- **Typed globals** — a `declare global` block in `@topce/pizx/globals` types
+  `π`/`Π`/`α` and their aliases as `LetterFn<…>`; script authors opt in with
+  `/// <reference types="@topce/pizx/globals" />`.
+- **`Schema` re-export** — `import { Schema } from '@topce/pizx'` (re-exported
+  schemastery), so letter plugins need one fewer dependency.
+- **Agent-facing docs** — `AGENTS.md` (canonical authoring guide: script
+  template, letters and ASCII aliases, `LetterOutput`, options, the CLI
+  `--json`/exit-code contract, and a global-install plugin-dev note) and
+  `llms.txt` (llmstxt.org index), both now shipped in the npm package.
+- **`examples/typed-globals.mjs`** — demonstrates the typed globals and the
+  reference directive.
+
+### Changed
+
+- **Consistent, actionable credential errors** — `Llm.ask()` and
+  `agentSession()` now throw `PizxError('AUTH', '… Run \`pi auth login\`
+  first.')` instead of a plain `Error`, so missing credentials map to exit
+  code `3` and serialize under `--json`.
+- CLI usage errors (missing prompt, missing `--acp-server`) now throw
+  `PizxError('VALIDATION', …)` — exit code `2` and `--json`-serializable —
+  instead of an ad-hoc message with exit `1`.
+- `--help` documents the new flags (`--json`, `--no-color`, stdin) and lists the
+  exit codes; the README CLI section and `docs/extension.md` cover the new
+  surface and the global-install plugin workflow.
+
 ## [1.2.0] — 2026-08-30
 
 API/interface hardening pass (see `docs/api-audit.md`).
@@ -300,6 +347,7 @@ API/interface hardening pass (see `docs/api-audit.md`).
 - `pizx/globals` module for script mode.
 - Build pipeline with esbuild + TypeScript declarations.
 
+[1.3.0]: https://github.com/topce/pizx/releases/tag/v1.3.0
 [1.2.0]: https://github.com/topce/pizx/releases/tag/v1.2.0
 [1.1.0]: https://github.com/topce/pizx/releases/tag/v1.1.0
 [1.0.0]: https://github.com/topce/pizx/releases/tag/v1.0.0

@@ -30,6 +30,7 @@ import {
   ModelRegistry,
   ModelRuntime,
 } from '@earendil-works/pi-coding-agent'
+import { PizxError } from './errors.ts'
 import { isPiInstalled, loadPiSettings, type PiSettings } from './load-pi-settings.ts'
 import type { TraceSpan } from './trace.ts'
 import { getErrorMessage } from './utils.ts'
@@ -417,7 +418,7 @@ export class Llm extends Service<LlmConfig> {
   async ask(prompt: string, opts: AskOptions = {}): Promise<AskResult> {
     const model = await this.pick(opts.model ?? this.config.model)
     if (!model) {
-      throw new Error('pizx: No AI models configured. Run `pi auth login` first.')
+      throw new PizxError('AUTH', 'pizx: No AI models configured. Run `pi auth login` first.')
     }
 
     const systemParts: string[] = []
@@ -520,7 +521,7 @@ export class Llm extends Service<LlmConfig> {
   }): Promise<{ session: AgentSession; modelId: string }> {
     const model = await this.pick(opts.model ?? this.config.model)
     if (!model) {
-      throw new Error('pizx: No AI models configured. Run `pi auth login` first.')
+      throw new PizxError('AUTH', 'pizx: No AI models configured. Run `pi auth login` first.')
     }
     const key = JSON.stringify({
       model: model.id,

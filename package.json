@@ -1,6 +1,6 @@
 {
   "name": "@topce/pizx",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "zx fork with native Pi AI integration on the cordis plugin framework — shell scripting with AI agents, user-definable letter tags, traceable runs with JSONL log export, and a local result cache. Ships with π (text generation), Π (coding agent), and α (any ACP-compatible agent).",
   "type": "module",
   "main": "./dist/index.js",
@@ -23,7 +23,9 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "AGENTS.md",
+    "llms.txt"
   ],
   "scripts": {
     "build": "npm run build:js && npm run build:dts",
