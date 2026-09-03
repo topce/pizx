@@ -15,6 +15,7 @@ credentials (`pi auth login`); α drives an external ACP server and needs no pi.
 - [Π reference](docs/capital-pi.md): The Π coding-agent letter, tools, and options.
 - [α reference](docs/acp.md): The α ACP-agent letter and its server configuration.
 - [Defining letters](docs/extension.md): The cordis plugin API for custom letters.
+- [Words](docs/words.md): Composing letters into AI patterns — the word library (ralph, fleet, chain, route, vote, refine, orchestrate) and the `ctx.words` service.
 - [Trace & logs](docs/trace.md): JSONL event format, log export, and cache behavior.
 - [Onboarding](docs/onboarding.md): Architecture and file map.
 

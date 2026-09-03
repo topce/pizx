@@ -188,6 +188,57 @@ export const plugins = [summarize]
 Custom letters get option chaining, `.quiet`/`.cache`/`.stream`, tracing, and
 global injection automatically. See [docs/extension.md](docs/extension.md).
 
+## Defining your own word (composing letters)
+
+A **word** is an AI pattern built by composing letters; it is itself a letter,
+so words compose recursively. Its letters live in replaceable **slots** (a
+registered name or a tag), filled at call time: `ralph({ execute: 'α' })`.
+Register words through the `ctx.words` service (`inject: ['words', 'letters']`):
+
+```js
+ctx.words.define('ralph', {
+  slots: { analyze: 'π', plan: 'π', execute: 'Π', review: 'π' },
+  options: { maxIterations: Schema.natural().default(5) },
+  run: async (prompt, opts, env) => {
+    const a = (await env.ctx.words.call(opts.analyze, prompt, { quiet: true })).text
+    // … loop / parallel / compose the slots …
+    return a
+  },
+})
+```
+
+Operators: `ctx.words.resolve` / `.call` / `.parallel` / `.loop` /
+`.slotOptions` (forwards `model`, `server`, `cwd`, … to slot letters — e.g.
+`ralph({ execute: 'α', server: ['kiro-cli', 'acp'] })`). Words default
+to non-cacheable (set `cacheable: true` for pure words). See
+[docs/words.md](docs/words.md).
+
+### The word library
+
+pizx ships seven ready-made word plugins in `examples/plugins/` — the AI
+patterns from Anthropic's [*Building effective
+agents*](https://www.anthropic.com/engineering/building-effective-agents),
+all built from the five `ctx.words` operators. **Every word is a plugin**
+(core ships only the grammar); load the ones you want in
+`pizx.config.mjs`.
+
+| Word | Aliases | Pattern | Slots (defaults) |
+|---|---|---|---|
+| `ralph` | `loop` | Agent loop — iterative analyze/plan/execute/review | analyze/plan/review=`π`, execute=`Π` |
+| `fleet` | `parallel` | Parallelization: sectioning (split prompt, fan out) | worker=`π` |
+| `chain` | `pipeline` | Prompt chaining — sequential steps + optional `gate` | step=`π`; `steps` (ordered refs) / `stepPrompts` |
+| `route` | `branch` | Routing — classify + dispatch; `routes` dict + `fallback` | classifier/fallback=`π` |
+| `vote` | `jury` | Voting — N parallel answers, tallied; `judge` settles splits | voter/judge=`π`; `votes`, `mode` `majority`\|`best` |
+| `refine` | `optimize` | Evaluator-optimizer — generate/evaluate/revise until PASS | generate/evaluate=`π`; `criteria`, `maxPasses` |
+| `orchestrate` | `director` | Orchestrator-workers — decompose/fan out/synthesize | planner/worker/synthesizer=`π`; `maxWorkers` |
+
+All slots are replaceable by name (`ralph({ execute: 'α' })`) or by
+pre-configured tag (`route({ routes: { easy: π({ model }) } })`), and words
+compose recursively (`ralph({ review: 'fleet' })`). Full reference with
+options, output shapes, and the pattern map: [docs/words.md](docs/words.md);
+runnable tour: [examples/words.mjs](examples/words.mjs); one focused example
+per word: `examples/word-*.mjs` (also `npm run example:word-chain`, …).
+
 ### Global install vs. local install
 
 The built-in letters (`π`/`Π`/`α`) work from a **global** install
@@ -297,5 +348,6 @@ not on message text.
 - [README](README.md) — overview and quick start
 - [π](docs/pi.md) · [Π](docs/capital-pi.md) · [α](docs/acp.md) — per-letter references
 - [Defining letters](docs/extension.md) — the plugin API
+- [Words](docs/words.md) — the word library (ralph, fleet, chain, route, vote, refine, orchestrate)
 - [Trace & logs](docs/trace.md) — event format, export, caching
 - [Onboarding](docs/onboarding.md) — architecture and file map

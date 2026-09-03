@@ -15,6 +15,7 @@ import { createAssistantMessageEventStream } from '@earendil-works/pi-ai'
 import { Cache } from '../core/cache.ts'
 import { Letters } from '../core/letters.ts'
 import { Trace } from '../core/trace.ts'
+import { Words } from '../core/words.ts'
 
 export const FAKE_MODEL = {
   id: 'fake/model',
@@ -98,6 +99,7 @@ export function mountTestCore(
       })
       ctx.plugin(FakeLlm)
       ctx.plugin(Letters)
+      ctx.plugin(Words)
     },
   })
 }

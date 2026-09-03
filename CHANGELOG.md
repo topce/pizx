@@ -2,6 +2,43 @@
 
 All notable changes to pizx are documented here.
 
+## [1.4.0] — 2026-09-03
+
+### Added
+
+- **Word library: five new word plugins** — `chain` (prompt chaining with an
+  optional per-step gate), `route` (classification + dispatch with a
+  `routes` dict, category descriptions, and fallback), `vote` (voting
+  parallelization with majority/best aggregation and a judge slot), `refine`
+  (evaluator-optimizer loop over explicit criteria), and `orchestrate`
+  (orchestrator-workers: decompose, fan out, synthesize) join `ralph` and
+  `fleet` in `examples/plugins/`. All seven are plain cordis plugins over the
+  `ctx.words` operators (`call`/`parallel`/`loop`/`slotOptions`), implementing
+  the workflow patterns from Anthropic's *Building effective agents*. Loaded
+  via `examples/pizx.config.mjs`; covered by `src/core/examples-words.test.ts`.
+- **Words docs** — `docs/words.md` rewritten as a full word catalog:
+  per-word slots/options/output shapes, plugin wiring, recursive composition,
+  and the article's pattern map. `examples/words.mjs` tours all seven words,
+  and each word gets a focused runnable example — `examples/word-*.mjs`
+  (`word-ralph.mjs` … `word-orchestrate.mjs`, with `npm run example:word-*`
+  scripts) — showing its pattern, options, and slot-swap notes.
+  `examples/acp-word-slots.mjs` (`npm run example:acp-word-slots`) shows α
+  filling the agent slots of ralph/fleet/orchestrate inside a scratch
+  directory, and the three agent-slot word examples (`word-ralph.mjs`,
+  `word-fleet.mjs`, `word-orchestrate.mjs`) each end with a gated,
+  read-only α section.
+- **ralph review judges against the goal** — the review slot now receives
+  the original goal and a stricter DONE/ITERATE instruction, so the loop
+  keeps iterating when the executor reports success without actually
+  producing the artifact.
+- **Words error contract** — bad word usage is now one consistent
+  `PizxError('VALIDATION')` (CLI exit code `2`): option-schema failures at
+  the tag boundary, `route` without routes, `chain` declaring both `steps`
+  and `stepPrompts`, and non-positive counts (`concurrency`, `votes`,
+  `maxIterations`, `maxSteps`, `maxPasses`, `maxWorkers` all require ≥ 1).
+  Letter option validation is normalized to the same code for every letter,
+  and `Words.parallel`/`loop` guard their own arguments.
+
 ## [1.3.0] — 2026-08-31
 
 Agent-friendliness pass: machine-readable CLI output, distinct exit codes, and
@@ -347,6 +384,7 @@ API/interface hardening pass (see `docs/api-audit.md`).
 - `pizx/globals` module for script mode.
 - Build pipeline with esbuild + TypeScript declarations.
 
+[1.4.0]: https://github.com/topce/pizx/releases/tag/v1.4.0
 [1.3.0]: https://github.com/topce/pizx/releases/tag/v1.3.0
 [1.2.0]: https://github.com/topce/pizx/releases/tag/v1.2.0
 [1.1.0]: https://github.com/topce/pizx/releases/tag/v1.1.0

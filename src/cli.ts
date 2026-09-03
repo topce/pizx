@@ -482,8 +482,12 @@ async function finishRun(app: Pizx, flags: Flags): Promise<void> {
 
 // ── Letters listing ─────────────────────────────────────────────────────────
 
-async function runLettersMode(flags: Flags): Promise<void> {
-  const app = await bootApp(flags)
+async function runLettersMode(flags: Flags, scriptPath?: string): Promise<void> {
+  // Discover the script's pizx.config.mjs like script mode does, so
+  // `pizx --letters examples/words.mjs` lists the word plugins too.
+  const path = await import('node:path')
+  const configDir = scriptPath ? path.dirname(path.resolve(process.cwd(), scriptPath)) : undefined
+  const app = await bootApp(flags, configDir)
   try {
     if (flags.json) {
       process.stdout.write(`${JSON.stringify(lettersToJson(app.ctx.letters.entries()))}\n`)
@@ -519,7 +523,7 @@ async function main() {
   }
 
   if (flags.letters) {
-    await runLettersMode(flags)
+    await runLettersMode(flags, positional[0])
     return
   }
 

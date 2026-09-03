@@ -101,3 +101,12 @@ export {
   resolveMode,
   shouldGate,
 } from './core/utils.ts'
+// ── Words (composing letters into AI patterns) ──────────────────────────────
+export {
+  type LetterRef,
+  type LoopResult,
+  slotSchema,
+  type WordDefinition,
+  type WordResult,
+  Words,
+} from './core/words.ts'

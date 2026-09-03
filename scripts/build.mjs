@@ -6,6 +6,12 @@ const isWatch = process.argv.includes('--watch')
 const opts = {
   entryPoints: ['src/index.ts', 'src/cli.ts', 'src/globals.ts'],
   bundle: true,
+  // Code-split shared modules into dist/chunks so every entry loads ONE copy
+  // of the core (PizxError, Schema, …). Without this, dist/index.js and
+  // dist/cli.js would each bundle their own class copies and `instanceof`
+  // checks across entries — e.g. a plugin that imports { PizxError } from
+  // '@topce/pizx' while the CLI catches it — would silently fail.
+  splitting: true,
   platform: 'node',
   target: 'node22',
   format: 'esm',

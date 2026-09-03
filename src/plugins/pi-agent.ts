@@ -51,31 +51,25 @@ export type AgentOpts = ReturnType<typeof options>
 
 interface AgentMessage {
   role: string
-  content: unknown
   usage?: Usage
 }
 
-function getMessageText(msg: AgentMessage): string {
-  const content = msg.content
-  if (typeof content === 'string') return content
-  if (Array.isArray(content)) {
-    return content
-      .filter(
-        (c: { type?: string; text?: string }) => c.type === 'text' && typeof c.text === 'string'
-      )
-      .map((c: { text: string }) => c.text)
-      .join('')
-  }
-  return ''
-}
-
-function getLastAssistantText(messages: readonly AgentMessage[]): string {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === 'assistant') {
-      return getMessageText(messages[i])
-    }
-  }
-  return ''
+/**
+ * Strip serialized tool-call markup from an assistant reply.
+ *
+ * Models trained on agentic traces sometimes emit tool calls as inline text —
+ * `<tool_calls><invoke name="bash">…</invoke></tool_calls>` — instead of native
+ * tool-call blocks. That machinery is the agent's internal DSL, not a result:
+ * it must never leak into the letter's output text. Real tool activity is
+ * already traced separately as tool-call events.
+ */
+function cleanAssistantText(text: string | undefined): string {
+  if (!text) return ''
+  return text
+    .replace(/<tool_calls>[\s\S]*?(?:<\/tool_calls>|$)/g, '')
+    .replace(/<invoke\b[\s\S]*?(?:<\/invoke>|$)/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 }
 
 async function run(prompt: string, opts: AgentOpts, env: LetterEnv): Promise<LetterOutput> {
@@ -128,7 +122,9 @@ async function run(prompt: string, opts: AgentOpts, env: LetterEnv): Promise<Let
     }
 
     const t1 = Date.now()
-    const text = getLastAssistantText(session.messages as readonly AgentMessage[])
+    // The SDK's canonical extractor returns only text content blocks; clean it
+    // further so any inline tool-call markup never leaks into the result.
+    const text = cleanAssistantText(session.getLastAssistantText())
     const turnCount = (session.messages as readonly AgentMessage[]).filter(
       (m) => m.role === 'assistant'
     ).length

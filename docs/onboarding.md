@@ -37,11 +37,12 @@
 │   cache   — content-addressed local result cache         │
 │   llm     — model/auth resolution, ask/stream, Π session │
 │   letters — the template-tag registry                    │
+│   words   — compose letters into AI patterns (words)     │
 ├──────────────────────────────────────────────────────────┤
 │ letters (each a cordis plugin)                           │
 │   π  — text generation      Π — coding agent             │
 │   α  — any ACP agent (server required)                   │
-│   …your plugins: Σ, Ρ, anything                          │
+│   …your plugins: Σ, ralph, fleet, chain, route, vote, …  │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -54,6 +55,10 @@ mechanism, one trace, one cache.
 
 - **Letter** — a template tag (`π`, `Π`, `α`, your `Σ`). See
   [docs/extension.md](extension.md) to define your own.
+- **Word** — a named AI pattern (loop, fan-out, chaining, routing, …)
+  composed from letters; a word is itself a letter, so patterns compose
+  recursively. Seven word plugins ship in `examples/plugins/`. See
+  [docs/words.md](words.md).
 - **Service** — a named capability on `ctx` (`ctx.llm`, `ctx.trace`,
   `ctx.cache`, `ctx.letters`). Cordis gates plugin startup on `inject`.
 - **Span** — one letter invocation in the trace; nested LLM calls and cache
@@ -97,6 +102,7 @@ pizx --letters                # list registered letters
 |---|---|
 | `src/core/context.ts` | `createPizx()`, config-file loading, the Pizx handle |
 | `src/core/letters.ts` | the `Letters` service (registry + effects) |
+| `src/core/words.ts` | the `Words` service (slots, `call`/`parallel`/`loop` operators) |
 | `src/core/trace.ts` | the `Trace` service (spans, events, export) |
 | `src/core/cache.ts` | the `Cache` service (keys, TTL, LRU) |
 | `src/core/llm.ts` | the `Llm` service (auth, models, ask/stream, Π sessions) |
@@ -107,7 +113,8 @@ pizx --letters                # list registered letters
 | `src/plugins/core.ts` | mounts the four services |
 | `src/index.ts` / `src/globals.ts` | package entry / global injection |
 | `src/cli.ts` | the `pizx` CLI |
-| `examples/plugins/` | example user letters (`summarize.mjs`, `ralph.mjs`) |
+| `examples/plugins/` | example letters and words (`summarize.mjs`, plus the seven word plugins: `ralph.mjs`, `fleet.mjs`, `chain.mjs`, `route.mjs`, `vote.mjs`, `refine.mjs`, `orchestrate.mjs`) |
 | `docs/extension.md` | authoring guide for user letters |
+| `docs/words.md` | words reference — the word catalog, slots/options, pattern map |
 | `docs/acp.md` | the α letter reference |
 | `docs/trace.md` | trace format, export, cache-friendliness |

@@ -14,6 +14,7 @@ import type { LlmConfig } from '../core/llm.ts'
 import { Llm } from '../core/llm.ts'
 import type { TraceConfig } from '../core/trace.ts'
 import { Trace } from '../core/trace.ts'
+import { Words } from '../core/words.ts'
 
 export interface CoreConfig {
   trace?: TraceConfig
@@ -28,5 +29,6 @@ export const corePlugin: Plugin.Object<Context, CoreConfig> = {
     ctx.plugin(Cache, config.cache)
     ctx.plugin(Llm, config.llm)
     ctx.plugin(Letters)
+    ctx.plugin(Words)
   },
 }

@@ -55,6 +55,20 @@ function modelError(): Error {
   })
 }
 
+/**
+ * Join the text content blocks of a stream's `done` message. Some providers
+ * (e.g. prompt-cache hits) deliver the full text in the done message with no
+ * `text_delta` events at all, so both run() and stream() recover it from here.
+ */
+function textFromDoneMessage(message: {
+  content: readonly { type: string; text?: string }[]
+}): string {
+  return message.content
+    .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
+    .map((c) => c.text)
+    .join('')
+}
+
 async function run(prompt: string, opts: PiOpts, env: LetterEnv): Promise<LetterOutput> {
   const { ctx } = env
   const model = await ctx.llm.pick(opts.model ?? ctx.llm.config.model)
@@ -87,6 +101,15 @@ async function run(prompt: string, opts: PiOpts, env: LetterEnv): Promise<Letter
       if (ev.type === 'text_delta') {
         text += ev.delta
         if (!opts.quiet) process.stdout.write(ev.delta)
+      } else if (ev.type === 'done') {
+        // Recover the full text when the provider skipped text_delta events.
+        if (!text) {
+          const full = textFromDoneMessage(ev.message)
+          if (full) {
+            text = full
+            if (!opts.quiet) process.stdout.write(full)
+          }
+        }
       } else if (ev.type === 'error') {
         throw new Error(ev.error.errorMessage ?? 'Unknown stream error')
       }
@@ -107,6 +130,7 @@ async function* stream(prompt: string, opts: PiOpts, env: LetterEnv): AsyncGener
   const model = await ctx.llm.pick(opts.model ?? ctx.llm.config.model)
   if (!model) throw modelError()
 
+  let yielded = false
   for await (const ev of ctx.llm.stream(model, makeContext(prompt, opts), {
     maxTokens: opts.maxTokens,
     reasoning: opts.thinkingLevel as ThinkingLevel,
@@ -115,8 +139,17 @@ async function* stream(prompt: string, opts: PiOpts, env: LetterEnv): AsyncGener
     maxRetries: opts.maxRetries,
     apiKey: opts.apiKey,
   })) {
-    if (ev.type === 'text_delta') yield ev.delta
-    else if (ev.type === 'error') {
+    if (ev.type === 'text_delta') {
+      yielded = true
+      yield ev.delta
+    } else if (ev.type === 'done') {
+      // Same recovery as run(): a cache-hit response may carry the full
+      // text in the done message with no text_delta events at all.
+      if (!yielded) {
+        const full = textFromDoneMessage(ev.message)
+        if (full) yield full
+      }
+    } else if (ev.type === 'error') {
       throw new PizxError(
         'INTERNAL',
         `pizx/π: ${ev.error.errorMessage ?? 'Unknown stream error'}`,

@@ -17,6 +17,7 @@ import type { LlmConfig } from './llm.ts'
 import type { LetterDefinition, LetterFn } from './tags.ts'
 import type { TraceConfig } from './trace.ts'
 import { getErrorMessage } from './utils.ts'
+import type { Words } from './words.ts'
 
 export interface PizxConfig extends LlmConfig {
   /** Suppress status output across letters. */
@@ -55,6 +56,8 @@ export interface Pizx {
     name: string,
     def: LetterDefinition<T>
   ): LetterFn<T>
+  /** The words service — compose letters into AI patterns (words). */
+  words: Words
   /** Export the run trace as JSONL (default) or JSON. */
   exportLog(format?: 'jsonl' | 'json'): string
   /** Human-readable trace summary. */
@@ -112,6 +115,7 @@ export async function createPizx(config: PizxConfig = {}): Promise<Pizx> {
     α,
     letter: (name) => ctx.letters.get(name),
     define: (name, def) => ctx.letters.define(name, def, 'app'),
+    words: ctx.words,
     exportLog: (format) => ctx.trace.exportLog(format),
     traceSummary: () => ctx.trace.summary(),
     flushLog: (path, format) => ctx.trace.flush(path, format),

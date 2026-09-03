@@ -8,6 +8,7 @@
  */
 
 import type { Context } from '@cordisjs/core'
+import { isPizxError, PizxError } from './errors.ts'
 import type { LlmCallEvent, Trace, TraceSpan } from './trace.ts'
 import { build, getErrorMessage } from './utils.ts'
 
@@ -192,6 +193,25 @@ export interface LetterFn<TOpts = Record<string, unknown>> {
 
 // ── Runner ──────────────────────────────────────────────────────────────────
 
+/**
+ * Apply a letter's option validator at the boundary. Validation failures
+ * (schemastery schemas included) are normalized to `PizxError('VALIDATION')`,
+ * so every letter — words included — reports bad usage through the same
+ * machine-readable contract instead of a mix of foreign error shapes.
+ */
+function applyOptions(
+  def: LetterDefinition,
+  rawOpts: Record<string, unknown>
+): Record<string, unknown> {
+  if (!def.options) return rawOpts
+  try {
+    return def.options(rawOpts)
+  } catch (err) {
+    if (isPizxError(err)) throw err
+    throw new PizxError('VALIDATION', getErrorMessage(err), { cause: err })
+  }
+}
+
 interface RunResult {
   output: LetterOutput
   fromCache: boolean
@@ -295,7 +315,7 @@ export function createLetterTag<T extends Record<string, unknown> = Record<strin
         return make({ ...base, ...pieces })
       }
       const rawOpts = { ...base }
-      const opts = def.options ? (def.options(rawOpts) as Record<string, unknown>) : rawOpts
+      const opts = applyOptions(def, rawOpts)
       return new LetterPromise((resolve, reject) => {
         runLetter(ctx, name, def, pieces as TemplateStringsArray, args, opts, rawOpts).then(
           (r) => resolve(r.output),
@@ -320,10 +340,10 @@ export function createLetterTag<T extends Record<string, unknown> = Record<strin
       ...args: unknown[]
     ): AsyncGenerator<string> {
       if (!def.stream) {
-        throw new Error(`pizx: letter '${name}' does not support streaming`)
+        throw new PizxError('VALIDATION', `pizx: letter '${name}' does not support streaming`)
       }
       const rawOpts = { ...base }
-      const opts = def.options ? (def.options(rawOpts) as Record<string, unknown>) : rawOpts
+      const opts = applyOptions(def, rawOpts)
       const prompt = build(pieces, args)
       const trace = ctx.get('trace')
       const span = trace?.enabled
@@ -332,7 +352,7 @@ export function createLetterTag<T extends Record<string, unknown> = Record<strin
       const env: LetterEnv = { ctx, pieces, args, span }
       const run = () => {
         if (!def.stream) {
-          throw new Error(`pizx: letter '${name}' does not support streaming`)
+          throw new PizxError('VALIDATION', `pizx: letter '${name}' does not support streaming`)
         }
         return def.stream(prompt, opts as never, env)
       }
@@ -378,7 +398,10 @@ export function forwardTag(
         getLetter(name)
           .then((tag) => {
             if (!tag) {
-              throw new Error(`pizx: letter '${name}' is not registered (missing plugin?)`)
+              throw new PizxError(
+                'VALIDATION',
+                `pizx: letter '${name}' is not registered (missing plugin?)`
+              )
             }
             // Re-apply the chained options onto the resolved target. Without this,
             // named-import usage (π({ model })) would silently drop every option.
@@ -404,7 +427,12 @@ export function forwardTag(
       ...args: unknown[]
     ): AsyncGenerator<string> {
       const tag = await getLetter(name)
-      if (!tag) throw new Error(`pizx: letter '${name}' is not registered (missing plugin?)`)
+      if (!tag) {
+        throw new PizxError(
+          'VALIDATION',
+          `pizx: letter '${name}' is not registered (missing plugin?)`
+        )
+      }
       yield* tag({ ...base }).stream(pieces, ...args)
     }
 

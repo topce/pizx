@@ -124,6 +124,37 @@ globals injection (`pizx --letters` lists them). Collisions are errors,
 unloading a plugin removes its letters (cordis effects), and `inject`
 dependencies make load order irrelevant.
 
+## Words — composable AI patterns
+
+**Words** are named AI patterns built by composing letters; a word is itself
+a letter, so words compose recursively. Seven ship as ready-made plugins in
+[examples/plugins/](examples/plugins/) — the patterns from Anthropic's
+[Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
+— and load through `pizx.config.mjs` like any plugin:
+
+| Word | Aliases | Pattern |
+|---|---|---|
+| `ralph` | `loop` | Agent loop — iterative analyze/plan/execute/review |
+| `fleet` | `parallel` | Parallelization: sectioning — split prompt, fan out |
+| `chain` | `pipeline` | Prompt chaining — sequential steps + optional gate |
+| `route` | `branch` | Routing — classify, then dispatch |
+| `vote` | `jury` | Voting — N parallel answers, tallied |
+| `refine` | `optimize` | Evaluator-optimizer — revise against criteria until PASS |
+| `orchestrate` | `director` | Orchestrator-workers — decompose, fan out, synthesize |
+
+```js
+await chain({ steps: ['outline', 'π'] })`write a document about X`
+await route({ routes: { refund: 'π', tech: 'Π' } })`support query`
+await vote({ votes: 5 })`is this diff safe to merge?`
+await refine({ criteria: 'no jargon, under 50 words' })`explain monads`
+await orchestrate`audit the docs for inconsistencies`
+```
+
+Every word's letters live in replaceable **slots** — `ralph({ execute: 'α' })`,
+`fleet({ worker: 'Π' })` — and letters needing options get them through the
+word (`server`, `model`, `cwd`, … are forwarded). Full reference:
+[docs/words.md](docs/words.md).
+
 ## Traceable, exportable, cache-friendly
 
 ```bash
@@ -193,6 +224,7 @@ await app.dispose()
 - [AGENTS.md](AGENTS.md) — guide for AI agents writing pizx code (script template, letters, `--json`, exit codes)
 - [Onboarding](docs/onboarding.md) — architecture and file map
 - [Defining letters](docs/extension.md) — the plugin API
+- [Words](docs/words.md) — composing letters into AI patterns (the word library)
 - [Trace & logs](docs/trace.md) — event format, export, cache-friendliness
 - [π](docs/pi.md) · [Π](docs/capital-pi.md) · [α](docs/acp.md) — built-in letter references
 - [α idea](docs/ideas/acp-alpha.md) — the ACP letter's design rationale and roadmap
@@ -201,8 +233,10 @@ await app.dispose()
 
 pizx 1.0 rewrote the core on cordis and ships **π, Π, and α** — the 16
 hardcoded pattern tags (Ralph, Fleet, Debate, Pipeline, …) are gone from the
-core and can come back as letter plugins (see `examples/plugins/ralph.mjs`
-for a port). The old code lives in the 0.9 branch.
+core and come back as letter plugins. Seven already have: `ralph`, `fleet`,
+`chain` (pipeline), `route` (branch), `vote` (jury), `refine` (optimize), and
+`orchestrate` (director) ship as word plugins in `examples/plugins/` — see
+[docs/words.md](docs/words.md). The old code lives in the 0.9 branch.
 
 ## License
 

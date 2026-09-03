@@ -482,7 +482,25 @@ export class Llm extends Service<LlmConfig> {
           outer.push(ev)
         }
         outer.end(await inner.result())
-      } catch {
+      } catch (err) {
+        // Surface inner stream failures as an error event instead of ending
+        // the stream silently — consumers (π) otherwise see an empty/partial
+        // result with no indication that generation failed.
+        outer.push({
+          type: 'error',
+          reason: 'error',
+          error: {
+            role: 'assistant',
+            content: [],
+            api: model.api,
+            provider: model.provider,
+            model: model.id,
+            usage: emptyUsage(),
+            stopReason: 'error',
+            errorMessage: getErrorMessage(err),
+            timestamp: Date.now(),
+          },
+        })
         outer.end()
       }
     })()

@@ -7,6 +7,7 @@
  */
 
 import { type Context, type Plugin, Service } from '@cordisjs/core'
+import { PizxError } from './errors.ts'
 import { createLetterTag, type LetterDefinition, type LetterFn } from './tags.ts'
 
 export type { LetterDefinition, LetterEnv, LetterFn, LetterOutput, LetterPromise } from './tags.ts'
@@ -104,7 +105,8 @@ export class Letters extends Service {
   private assertAvailable(name: string, owner: string): void {
     if (this.registry.has(name) || this.aliases.has(name)) {
       const existing = this.registry.get(name) ?? this.registry.get(this.aliases.get(name) ?? '')
-      throw new Error(
+      throw new PizxError(
+        'VALIDATION',
         `pizx: letter '${name}' is already registered by ${existing?.owner ?? 'another plugin'} (tried to define from ${owner})`
       )
     }

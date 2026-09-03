@@ -142,6 +142,30 @@ Every letter registered through `ctx.letters` automatically gets:
 - **Caching** — side-effect-free letters hit the local content-addressed
   cache when enabled (per call, app-wide, or `pizx --cache`)
 
+## Words — composing letters into patterns
+
+A **word** is an AI pattern built by composing letters, registered through the
+`ctx.words` service. Its letters live in replaceable **slots** (a registered
+name or a tag), so `ralph({ execute: 'α' })` swaps the execution step without
+changing the pattern. Words are themselves letters, so they compose
+recursively. See [docs/words.md](words.md) for the full reference.
+
+```js
+export const inject = ['words', 'letters', 'llm']
+export function apply(ctx) {
+  ctx.words.define('ralph', {
+    slots: { analyze: 'π', plan: 'π', execute: 'Π', review: 'π' },
+    options: { maxIterations: Schema.natural().default(5) },
+    run: async (prompt, opts, env) => {
+      const { ctx } = env
+      const analyze = (await ctx.words.call(opts.analyze, prompt, { quiet: true })).text
+      // … loop / parallel / compose the slots …
+      return analyze
+    },
+  })
+}
+```
+
 ## Guidelines
 
 - Declare `inject: ['letters', 'llm']` (and `'trace'`/`'cache'` when you use
@@ -156,4 +180,4 @@ Every letter registered through `ctx.letters` automatically gets:
   just add them to their `pizx.config.mjs`.
 
 See `examples/plugins/` in the repository for runnable examples
-(`summarize.mjs`, `ralph.mjs`).
+(`summarize.mjs`, `ralph.mjs`, `fleet.mjs`).

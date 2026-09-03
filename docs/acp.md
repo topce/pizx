@@ -46,6 +46,29 @@ pizx --acp --acp-server "kiro-cli acp" "fix the TypeScript errors in src/"
 (`--acp-server` is whitespace-split; for arguments containing spaces, use a
 script with `α({ server: [...] })` instead.)
 
+## α inside words
+
+α fills the agent slots of the word library exactly like Π. Pass `server`
+next to the slot name — the word forwards it (plus `cwd`, `timeoutMs`, …) to
+the α slot:
+
+```js
+await ralph({ execute: 'α', server: ['kiro-cli', 'acp'] })`create NOTES.md with the plan`
+await fleet({ worker: 'α', server: ['kiro-cli', 'acp'], cwd: './scratch', concurrency: 2 })`- task one
+- task two`
+await orchestrate({ worker: 'α', server: ['kiro-cli', 'acp'] })`…`
+```
+
+Or bind a pre-configured tag, which carries its own options:
+`execute: α({ server: ['kiro-cli', 'acp'] })`. Runnable tours:
+
+- [`examples/acp-word-slots.mjs`](../examples/acp-word-slots.mjs)
+  (`npm run example:acp-word-slots`) — ralph, fleet, and orchestrate with α
+  slots, writing into a scratch directory;
+- `examples/word-ralph.mjs`, `examples/word-fleet.mjs`,
+  `examples/word-orchestrate.mjs` — each ends with a gated α section
+  (read-only prompts) that skips cleanly when kiro-cli is not installed.
+
 ## Options
 
 | Option | Type | Default | Notes |
