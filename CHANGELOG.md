@@ -2,6 +2,13 @@
 
 All notable changes to pizx are documented here.
 
+## [1.4.1] — 2026-09-06
+
+### Changed
+
+- **ESLint removed — Biome is now the single linter** — `eslint`, `typescript-eslint`, `@eslint/js`, and `globals` are dropped along with the config file and the `lint:eslint` script; `lint` is `biome ci src/` only. Stale `eslint-disable` comments were cleaned from `src/core/{letters,tags,trace}.ts`.
+- **Dependency update** — runtime `@earendil-works/pi-ai` and `@earendil-works/pi-coding-agent` bumped to v0.85.1; dev tooling bumped to `typescript` v7.0.2, `vitest` v5.0.0, `@vitest/coverage-v8` ^5.0.0, `@biomejs/biome` v2.5.12, `esbuild` 0.28.2, and `@types/node` v26.4.1.
+
 ## [1.4.0] — 2026-09-03
 
 ### Added

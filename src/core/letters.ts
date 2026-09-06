@@ -26,7 +26,6 @@ declare module '@cordisjs/core' {
   interface Context {
     letters: Letters
   }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface Events<in C extends Context = Context> {
     'pizx/letter-removed'(name: string): void
   }

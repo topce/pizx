@@ -159,7 +159,6 @@ export interface LetterDefinition<TOpts = Record<string, unknown>> {
    * Option validator applied at the boundary. A schemastery schema works
    * directly: it validates, fills defaults, and types TOpts.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   options?: (value: any) => TOpts
   /**
    * Whether this letter's results may be served from the local result cache.

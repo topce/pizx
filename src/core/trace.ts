@@ -214,7 +214,6 @@ declare module '@cordisjs/core' {
   interface Context {
     trace: Trace
   }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface Events<in C extends Context = Context> {
     'pizx/trace'(event: TraceEvent): void
   }
