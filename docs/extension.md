@@ -142,6 +142,36 @@ Every letter registered through `ctx.letters` automatically gets:
 - **Caching** — side-effect-free letters hit the local content-addressed
   cache when enabled (per call, app-wide, or `pizx --cache`)
 
+## Harnesses — adding a CLI backend to ε
+
+The `ε` letter runs CLI AI harnesses; the harnesses themselves are **spec
+plugins** registered on the `ctx.harnesses` service. A spec is a tiny
+declarative object — that's the whole plugin:
+
+```js
+// plugins/harness-opencode.mjs — everything ε needs to run opencode
+export const name = 'opencode'
+export const inject = ['harnesses']
+export function apply(ctx) {
+  ctx.harnesses.define('opencode', {
+    command: 'opencode',
+    runArgs: ['run'],
+    prompt: 'arg',          // final positional arg ('arg') or 'stdin'
+    description: 'opencode coding agent',
+  })
+}
+export default { name, inject, apply }
+```
+
+Spec fields: `command` (defaults to the name), `runArgs` (before generated
+flags, e.g. `['-p']` for claude), `prompt` (`'arg'`|`'stdin'`), `flags`
+(option-key → flag-name overrides), `negateBooleans` (default true — maps
+`false` to `--no-<flag>`), `description`. Everything else ε owns: options
+without a pizx key auto-convert to CLI flags (camelCase → `--kebab-case`,
+booleans bare, arrays repeated, 1-char → `-x`). The built-ins
+(`src/plugins/harness-kiro.ts`, `src/plugins/harness-claude.ts`) are exactly
+this pattern. Full reference: [docs/epsilon.md](epsilon.md).
+
 ## Words — composing letters into patterns
 
 A **word** is an AI pattern built by composing letters, registered through the

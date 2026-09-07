@@ -14,7 +14,9 @@ Two ways to target pizx:
 
 **Prerequisites:** Node.js >= 22.19.0. The `π` and `Π` letters need Pi
 credentials — run `pi auth login` once (`npm i -g @earendil-works/pi`). The `α`
-letter needs no pi; it drives any external ACP server you name.
+letter needs no pi; it drives any external ACP server you name. The `ε` letter
+needs no pi either; it runs any CLI AI harness (`claude`, `kiro-cli`, …) you
+have installed.
 
 ---
 
@@ -27,8 +29,8 @@ type-checking and autocomplete on the injected globals:
 #!/usr/bin/env pizx
 /// <reference types="@topce/pizx/globals" />
 
-// Globals available with no import: $, π, Π, α (+ your own letters), plus all
-// of zx: cd, echo, chalk, fetch, fs, os, path, glob, question, sleep, within…
+// Globals available with no import: $, π, Π, α, ε (+ your own letters), plus
+// all of zx: cd, echo, chalk, fetch, fs, os, path, glob, question, sleep, within…
 
 const files = (await $`ls src`).stdout.trim()
 
@@ -58,14 +60,16 @@ pizx script.mjs
 | `π` | `pi`, `ai` | Pi AI text generation (streams by default) | pi creds |
 | `Π` | `Pi`, `piAgent`, `codingAgent` | Pi coding agent with tools (read/bash/edit/write/…) | pi creds |
 | `α` | `acp`, `agent` | Any ACP-compatible coding agent | an ACP server command |
+| `ε` | `run`, `harness`, `cli` | Any CLI AI harness (claude, kiro-cli, …) | the harness binary |
 
-Prefer the ASCII aliases (`pi`, `Pi`, `acp`) when emitting code where the Greek
-letters are awkward to type — they are the exact same tags.
+Prefer the ASCII aliases (`pi`, `Pi`, `acp`, `run`) when emitting code where
+the Greek letters are awkward to type — they are the exact same tags.
 
 ```js
 const answer = await pi`what is the capital of France?`   // π
 await Pi`fix the TypeScript errors in src/`                // Π
 await acp({ server: ['kiro-cli', 'acp'] })`review this diff`  // α
+await run({ harness: 'claude', model: 'sonnet' })`review this diff`  // ε
 ```
 
 ### Every letter is a template tag with the same shape
@@ -97,6 +101,12 @@ Pass options as a plain object before the template: `` π({ ...opts })`prompt` `
 
 **`α` (ACP agent):** `server` (**required** — string array, e.g.
 `['kiro-cli', 'acp']`), `cwd`, `env`, `quiet`, `timeoutMs`, `confirm`.
+
+**`ε` (CLI harness):** `harness` (**required** — e.g. `'claude'` or `'kiro'`),
+`cwd`, `env`, `quiet`, `timeoutMs`, `confirm`, `args` (raw extra argv). Every
+**other** option is forwarded to the harness CLI as a flag: camelCase →
+`--kebab-case`, booleans bare, `false` → `--no-*`, arrays repeated, 1-char →
+`-x`. Harness backends are spec plugins — see [docs/epsilon.md](docs/epsilon.md).
 
 `confirm` gates execution: `true` or `{ semi: true }` prompts at major phases,
 `{ hitl: true }` prompts at every phase, `{ auto: true }` (default) never
@@ -137,6 +147,7 @@ const second = await app.π.cache`what is 7! + 5?`
 second.isFromCache        // true — no second LLM call
 
 await app.Π({ tools: ['read', 'edit'] })`refactor the auth module`
+await app.ε({ harness: 'claude' })`review this diff`   // any CLI harness
 await app.letter('Σ')`summarize this`   // look up any registered letter by name
 
 console.log(app.traceSummary())          // human-readable token/cache/cost totals
@@ -144,7 +155,7 @@ await app.flushLog('run.jsonl')          // write the run's JSONL event log
 await app.dispose()                      // always dispose to tear down sessions
 ```
 
-`createPizx()` returns `{ ctx, config, π, Π, α, letter(name), define(name, def),
+`createPizx()` returns `{ ctx, config, π, Π, α, ε, letter(name), define(name, def),
 exportLog(format?), traceSummary(), flushLog(path?, format?), dispose() }`.
 
 Or inject everything as globals (boots a lazy default app):
@@ -283,6 +294,7 @@ pizx -p "your prompt"                 # quick π query (streams to stdout)
 pizx -p -                             # read the prompt from stdin
 echo "prompt" | pizx -p               # empty prompt + piped stdin also reads stdin
 pizx --acp --acp-server "kiro-cli acp" "prompt"   # quick α query
+pizx --run --run-harness claude "prompt"          # quick ε query (harness CLI)
 pizx --letters                        # list registered letters
 pizx --model <id> script.mjs          # set the model for the run
 pizx --cache | --no-cache script.mjs  # toggle the local result cache
@@ -297,8 +309,8 @@ pizx --version | --help
 
 ### `--json` output
 
-`--json` makes `-p`, `--acp`, and `--letters` emit one JSON object/array on
-stdout (streaming is suppressed). A result envelope:
+`--json` makes `-p`, `--acp`, `--run`, and `--letters` emit one JSON
+object/array on stdout (streaming is suppressed). A result envelope:
 
 ```json
 {
@@ -327,6 +339,7 @@ exits with the matching code below.
 | `5` | `ACP` — α ACP server/connection failure |
 | `6` | `CANCELLED` — user declined a confirmation gate |
 | `7` | `INTERNAL` — unexpected internal error |
+| `8` | `HARNESS` — ε harness failure (non-zero exit, timeout, missing binary) |
 
 Programmatically, these come from `PizxError.code`
 (`import { PizxError, isPizxError } from '@topce/pizx'`); branch on `err.code`,
@@ -339,14 +352,15 @@ not on message text.
 - Scripts are ESM with top-level `await`; use `.mjs`/`.ts`, not `.cjs`.
 - A letter result is a `LetterOutput`, not a string — use `.text` (it does
   stringify, but `.text` is clearer and avoids surprises with `JSON.stringify`).
-- `π`/`Π` need `pi auth login`; `α` needs a `server` command and ignores pi.
-- `Π` and `α` mutate the filesystem — they are never cached.
+- `π`/`Π` need `pi auth login`; `α` needs a `server` command and ignores pi;
+  `ε` needs a `harness` and the harness binary installed.
+- `Π`, `α`, and `ε` mutate the filesystem — they are never cached.
 - `--json` implies `--quiet` and `--no-color`; don't also parse streamed text.
 
 ## More docs
 
 - [README](README.md) — overview and quick start
-- [π](docs/pi.md) · [Π](docs/capital-pi.md) · [α](docs/acp.md) — per-letter references
+- [π](docs/pi.md) · [Π](docs/capital-pi.md) · [α](docs/acp.md) · [ε](docs/epsilon.md) — per-letter references
 - [Defining letters](docs/extension.md) — the plugin API
 - [Words](docs/words.md) — the word library (ralph, fleet, chain, route, vote, refine, orchestrate)
 - [Trace & logs](docs/trace.md) — event format, export, caching

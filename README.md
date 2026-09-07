@@ -5,7 +5,7 @@
 
 ![pizx — zx fork with native Pi AI integration](github-social-banner.png)
 
-> **AI-powered shell scripting for Node.js** — a [zx](https://github.com/google/zx) fork with native [Pi](https://github.com/earendil-works/pi) AI integration, built on the [cordis](https://github.com/cordiverse/cordis) plugin framework. Three letters ship in core — **π** (text generation), **Π** (coding agent), and **α** (any ACP-compatible agent) — and you define your own letters as plugins. Every run is traceable and exportable as JSONL, and cacheable letters hit a local result cache.
+> **AI-powered shell scripting for Node.js** — a [zx](https://github.com/google/zx) fork with native [Pi](https://github.com/earendil-works/pi) AI integration, built on the [cordis](https://github.com/cordiverse/cordis) plugin framework. Four letters ship in core — **π** (text generation), **Π** (coding agent), **α** (any ACP-compatible agent), and **ε** (any CLI AI harness — claude, kiro-cli, …) — and you define your own letters as plugins. Every run is traceable and exportable as JSONL, and cacheable letters hit a local result cache.
 
 ```js
 #!/usr/bin/env pizx
@@ -59,6 +59,7 @@ chmod +x hello.mjs
 | `π` (`pi`, `ai`) | Pi AI text generation — ask a model anything, stream it, cache it |
 | `Π` (`Pi`, `piAgent`, `codingAgent`) | Pi coding agent with tools (read, bash, edit, write, grep, …) |
 | `α` (`acp`, `agent`) | Any ACP-compatible coding agent (server required — no pi needed) |
+| `ε` (`run`, `harness`, `cli`) | Any CLI AI harness — claude, kiro-cli, opencode, … (binary required — no pi needed) |
 
 ```js
 const answer = await π({ model: 'anthropic/claude-sonnet-4-5' })`explain async/await`
@@ -69,14 +70,19 @@ await Π({ tools: ['read', 'bash', 'edit'] })`refactor the auth module`
 
 // α speaks the generic Agent Client Protocol — any ACP v1 server works:
 await α({ server: ['kiro-cli', 'acp'] })`fix the TypeScript errors in src/`
+
+// ε runs any CLI AI harness; unknown options become its CLI flags:
+await ε({ harness: 'claude', model: 'sonnet' })`review this diff`   // claude -p --model sonnet …
 ```
 
-All three return a `LetterOutput`: `text`, `modelId` (alias `modelUsed`),
+All four return a `LetterOutput`: `text`, `modelId` (alias `modelUsed`),
 `isFromCache` (alias `fromCache`), timing, and token/cost getters — plus
 `output.trace` with the LLM calls of that invocation. Full option tables:
 [π](docs/pi.md), [Π](docs/capital-pi.md),
-[α](docs/acp.md). α is independent of pi entirely: install the agent CLI you
-want (e.g. [Kiro](https://kiro.dev/docs/cli/acp/)) and pass its command.
+[α](docs/acp.md), [ε](docs/epsilon.md). α and ε are independent of pi
+entirely: α drives any ACP server command you name; ε drives any harness
+binary you have installed (e.g. [Kiro](https://kiro.dev/docs/cli/),
+[Claude Code](https://code.claude.com/docs/en/cli-reference)).
 
 ## Define your own letters
 
@@ -184,10 +190,11 @@ await app.dispose()
 ## CLI
 
 ```bash
-pizx script.mjs                # run a script ($, π, Π, α and your letters as globals)
+pizx script.mjs                # run a script ($, π, Π, α, ε and your letters as globals)
 pizx -p "your prompt"          # quick pi-ai query
 echo "your prompt" | pizx -p - # read the prompt from stdin
 pizx --acp --acp-server "kiro-cli acp" "your prompt"  # quick ACP agent query
+pizx --run --run-harness claude "your prompt"         # quick CLI harness query
 pizx --model <id> script.mjs   # model for the run
 pizx --config ./cfg.mjs s.mjs  # load plugins from a config file
 pizx --letters                 # list registered letters
@@ -202,7 +209,7 @@ Machine-readable output for agents: `--json` emits a result envelope
 (`{ text, modelId, fromCache, durationMs, tokens, costUsd }`) or, with
 `--letters`, the letter registry; failures print `{ error: { code, message } }`
 to stderr and exit with a distinct code (`2` usage · `3` auth · `4` agent ·
-`5` acp · `6` cancelled · `7` internal). See [AGENTS.md](AGENTS.md).
+`5` acp · `6` cancelled · `7` internal · `8` harness). See [AGENTS.md](AGENTS.md).
 
 ## Programmatic use
 
@@ -226,12 +233,12 @@ await app.dispose()
 - [Defining letters](docs/extension.md) — the plugin API
 - [Words](docs/words.md) — composing letters into AI patterns (the word library)
 - [Trace & logs](docs/trace.md) — event format, export, cache-friendliness
-- [π](docs/pi.md) · [Π](docs/capital-pi.md) · [α](docs/acp.md) — built-in letter references
+- [π](docs/pi.md) · [Π](docs/capital-pi.md) · [α](docs/acp.md) · [ε](docs/epsilon.md) — built-in letter references
 - [α idea](docs/ideas/acp-alpha.md) — the ACP letter's design rationale and roadmap
 
 ## What happened to the 0.9 patterns?
 
-pizx 1.0 rewrote the core on cordis and ships **π, Π, and α** — the 16
+pizx 1.0 rewrote the core on cordis and ships **π, Π, α, and ε** — the 16
 hardcoded pattern tags (Ralph, Fleet, Debate, Pipeline, …) are gone from the
 core and come back as letter plugins. Seven already have: `ralph`, `fleet`,
 `chain` (pipeline), `route` (branch), `vote` (jury), `refine` (optimize), and

@@ -79,6 +79,20 @@ describe('cli parseArgs', () => {
     expect(flags.acpServer).toBeUndefined()
     expect(positional).toEqual(['hello'])
   })
+
+  it('parses --run and --run-harness', () => {
+    const { flags, positional } = parseArgs(['--run', '--run-harness', 'claude', 'review this'])
+    expect(flags.run).toBe(true)
+    expect(flags.runHarness).toBe('claude')
+    expect(positional).toEqual(['review this'])
+  })
+
+  it('parses --run without a harness as positional prompt', () => {
+    const { flags, positional } = parseArgs(['--run', 'hello'])
+    expect(flags.run).toBe(true)
+    expect(flags.runHarness).toBeUndefined()
+    expect(positional).toEqual(['hello'])
+  })
 })
 
 describe('shouldPrintResult', () => {
@@ -109,6 +123,7 @@ describe('exitCodeFor', () => {
     ['ACP', 5],
     ['CANCELLED', 6],
     ['INTERNAL', 7],
+    ['HARNESS', 8],
   ]
 
   it.each(cases)('maps PizxError code %s to exit code %i', (code, expected) => {

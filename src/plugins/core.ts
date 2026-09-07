@@ -9,6 +9,7 @@
 import type { Context, Plugin } from '@cordisjs/core'
 import type { CacheConfig } from '../core/cache.ts'
 import { Cache } from '../core/cache.ts'
+import { Harnesses } from '../core/harnesses.ts'
 import { Letters } from '../core/letters.ts'
 import type { LlmConfig } from '../core/llm.ts'
 import { Llm } from '../core/llm.ts'
@@ -29,6 +30,7 @@ export const corePlugin: Plugin.Object<Context, CoreConfig> = {
     ctx.plugin(Cache, config.cache)
     ctx.plugin(Llm, config.llm)
     ctx.plugin(Letters)
+    ctx.plugin(Harnesses)
     ctx.plugin(Words)
   },
 }

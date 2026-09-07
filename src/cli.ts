@@ -8,6 +8,7 @@
  *   pizx script.mjs                Run a pizx script
  *   pizx -p "prompt"               Quick pi-ai query (print mode)
  *   pizx --acp --acp-server "kiro-cli acp" "prompt"   Quick ACP agent query
+ *   pizx --run --run-harness claude "prompt"          Quick CLI harness query
  *   pizx --trace script.mjs        Print a trace summary when done
  *   pizx --export-log script.mjs   Write the run trace as JSONL
  *   pizx --cache script.mjs        Enable the local result cache
@@ -55,6 +56,8 @@ interface Flags {
   print: boolean
   acp: boolean
   acpServer?: string
+  run: boolean
+  runHarness?: string
   trace: boolean
   letters: boolean
   cache: boolean
@@ -75,6 +78,7 @@ export function parseArgs(argv: string[]): { flags: Flags; positional: string[] 
     help: false,
     print: false,
     acp: false,
+    run: false,
     trace: false,
     letters: false,
     cache: false,
@@ -107,6 +111,12 @@ export function parseArgs(argv: string[]): { flags: Flags; positional: string[] 
         break
       case '--acp-server':
         if (argv[i + 1] && !argv[i + 1].startsWith('-')) flags.acpServer = argv[++i]
+        break
+      case '--run':
+        flags.run = true
+        break
+      case '--run-harness':
+        if (argv[i + 1] && !argv[i + 1].startsWith('-')) flags.runHarness = argv[++i]
         break
       case '--trace':
         flags.trace = true
@@ -171,12 +181,15 @@ function printHelp() {
    pizx [options] <script>      Run a pizx script
    pizx -p <prompt>             Quick pi-ai query
    pizx --acp <prompt>          Quick query to an ACP agent
+   pizx --run <prompt>          Quick query to a CLI harness (claude, kiro, …)
    pizx --letters               List registered letters
 
  ${chalk.bold('Options')}
    -p, --print <prompt>   Send to pi-ai and print response ("-" = read stdin)
    --acp <prompt>         Send to an ACP agent (needs --acp-server; "-" = stdin)
    --acp-server <line>    ACP server command line, e.g. "kiro-cli acp"
+   --run <prompt>         Run a CLI AI harness (needs --run-harness; "-" = stdin)
+   --run-harness <name>   Harness name, e.g. "claude" or "kiro" (see --letters)
    -m, --model <id>       Model to use (e.g. anthropic/claude-sonnet-4-5)
    --system <text>        System context for pi-ai
    --trace                Print a token/cache/cost summary when done
@@ -195,6 +208,7 @@ function printHelp() {
    \`π\`   Pi AI text generation (small pi)
    \`Π\`   Pi coding agent (capital pi, tools: read/bash/edit/write)
    \`α\`   Any ACP-compatible coding agent (acp/agent, server required)
+   \`ε\`   Any CLI AI harness (run/harness/cli, harness required)
 
    Plugins loaded from pizx.config.mjs can define more letters — they appear
    as globals in scripts and in \`pizx --letters\`. See docs/extension.md.
@@ -210,8 +224,11 @@ function printHelp() {
    # Any ACP agent (e.g. Kiro) — no pi involved:
    await \`α\`({ server: ['kiro-cli', 'acp'] })\`fix the TypeScript errors in src/\`
 
+   # Any CLI AI harness (claude, kiro, …) — no pi involved:
+   await \`ε\`({ harness: 'claude', model: 'sonnet' })\`review this diff\`
+
  ${chalk.bold('Exit codes')}
-   0 ok · 1 error · 2 usage · 3 auth · 4 agent · 5 acp · 6 cancelled · 7 internal
+   0 ok · 1 error · 2 usage · 3 auth · 4 agent · 5 acp · 6 cancelled · 7 internal · 8 harness
 
  ${chalk.dim('https://github.com/topce/pizx — agents: see AGENTS.md')}
 `)
@@ -256,6 +273,7 @@ export const EXIT_CODES: Record<PizxErrorCode, number> = {
   AUTH: 3,
   AGENT: 4,
   ACP: 5,
+  HARNESS: 8,
   CANCELLED: 6,
   INTERNAL: 7,
 }
@@ -433,6 +451,43 @@ async function runAcpMode(flags: Flags, args: string[]): Promise<void> {
   }
 }
 
+// ── Harness (ε) quick-ask mode ──────────────────────────────────────────────
+
+async function runRunMode(flags: Flags, args: string[]): Promise<void> {
+  let prompt = args.join(' ') || ''
+  if (shouldReadStdin(prompt, process.stdin.isTTY)) {
+    prompt = (await readStdin()).trim()
+  }
+  if (!prompt) {
+    throw new PizxError(
+      'VALIDATION',
+      'pizx: no prompt provided. Use: pizx --run "your prompt" (or pipe via stdin)'
+    )
+  }
+  if (!flags.runHarness) {
+    throw new PizxError(
+      'VALIDATION',
+      'pizx: --run needs a harness. Use: pizx --run --run-harness claude "your prompt"'
+    )
+  }
+
+  const app = await bootApp(flags)
+  try {
+    const opts =
+      flags.quiet || flags.json
+        ? { harness: flags.runHarness, quiet: true }
+        : { harness: flags.runHarness }
+    const result = await app.ε(opts)`${prompt}`
+    if (flags.json) {
+      process.stdout.write(`${JSON.stringify(resultToJson(result))}\n`)
+    } else if (shouldPrintResult(flags.quiet, result.isFromCache)) {
+      process.stdout.write(`${result.toString()}\n`)
+    }
+  } finally {
+    await finishRun(app, flags)
+  }
+}
+
 // ── Script mode ─────────────────────────────────────────────────────────────
 
 async function runScriptMode(flags: Flags, scriptPath: string): Promise<void> {
@@ -534,6 +589,11 @@ async function main() {
 
   if (flags.acp) {
     await runAcpMode(flags, positional)
+    return
+  }
+
+  if (flags.run) {
+    await runRunMode(flags, positional)
     return
   }
 

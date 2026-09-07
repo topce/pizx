@@ -10,6 +10,9 @@ import { pathToFileURL } from 'node:url'
 import { Context, type Plugin } from '@cordisjs/core'
 import { type AlphaOpts, acpPlugin } from '../plugins/acp.ts'
 import { corePlugin } from '../plugins/core.ts'
+import { type EpsilonOpts, epsilonPlugin } from '../plugins/epsilon.ts'
+import { claudeHarnessPlugin } from '../plugins/harness-claude.ts'
+import { kiroHarnessPlugin } from '../plugins/harness-kiro.ts'
 import { type PiOpts, piPlugin } from '../plugins/pi.ts'
 import { type AgentOpts, piAgentPlugin } from '../plugins/pi-agent.ts'
 import type { CacheConfig } from './cache.ts'
@@ -47,6 +50,8 @@ export interface Pizx {
   Π: LetterFn<AgentOpts>
   /** The α letter (any ACP agent) — also available as ctx.letters.get('α'). */
   α: LetterFn<AlphaOpts>
+  /** The ε letter (any CLI harness) — also available as ctx.letters.get('ε'). */
+  ε: LetterFn<EpsilonOpts>
   /** Look up any registered letter (user-defined ones included). */
   letter<T extends Record<string, unknown> = Record<string, unknown>>(
     name: string
@@ -92,6 +97,9 @@ export async function createPizx(config: PizxConfig = {}): Promise<Pizx> {
   ctx.plugin(piPlugin)
   ctx.plugin(piAgentPlugin)
   ctx.plugin(acpPlugin)
+  ctx.plugin(epsilonPlugin)
+  ctx.plugin(kiroHarnessPlugin)
+  ctx.plugin(claudeHarnessPlugin)
 
   // User plugins from the config file, then from config.plugins.
   for (const plugin of await loadConfigPlugins(ctx, config)) {
@@ -103,8 +111,9 @@ export async function createPizx(config: PizxConfig = {}): Promise<Pizx> {
   const π = ctx.letters.get('π')
   const Π = ctx.letters.get('Π')
   const α = ctx.letters.get('α')
-  if (!π || !Π || !α) {
-    throw new Error('pizx: built-in letters π/Π/α failed to load (check plugin order)')
+  const ε = ctx.letters.get('ε')
+  if (!π || !Π || !α || !ε) {
+    throw new Error('pizx: built-in letters π/Π/α/ε failed to load (check plugin order)')
   }
 
   const app: Pizx = {
@@ -113,6 +122,7 @@ export async function createPizx(config: PizxConfig = {}): Promise<Pizx> {
     π,
     Π,
     α,
+    ε,
     letter: (name) => ctx.letters.get(name),
     define: (name, def) => ctx.letters.define(name, def, 'app'),
     words: ctx.words,

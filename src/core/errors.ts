@@ -8,7 +8,14 @@
  */
 
 /** Stable machine-readable error categories. */
-export type PizxErrorCode = 'VALIDATION' | 'AUTH' | 'AGENT' | 'ACP' | 'CANCELLED' | 'INTERNAL'
+export type PizxErrorCode =
+  | 'VALIDATION'
+  | 'AUTH'
+  | 'AGENT'
+  | 'ACP'
+  | 'HARNESS'
+  | 'CANCELLED'
+  | 'INTERNAL'
 
 export class PizxError extends Error {
   constructor(

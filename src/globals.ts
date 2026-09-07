@@ -12,6 +12,7 @@
 import { getDefaultApp } from './core/default-app.ts'
 import type { LetterFn } from './core/tags.ts'
 import type { AlphaOpts } from './plugins/acp.ts'
+import type { EpsilonOpts } from './plugins/epsilon.ts'
 import type { PiOpts } from './plugins/pi.ts'
 import type { AgentOpts } from './plugins/pi-agent.ts'
 
@@ -47,6 +48,11 @@ declare global {
   const α: LetterFn<AlphaOpts>
   const acp: LetterFn<AlphaOpts>
   const agent: LetterFn<AlphaOpts>
+  /** ε — Any CLI AI harness. Aliases: `run`, `harness`, `cli`. */
+  const ε: LetterFn<EpsilonOpts>
+  const run: LetterFn<EpsilonOpts>
+  const harness: LetterFn<EpsilonOpts>
+  const cli: LetterFn<EpsilonOpts>
 }
 
 // The π/Π/α names and aliases (plus configureDefaultApp/disposeDefaultApp) are

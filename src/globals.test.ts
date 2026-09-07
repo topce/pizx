@@ -14,7 +14,22 @@ describe('globals.ts ambient types', () => {
   })
 
   it('types every built-in letter and alias as a LetterFn global', () => {
-    const names = ['π', 'pi', 'ai', 'Π', 'Pi', 'piAgent', 'codingAgent', 'α', 'acp', 'agent']
+    const names = [
+      'π',
+      'pi',
+      'ai',
+      'Π',
+      'Pi',
+      'piAgent',
+      'codingAgent',
+      'α',
+      'acp',
+      'agent',
+      'ε',
+      'run',
+      'harness',
+      'cli',
+    ]
     for (const name of names) {
       expect(src).toContain(`const ${name}: LetterFn<`)
     }

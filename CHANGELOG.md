@@ -2,6 +2,43 @@
 
 All notable changes to pizx are documented here.
 
+## [1.5.0] — 2026-09-07
+
+### Added
+
+- **ε (epsilon) — run any CLI AI harness as a letter** — a new built-in
+  letter (`ε`, aliases `run`/`harness`/`cli`) that shells out to any AI
+  harness binary through a tiny zx wrapper, with zero pi involvement:
+  `ε({ harness: 'claude', model: 'sonnet' })`prompt`` runs
+  `claude -p --model sonnet <prompt>`. Built-in harnesses: **claude**
+  (`claude -p`) and **kiro** (`kiro-cli run`). pizx-owned options
+  (`harness`, `cwd`, `env`, `quiet`, `timeoutMs`, `confirm`, `args`) are
+  validated; every other option is forwarded to the harness CLI as a flag
+  (camelCase → `--kebab-case`, booleans bare, `false` → `--no-*`, arrays
+  repeated, 1-char → `-x`), so all current and future harness options work
+  without editing pizx. Live stdout echo, `.quiet`, `.stream`, confirm
+  gates, timeouts (process-group kill), and trace events included; results
+  are never cached.
+- **Harnesses service — harness backends are spec plugins** — a new
+  `ctx.harnesses` service holds declarative harness specs (`command`,
+  `runArgs`, prompt delivery, flag renames, boolean negation). Adding
+  opencode (or any harness) is a ~10-line plugin dropped into
+  `pizx.config.mjs`; registration is an effect (unloading a plugin removes
+  its specs) and duplicates fail with `VALIDATION`. Exported as
+  `Harnesses`/`HarnessSpec` from the package.
+- **CLI: `pizx --run`** — quick ε query mirroring `--acp`:
+  `pizx --run --run-harness claude "prompt"` (stdin `-` and `--json`
+  supported). Harness failures get a new `HARNESS` error code and **exit
+  code 8** (`pizx/ε:` messages carry the exit code and a stderr tail;
+  missing binaries are reported as "failed to start … is it installed?").
+- **ε inside words** — `harness` joined the word slot-option forwarding
+  (`ralph({ execute: 'ε', harness: 'claude' })`).
+- **Docs & tests** — `docs/epsilon.md` (per-letter reference + harness
+  plugin guide), `examples/epsilon-basic.mjs` (`npm run example:epsilon`),
+  and ε/harness suites running against a mock harness executable — no real
+  claude/kiro needed. AGENTS.md, README, extension guide, llms.txt, and the
+  CLI help updated (letters table, `--run`, exit code 8).
+
 ## [1.4.1] — 2026-09-06
 
 ### Changed
@@ -391,6 +428,7 @@ API/interface hardening pass (see `docs/api-audit.md`).
 - `pizx/globals` module for script mode.
 - Build pipeline with esbuild + TypeScript declarations.
 
+[1.5.0]: https://github.com/topce/pizx/releases/tag/v1.5.0
 [1.4.0]: https://github.com/topce/pizx/releases/tag/v1.4.0
 [1.3.0]: https://github.com/topce/pizx/releases/tag/v1.3.0
 [1.2.0]: https://github.com/topce/pizx/releases/tag/v1.2.0

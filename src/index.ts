@@ -54,6 +54,8 @@ export { createPizx, type Pizx, type PizxConfig } from './core/context.ts'
 export * from './core/default-app.ts'
 // ── Structured errors ────────────────────────────────────────────────────────
 export { isPizxError, PizxError, type PizxErrorCode } from './core/errors.ts'
+// ── Harness registry (ε) ─────────────────────────────────────────────────────
+export { Harnesses, type HarnessSpec, type RegisteredHarness } from './core/harnesses.ts'
 export { Letters, type RegisteredLetter } from './core/letters.ts'
 export {
   type AskOptions,

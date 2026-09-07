@@ -102,6 +102,7 @@ pizx --letters                # list registered letters
 |---|---|
 | `src/core/context.ts` | `createPizx()`, config-file loading, the Pizx handle |
 | `src/core/letters.ts` | the `Letters` service (registry + effects) |
+| `src/core/harnesses.ts` | the `Harnesses` service (CLI-harness specs for ε) |
 | `src/core/words.ts` | the `Words` service (slots, `call`/`parallel`/`loop` operators) |
 | `src/core/trace.ts` | the `Trace` service (spans, events, export) |
 | `src/core/cache.ts` | the `Cache` service (keys, TTL, LRU) |
@@ -110,11 +111,14 @@ pizx --letters                # list registered letters
 | `src/plugins/pi.ts` | the π letter |
 | `src/plugins/pi-agent.ts` | the Π letter |
 | `src/plugins/acp.ts` | the α letter |
-| `src/plugins/core.ts` | mounts the four services |
+| `src/plugins/epsilon.ts` | the ε letter (zx wrapper + flag passthrough) |
+| `src/plugins/harness-kiro.ts` / `harness-claude.ts` | built-in harness spec plugins |
+| `src/plugins/core.ts` | mounts the framework services |
 | `src/index.ts` / `src/globals.ts` | package entry / global injection |
 | `src/cli.ts` | the `pizx` CLI |
 | `examples/plugins/` | example letters and words (`summarize.mjs`, plus the seven word plugins: `ralph.mjs`, `fleet.mjs`, `chain.mjs`, `route.mjs`, `vote.mjs`, `refine.mjs`, `orchestrate.mjs`) |
 | `docs/extension.md` | authoring guide for user letters |
 | `docs/words.md` | words reference — the word catalog, slots/options, pattern map |
 | `docs/acp.md` | the α letter reference |
+| `docs/epsilon.md` | the ε letter reference + harness spec plugin guide |
 | `docs/trace.md` | trace format, export, cache-friendliness |

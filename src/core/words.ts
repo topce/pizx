@@ -41,6 +41,7 @@ const LETTER_OPTION_KEYS = [
   'cwd',
   'env',
   'server',
+  'harness',
   'tools',
   'excludeTools',
   'skills',

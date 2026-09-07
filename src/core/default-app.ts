@@ -40,8 +40,10 @@ export const π = forwardTag('π', letter)
 export const Π = forwardTag('Π', letter)
 /** α template tag — any ACP-compatible coding agent (forwards to the default app). */
 export const α = forwardTag('α', letter)
+/** ε template tag — any CLI AI harness, e.g. { harness: 'claude' } (forwards to the default app). */
+export const ε = forwardTag('ε', letter)
 
-// English aliases (π = pi/ai, Π = Pi/piAgent/codingAgent, α = acp/agent).
+// English aliases (π = pi/ai, Π = Pi/piAgent/codingAgent, α = acp/agent, ε = run/harness/cli).
 export const pi = π
 export const ai = π
 export const Pi = Π
@@ -49,3 +51,6 @@ export const piAgent = Π
 export const codingAgent = Π
 export const acp = α
 export const agent = α
+export const run = ε
+export const harness = ε
+export const cli = ε

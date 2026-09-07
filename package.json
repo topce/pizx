@@ -1,7 +1,7 @@
 {
   "name": "@topce/pizx",
-  "version": "1.4.1",
-  "description": "zx fork with native Pi AI integration on the cordis plugin framework — shell scripting with AI agents, user-definable letter tags, traceable runs with JSONL log export, and a local result cache. Ships with π (text generation), Π (coding agent), and α (any ACP-compatible agent).",
+  "version": "1.5.0",
+  "description": "zx fork with native Pi AI integration on the cordis plugin framework — shell scripting with AI agents, user-definable letter tags, traceable runs with JSONL log export, and a local result cache. Ships with π (text generation), Π (coding agent), α (any ACP-compatible agent), and ε (any CLI AI harness — claude, kiro-cli, …).",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -44,6 +44,7 @@
     "example:pi": "node dist/cli.js examples/basic-pi.mjs",
     "example:Pi": "node dist/cli.js examples/basic-capital-pi.mjs",
     "example:acp": "node dist/cli.js examples/acp-basic.mjs",
+    "example:epsilon": "node dist/cli.js examples/epsilon-basic.mjs",
     "example:acp-word-slots": "node dist/cli.js examples/acp-word-slots.mjs",
     "example:quick": "node dist/cli.js examples/quick-ask.mjs",
     "example:custom": "node dist/cli.js --trace --export-log examples/custom-letter.mjs",
