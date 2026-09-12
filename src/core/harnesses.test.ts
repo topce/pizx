@@ -5,7 +5,7 @@
 
 import { Context } from '@cordisjs/core'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { Harnesses } from './harnesses.ts'
+import { cleanHarnessOutput, Harnesses } from './harnesses.ts'
 
 let ctx: Context
 
@@ -69,5 +69,30 @@ describe('harnesses service', () => {
     ctx.registry.get(plugin)?.dispose()
     expect(ctx.harnesses.get('ephemeral')).toBeUndefined()
     await ctx.stop()
+  })
+
+  it('accepts stripAnsi and rejects a non-boolean value', async () => {
+    await boot()
+    ctx.harnesses.define('tui', { command: 'tui-cli', stripAnsi: true })
+    expect(ctx.harnesses.get('tui')?.stripAnsi).toBe(true)
+    expect(() =>
+      ctx.harnesses.define('bad', { command: 'bad-cli', stripAnsi: 'yes' as unknown as boolean })
+    ).toThrowError(/stripAnsi/)
+  })
+})
+
+describe('cleanHarnessOutput', () => {
+  it('removes ANSI escapes and a leading TUI prompt marker', () => {
+    // Shape produced by `kiro-cli chat --no-interactive`.
+    expect(cleanHarnessOutput('\u001b[m> \u001b[0mOK')).toBe('OK')
+  })
+
+  it('keeps ordinary text, including a mid-line >', () => {
+    expect(cleanHarnessOutput('  a > b  ')).toBe('a > b')
+    expect(cleanHarnessOutput('line one\nline two')).toBe('line one\nline two')
+  })
+
+  it('strips escape sequences without a marker', () => {
+    expect(cleanHarnessOutput('\u001b[31mred\u001b[0m')).toBe('red')
   })
 })

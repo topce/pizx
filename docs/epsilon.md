@@ -12,7 +12,7 @@ works on machines where pi is not installed.
 // Claude Code — `claude -p --model sonnet <prompt>`
 const r1 = await ε({ harness: 'claude', model: 'sonnet' })`review this diff`
 
-// Amazon Kiro — `kiro-cli run <prompt>`
+// Amazon Kiro — `kiro-cli chat --no-interactive <prompt>`
 const r2 = await ε({ harness: 'kiro' })`fix the TypeScript errors in src/`
 
 // Quiet mode — suppress the live stdout echo
@@ -76,7 +76,7 @@ flag name (`flags: { printMode: '-p' }`) and disable `--no-` negation
 | Harness | Command | How ε invokes it |
 |---|---|---|
 | `claude` | `claude` | `claude -p [flags] <prompt>` |
-| `kiro` | `kiro-cli` | `kiro-cli run [flags] <prompt>` |
+| `kiro` | `kiro-cli` | `kiro-cli chat --no-interactive [flags] <prompt>` |
 
 ## Writing your own harness (a ~10-line plugin)
 
@@ -111,13 +111,27 @@ spec shape:
 ```ts
 interface HarnessSpec {
   command?: string            // executable; defaults to the harness name
-  runArgs?: string[]          // args before flags, e.g. ['run'] or ['-p']
+  runArgs?: string[]          // args before flags, e.g. ['chat', '--no-interactive'] or ['-p']
   prompt?: 'arg' | 'stdin'    // prompt delivery; default 'arg'
   flags?: Record<string, string>   // override generated flag names
   negateBooleans?: boolean    // map false → --no-<flag>; default true
+  stripAnsi?: boolean         // clean TUI decoration out of stdout; default false
   description?: string
 }
 ```
+
+`stripAnsi` is for harnesses whose headless mode still renders a terminal UI.
+Kiro CLI is the built-in example: it prints SGR codes and a highlighted `> `
+before the answer, so without this the letter's `text` would be
+`"\u001b[m> \u001b[0mOK"` instead of `"OK"`. With `stripAnsi: true`, escape
+sequences and the leading prompt marker are removed from the result text, the
+live echo, and `.stream`.
+
+> A harness can be installed and still unusable — wrong version, or not logged
+> in. Kiro picks its model from its own config, so if `pizx --run
+> --run-harness kiro` reports that the selected model is unavailable, run
+> `kiro-cli chat --list-models` and pass a valid one: `--model claude-sonnet-4.5`.
+> The same applies to `claude`, which needs `/login` first.
 
 ## ε inside words
 

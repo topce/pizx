@@ -20,7 +20,7 @@ import type { Plugin } from '@cordisjs/core'
 import Schema from 'schemastery'
 import { $, type ProcessOutput, type ProcessPromise, quote } from 'zx'
 import { isPizxError, PizxError } from '../core/errors.ts'
-import type { HarnessSpec } from '../core/harnesses.ts'
+import { cleanHarnessOutput, type HarnessSpec } from '../core/harnesses.ts'
 import type { LetterEnv } from '../core/tags.ts'
 import { LetterOutput } from '../core/tags.ts'
 import { confirmGateSchema, confirmPhase, getErrorMessage } from '../core/utils.ts'
@@ -242,6 +242,40 @@ function usageTraceEvent(model: string, durationMs: number) {
   }
 }
 
+/**
+ * Line-based live filter for `stripAnsi` harnesses: cleans each complete line
+ * and drops the leading TUI prompt marker from the first non-empty one.
+ * Incomplete trailing text is buffered until `flush()` (or the next chunk).
+ */
+function lineFilter(): ((chunk: string) => string) & { flush: () => string } {
+  let buffered = ''
+  let started = false
+  const filter = (chunk: string): string => {
+    buffered += chunk
+    let out = ''
+    let newline = buffered.indexOf('\n')
+    while (newline !== -1) {
+      const line = buffered.slice(0, newline)
+      buffered = buffered.slice(newline + 1)
+      const cleaned = cleanHarnessOutput(line)
+      if (cleaned || started) {
+        started = true
+        out += `${cleaned}\n`
+      }
+      newline = buffered.indexOf('\n')
+    }
+    return out
+  }
+  filter.flush = (): string => {
+    const rest = buffered
+    buffered = ''
+    if (!rest) return ''
+    const cleaned = cleanHarnessOutput(rest)
+    return cleaned && !started ? `${cleaned}\n` : rest
+  }
+  return filter
+}
+
 // ── Letter implementation ───────────────────────────────────────────────────
 
 async function run(prompt: string, opts: EpsilonOpts, env: LetterEnv): Promise<LetterOutput> {
@@ -273,17 +307,24 @@ async function run(prompt: string, opts: EpsilonOpts, env: LetterEnv): Promise<L
   try {
     const built = buildCommand(name, spec, opts, prompt)
     const p = spawnHarness(built, opts)
+    // Live echo of the harness's stdout. For a `stripAnsi` harness the same
+    // cleaning is applied per line, so the human view matches the letter's
+    // text instead of showing a TUI prompt marker and SGR codes.
+    const echo = spec.stripAnsi ? lineFilter() : undefined
     p.stdout?.on('data', (chunk: Buffer) => {
-      if (!opts.quiet) process.stdout.write(chunk)
+      if (opts.quiet) return
+      process.stdout.write(echo ? echo(chunk.toString()) : chunk)
     })
     p.stderr?.on('data', (chunk: Buffer) => {
       process.stderr.write(chunk)
     })
 
     const out = await p
+    if (echo) process.stdout.write(echo.flush())
     if (!out.ok) throw harnessError(name, command, out, opts.timeoutMs)
 
-    const text = out.stdout.trim() || '(no output)'
+    const raw = out.stdout.trim()
+    const text = (spec.stripAnsi ? cleanHarnessOutput(raw) : raw) || '(no output)'
     const t1 = Date.now()
     span?.emit(usageTraceEvent(modelId(name, opts), t1 - t0))
     if (!opts.quiet) {
@@ -312,7 +353,27 @@ async function* stream(prompt: string, opts: EpsilonOpts, env: LetterEnv): Async
   })
 
   try {
-    for await (const line of p) yield `${line}\n`
+    // With `stripAnsi`, the leading TUI prompt marker must come off the first
+    // bytes of the stream, so hold chunks until the first real character
+    // appears (or the stream ends).
+    let pending = ''
+    let started = !spec.stripAnsi
+    for await (const line of p) {
+      if (started) {
+        yield `${line}\n`
+        continue
+      }
+      pending += `${line}\n`
+      const cleaned = cleanHarnessOutput(pending)
+      if (cleaned) {
+        started = true
+        yield `${cleaned}\n`
+      }
+    }
+    if (!started) {
+      const cleaned = cleanHarnessOutput(pending)
+      if (cleaned) yield `${cleaned}\n`
+    }
     const out = await p
     if (!out.ok) {
       throw harnessError(name, spec.command ?? name, out, opts.timeoutMs)

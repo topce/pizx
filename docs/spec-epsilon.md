@@ -20,7 +20,7 @@ harness; it only knows how to build argv and spawn a process.
 - `await ε({ harness: 'claude', model: 'sonnet' })`review this diff`` — runs
   `claude -p --model sonnet "review this diff"` and returns the text.
 - `await run({ harness: 'kiro', maxTurns: 3 })`fix the tests`` — runs
-  `kiro-cli run --max-turns 3 "fix the tests"`.
+  `kiro-cli chat --no-interactive --max-turns 3 "fix the tests"`.
 - Any option the harness supports (today's and tomorrow's) is expressible
   without editing pizx: unknown option keys auto-convert to CLI flags.
 - A user drops an `opencode` spec plugin into `pizx.config.mjs` and
@@ -89,7 +89,7 @@ export const inject = ['harnesses']
 export function apply(ctx) {
   ctx.harnesses.define('opencode', {
     command: 'opencode',
-    runArgs: ['run'],
+    runArgs: ['chat', '--no-interactive'],
     prompt: 'arg',
     description: 'opencode coding agent',
   })
@@ -104,7 +104,7 @@ export function apply(ctx) {
 interface HarnessSpec {
   /** Executable. Defaults to the harness name. */
   command?: string
-  /** Args inserted before the flags, e.g. ['run'] (kiro) or ['-p'] (claude). */
+  /** Args inserted before the flags, e.g. ['chat', '--no-interactive'] (kiro) or ['-p'] (claude). */
   runArgs?: string[]
   /** Prompt delivery: final positional arg (default) or stdin. */
   prompt?: 'arg' | 'stdin'
@@ -204,7 +204,7 @@ No real claude/kiro binary is required:
 - [ ] `await ε({ harness: 'claude', model: 'sonnet' })`prompt`` runs
       `claude -p --model sonnet <prompt>` and returns its stdout text.
 - [ ] `await run({ harness: 'kiro', maxTurns: 3 })`prompt`` runs
-      `kiro-cli run --max-turns 3 <prompt>` (kiro command `kiro-cli` per
+      `kiro-cli chat --no-interactive --max-turns 3 <prompt>` (kiro command `kiro-cli` per
       repo convention — see open questions).
 - [ ] Any unknown option converts per the flag table (unit-tested).
 - [ ] `pizx --run --run-harness claude "prompt"` works; failed harnesses exit 8.

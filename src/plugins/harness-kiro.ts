@@ -1,6 +1,11 @@
 /**
  * kiro harness spec — registers the Amazon Kiro coding agent on ctx.harnesses
- * so ε can run it headless: `kiro-cli run <prompt>`.
+ * so ε can run it headless: `kiro-cli chat --no-interactive <prompt>`.
+ *
+ * Kiro CLI has no `run` subcommand: headless mode is `chat` with
+ * `--no-interactive` (the prompt is a positional argument). Older docs showed
+ * `kiro-cli run <prompt>`, which fails with "unrecognized subcommand 'run'"
+ * on current releases — hence the two runArgs.
  *
  * This is the entire plugin — every harness pizx can run is a declarative
  * spec like this one. See src/plugins/harness-claude.ts and docs/epsilon.md.
@@ -14,9 +19,12 @@ export const kiroHarnessPlugin: Plugin.Object = {
   apply(ctx) {
     ctx.harnesses.define('kiro', {
       command: 'kiro-cli',
-      runArgs: ['run'],
+      runArgs: ['chat', '--no-interactive'],
       prompt: 'arg',
-      description: 'Amazon Kiro coding agent — headless: kiro-cli run <prompt>',
+      // Kiro's headless mode still paints a TUI prompt, so stdout carries SGR
+      // codes and a leading `> ` before the answer. Strip both.
+      stripAnsi: true,
+      description: 'Amazon Kiro coding agent — headless: kiro-cli chat --no-interactive <prompt>',
     })
   },
 }

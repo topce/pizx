@@ -12,11 +12,29 @@
 import { type Context, type Plugin, Service } from '@cordisjs/core'
 import { PizxError } from './errors.ts'
 
+// CSI/OSC/other escape sequences emitted by TUI-style CLIs. Matching the ESC
+// control character is the point, so the rule below is suppressed.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping ANSI requires matching ESC
+const ANSI_RE = /\u001b(?:\[[0-?]*[ -/]*[@-~]|\][^\u0007]*(?:\u0007|\u001b\\)|[@-Z\\-_])/g
+// A TUI prompt marker left at the start of the answer: `> `, possibly
+// wrapped in SGR codes.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matches SGR codes before the marker
+const LEADING_MARKER_RE = /^(?:\u001b\[[0-9;]*m)*\s*>\s+/
+
+/**
+ * Clean a harness's stdout for use as letter text (only when the spec sets
+ * `stripAnsi`). Removes ANSI escape sequences, then a leading TUI prompt
+ * marker such as Kiro's `> `.
+ */
+export function cleanHarnessOutput(raw: string): string {
+  return raw.replace(ANSI_RE, '').replace(LEADING_MARKER_RE, '').trim()
+}
+
 /** Declarative spec describing how ε invokes one harness binary. */
 export interface HarnessSpec {
   /** Executable to spawn. Defaults to the harness name. */
   command?: string
-  /** Args inserted before generated flags, e.g. ['run'] (kiro) or ['-p'] (claude). */
+  /** Args inserted before generated flags, e.g. ['chat', '--no-interactive'] (kiro) or ['-p'] (claude). */
   runArgs?: string[]
   /** Prompt delivery: final positional arg ('arg', default) or stdin ('stdin'). */
   prompt?: 'arg' | 'stdin'
@@ -24,6 +42,13 @@ export interface HarnessSpec {
   flags?: Record<string, string>
   /** Map boolean-false options to --no-<flag>. Default true. */
   negateBooleans?: boolean
+  /**
+   * Strip terminal decoration from stdout before it becomes the letter's text.
+   * Some harnesses render a TUI prompt even in headless mode — Kiro CLI prints
+   * a highlighted `> ` before the answer — so without this, ANSI escape
+   * sequences and the marker end up inside the result text.
+   */
+  stripAnsi?: boolean
   /** One-line description for diagnostics. */
   description?: string
 }
@@ -134,6 +159,12 @@ export class Harnesses extends Service {
       throw new PizxError(
         'VALIDATION',
         `pizx/harnesses: 'flags' of '${name}' must be a string→string map`
+      )
+    }
+    if (spec.stripAnsi !== undefined && typeof spec.stripAnsi !== 'boolean') {
+      throw new PizxError(
+        'VALIDATION',
+        `pizx/harnesses: 'stripAnsi' of '${name}' must be a boolean`
       )
     }
   }

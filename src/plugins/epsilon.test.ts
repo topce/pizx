@@ -95,9 +95,10 @@ describe('ε letter plugin', () => {
     await boot()
     expect(ctx.harnesses.get('kiro')).toEqual({
       command: 'kiro-cli',
-      runArgs: ['run'],
+      runArgs: ['chat', '--no-interactive'],
       prompt: 'arg',
-      description: 'Amazon Kiro coding agent — headless: kiro-cli run <prompt>',
+      stripAnsi: true,
+      description: 'Amazon Kiro coding agent — headless: kiro-cli chat --no-interactive <prompt>',
     })
     expect(ctx.harnesses.get('claude')).toEqual({
       command: 'claude',
