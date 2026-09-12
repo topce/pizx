@@ -7,7 +7,7 @@
  * globals in scripts.
  */
 
-import summarize from './plugins/summarize.mjs'
+import commit from './plugins/commit.mjs'
 import ralph from './plugins/ralph.mjs'
 import fleet from './plugins/fleet.mjs'
 import chain from './plugins/chain.mjs'
@@ -16,4 +16,4 @@ import vote from './plugins/vote.mjs'
 import refine from './plugins/refine.mjs'
 import orchestrate from './plugins/orchestrate.mjs'
 
-export const plugins = [summarize, ralph, fleet, chain, route, vote, refine, orchestrate]
+export const plugins = [commit, ralph, fleet, chain, route, vote, refine, orchestrate]

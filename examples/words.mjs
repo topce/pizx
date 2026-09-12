@@ -1,14 +1,15 @@
 #!/usr/bin/env pizx
+/// <reference types="@topce/pizx/globals" />
 // ─── words.mjs — the word library tour ──────────────────────────────────────
 //
-// Words are AI patterns built by composing the π/Π/α letters via the
+// Words are AI patterns built by composing the π/Π/α/ε letters through the
 // ctx.words service. Each word's letters live in replaceable slots — swap a
-// slot by name ('α') or by tag (Π) at call time, and the pattern stays the
+// slot by name ('α') or by tag (Π) at call time and the pattern stays the
 // same. Letters that need options get them through the word: `server`,
 // `cwd`, `model`, … are forwarded to whichever letters fill the slots.
 //
-// Words are themselves letters, so they can be used anywhere a letter can —
-// and can be composed into bigger words (letters → words → sentences).
+// Words are themselves letters, so they compose recursively:
+// letters → words → bigger words.
 //
 // Seven words ship as plugins (see examples/pizx.config.mjs + plugins/):
 //   ralph        iterative analyze/plan/execute/review agent loop
@@ -19,134 +20,201 @@
 //   refine       evaluator-optimizer — revise against criteria until PASS
 //   orchestrate  orchestrator-workers — decompose, fan out, synthesize
 //
-// These are the workflow patterns from Anthropic's "Building effective
-// agents". Run:   node dist/cli.js examples/words.mjs
-//                 pizx examples/words.mjs
+// This tour runs each one once, on the repo's own content — the same shapes
+// the focused examples (examples/word-*.mjs) use, kept short here.
+//
+// level 5/5 ●●●●● · previous: examples/word-orchestrate.mjs (word 7/7 — orchestrator-workers) · next: examples/acp-word-slots.mjs
+//
+// Run:   pizx examples/words.mjs
 
-import { $, chalk } from 'zx'
+import { $, chalk, fs } from 'zx'
 
 const MODEL = 'deepseek/deepseek-v4-flash'
 const ACP_SERVER = ['kiro-cli', 'acp']
 
-console.log(chalk.bold(`\n words — the word library (${MODEL})\n`))
-
-// ── fleet — parallel fan-out of a worker letter ─────────────────────────────
-// The template splits into one task per line. The `worker` slot (default π)
-// runs each task in parallel, then the word fans the results back in.
-console.log(chalk.cyan(' 1. fleet — parallel fan-out (worker = π, 3 tasks)\n'))
-const fleetResult = await fleet({ model: MODEL, concurrency: 3 })`
-summarize git merge in one sentence
-summarize git rebase in one sentence
-summarize git cherry-pick in one sentence
-`
-console.log(chalk.green(fleetResult.text))
-console.log(chalk.dim(`    duration: ${fleetResult.duration}ms\n`))
-
-// ── ralph — iterative analyze/plan/execute/review loop ──────────────────────
-// Slots: analyze/plan/review = π, execute = Π. Here `execute` is swapped Π → π
-// so the whole loop stays pure text (no coding agent). With the default slots,
-// the same word drives the Π agent in the execute step.
-//
-// `quiet` is left off so per-iteration progress prints to stderr ("  ralph 1/2").
-console.log(chalk.cyan(' 2. ralph — loop, execute swapped Π → π (progress on stderr)\n'))
-const ralphResult = await ralph({
-  model: MODEL,
-  execute: 'π', // <-- slot replacement: swap the agent step (Π) for a text step (π)
-  maxIterations: 2,
-})`
-write a one-sentence definition of a pizx "word"
-`
-console.log(chalk.green(ralphResult.text))
-console.log(chalk.dim(`    duration: ${ralphResult.duration}ms\n`))
-
-// ── ralph with an ACP agent (α) in the execute slot ─────────────────────────
-// A letter that needs options gets them through the word: pass `server` next
-// to the slot name and the word forwards it to the α slot. The slot also
-// accepts a pre-configured tag directly:
-//   execute: α({ server: ACP_SERVER })
-console.log(chalk.cyan(` 3. ralph — execute swapped to α (${ACP_SERVER.join(' ')}, maxIterations 1)\n`))
-if ((await $({ nothrow: true })`which kiro-cli`).exitCode !== 0) {
-  console.log(chalk.dim('  (skipped — kiro-cli not found; point `server` at any ACP agent to run)\n'))
-} else {
-  const acpResult = await ralph({
-    execute: 'α', // <-- the ACP agent letter fills the execute slot
-    server: ACP_SERVER,
-    maxIterations: 1,
-    quiet: true,
-  })`
-write a one-sentence definition of a pizx "word"
-`
-  console.log(chalk.green(acpResult.text))
-  console.log(chalk.dim(`    duration: ${acpResult.duration}ms\n`))
+// A CLI can be on PATH and still be unusable (wrong version, not logged in).
+// Probing `--version` before an optional section keeps these examples honest:
+// they either do the real work or say plainly why they did not.
+async function usable(bin) {
+  const probe = await $({ nothrow: true })`${bin} --version`
+  return probe.exitCode === 0
 }
 
-// ── chain — prompt chaining (pipeline) ──────────────────────────────────────
-// Sequential steps, each consuming the previous output. `stepPrompts` runs
-// the `step` slot (π) once per instruction; `steps` would take ordered
-// letter refs instead. An optional `gate` letter can stop the chain early.
-console.log(chalk.cyan(' 4. chain — sequential steps, each consumes the previous output\n'))
-const chainResult = await chain({ model: MODEL, stepPrompts: ['translate the input to French', 'make it rhyme'] })`
-pizx is a zx fork with AI letters
-`
-console.log(chalk.green(chainResult.text))
-console.log(chalk.dim(`    duration: ${chainResult.duration}ms\n`))
 
-// ── route — routing (classification + dispatch) ─────────────────────────────
-// The classifier (default π) assigns the input to one category; the
-// per-category handler letter takes it from there. Routes can be letter
-// names or pre-configured tags — e.g. a cheap model for easy queries and a
-// capable one for hard ones:
-//   routes: { easy: π({ model: 'cheap' }), hard: π({ model: 'smart' }) }
-console.log(chalk.cyan(' 5. route — classify, then dispatch to a specialized handler\n'))
-const routeResult = await route({ model: MODEL, routes: { greeting: 'π', complaint: 'π' } })`
-my package never arrived and support is ignoring me
-`
-console.log(chalk.green(routeResult.text))
-console.log(chalk.dim(`    duration: ${routeResult.duration}ms\n`))
+echo(chalk.bold(`\n words — the word library (${MODEL})\n`))
 
-// ── vote — voting parallelization ───────────────────────────────────────────
-// The same prompt runs through the voter letter N times in parallel; a clear
-// majority wins outright, otherwise the judge settles the vote. mode='best'
-// always asks the judge to pick the best answer.
-console.log(chalk.cyan(' 6. vote — 3 parallel answers, tallied (majority)\n'))
-const voteResult = await vote({ model: MODEL, votes: 3 })`
-which git command stages all changes?
-`
-console.log(chalk.green(voteResult.text))
-console.log(chalk.dim(`    duration: ${voteResult.duration}ms\n`))
+// Show each word's result without the token/cost noise, and keep one failing
+// word from ending the tour.
+async function section(title, fn) {
+  echo(chalk.cyan(` ${title}\n`))
+  const started = Date.now()
+  try {
+    const result = await fn()
+    echo(`${result.text.trim()}\n`)
+    echo(chalk.dim(`    ${Date.now() - started}ms\n`))
+  } catch (err) {
+    echo(chalk.red(`    failed: ${err.message.split('\n')[0]}\n`))
+  }
+}
 
-// ── refine — evaluator-optimizer ────────────────────────────────────────────
+// ── Shared, real inputs ────────────────────────────────────────────────────
+const pkg = JSON.parse(await fs.readFile('package.json', 'utf-8'))
+const changelog = await fs.readFile('CHANGELOG.md', 'utf-8')
+const firstEntry = changelog.indexOf('\n## ')
+const secondEntry = changelog.indexOf('\n## ', firstEntry + 1)
+const notes = secondEntry > firstEntry ? changelog.slice(firstEntry, secondEntry).trim() : ''
+const commits = (await $`git log -8 --no-merges --oneline`).stdout.trim()
+const subjects = commits.split('\n').map((l) => l.replace(/^[0-9a-f]+ /, ''))
+
+// ── 1. fleet — parallel fan-out ────────────────────────────────────────────
+// One task per line; the worker slot (π by default) runs them concurrently.
+// Built for many SHORT answers — results are shown truncated to 200 chars.
+await section('1. fleet — parallel fan-out, one task per changed area', () => {
+  const tasks = [
+    'Write one conventional-commit subject (max 60 chars) for: adding the ε letter that runs any CLI AI harness',
+    'Write one conventional-commit subject (max 60 chars) for: adding the seven-word AI pattern library',
+    'Write one conventional-commit subject (max 60 chars) for: adding --json output and structured exit codes',
+  ].join('\n')
+  return fleet({ model: MODEL, concurrency: 3 })`${tasks}`
+})
+
+// ── 2. chain — prompt chaining ─────────────────────────────────────────────
+// Sequential steps; each one refines the previous step's output. A `gate`
+// letter can check every step and stop the chain early.
+await section('2. chain — distil the release notes, then write the announcement', () =>
+  chain({
+    model: MODEL,
+    maxTokens: 16384,
+    stepPrompts: [
+      'Rewrite these release notes as 3-4 user-facing changes, no hashes.',
+      'Turn the change list into a two-sentence announcement for users.',
+    ],
+  })`
+Step 1 — if the input is release notes, reply with 3-4 user-facing changes.
+Step 2 — if the input is a change list, reply with a two-sentence announcement.
+
+Input for step 1:
+${notes || commits}
+`
+)
+
+// ── 3. route — classify, then dispatch ─────────────────────────────────────
+// The classifier picks a category; the per-category handler takes over.
+// Handlers can be tags, so each category can use its own model or prompt.
+await section('3. route — triage a support request against the release notes', () =>
+  route({
+    model: MODEL,
+    maxTokens: 16384,
+    routes: { howto: 'π', bug: 'π', release: 'π' },
+    categories: {
+      howto: 'How do I use a feature?',
+      bug: 'Something is broken or behaves unexpectedly',
+      release: 'What changed in a release, or when will X ship?',
+    },
+  })`
+Newest release notes:
+${notes || commits}
+
+Support request:
+${subjects[0] ? `pizx hangs since ${subjects[0].slice(0, 40)} — is that expected?` : 'how do I use the cache?'}
+`
+)
+
+// ── 4. vote — N parallel answers, tallied ──────────────────────────────────
+// A clear majority wins; a split goes to the judge. mode='best' always asks
+// the judge to pick the strongest answer instead.
+await section('4. vote — 3 release headlines, judged', () =>
+  vote({
+    model: MODEL,
+    maxTokens: 32768,
+    votes: 3,
+    concurrency: 3,
+    mode: 'best',
+  })`
+Write one release-note headline (max 12 words) for this release:
+
+${notes.slice(0, 1500)}
+
+Reply with the headline only — no quotes.
+`
+)
+
+// ── 5. refine — evaluator-optimizer ────────────────────────────────────────
 // Generate → evaluate against explicit criteria → revise from the feedback,
 // until the evaluator says PASS or the pass budget runs out.
-console.log(chalk.cyan(' 7. refine — evaluate against criteria, revise until PASS\n'))
-const refineResult = await refine({ model: MODEL, criteria: 'one sentence, no jargon', maxPasses: 2 })`
-define a pizx "word"
-`
-console.log(chalk.green(refineResult.text))
-console.log(chalk.dim(`    duration: ${refineResult.duration}ms\n`))
+await section('5. refine — a tagline that must satisfy hard criteria', () =>
+  refine({
+    model: MODEL,
+    maxTokens: 16384,
+    maxPasses: 3,
+    criteria: 'one sentence, at most 14 words, no buzzwords, no exclamation mark',
+  })`
+Write the one-line tagline for ${pkg.name}: ${pkg.description}
 
-// ── orchestrate — orchestrator-workers ──────────────────────────────────────
-// A planner decomposes the task (model-driven, unlike fleet's fixed split),
-// workers run the subtasks in parallel, and a synthesizer merges the results.
-// Swap `worker` for 'Π' to fan out coding agents:
-//   await orchestrate({ worker: 'Π' })`implement the TODOs across src/`
-console.log(chalk.cyan(' 8. orchestrate — decompose, fan out, synthesize\n'))
-const orchestrateResult = await orchestrate({ model: MODEL, concurrency: 3 })`
-list three reasons to use a plugin framework for AI scripting
+Reply with the tagline only.
 `
-console.log(chalk.green(orchestrateResult.text))
-console.log(chalk.dim(`    duration: ${orchestrateResult.duration}ms\n`))
+)
 
-// ── The same words, different letters ───────────────────────────────────────
+// ── 6. ralph — the agent loop ──────────────────────────────────────────────
+// analyze → plan → execute → review, repeated until the review says DONE.
+// The default execute slot is Π (a coding agent); here it is swapped to π so
+// the tour stays text-only. examples/word-ralph.mjs runs the real agent on a
+// scratch project and verifies the fix with a test command.
+await section('6. ralph — analyze/plan/execute/review loop (execute swapped Π → π)', () =>
+  ralph({
+    model: MODEL,
+    maxTokens: 16384,
+    execute: 'π',
+    maxIterations: 2,
+    quiet: true,
+  })`
+write a one-paragraph description of what the words library is for
+`
+)
+
+// ── 7. orchestrate — orchestrator-workers ──────────────────────────────────
+// The planner decomposes the task at run time (unlike fleet's fixed split),
+// workers run the subtasks in parallel, and a synthesizer merges them.
+await section('7. orchestrate — decompose, fan out, synthesize', () =>
+  orchestrate({
+    model: MODEL,
+    maxTokens: 16384,
+    maxWorkers: 3,
+    concurrency: 3,
+  })`
+Turn the commit history below into release notes for ${pkg.name} ${pkg.version}.
+Split the commits into up to 3 groups by area, have each worker reply with one
+bullet of at most 12 words, then synthesize one release-notes section.
+
+Commits:
+${commits}
+`
+)
+
+// ── α in a slot (optional) ─────────────────────────────────────────────────
+// Any slot can be filled by the ACP letter: pass `server` next to the slot
+// name and the word forwards it. Needs kiro-cli installed and logged in.
+if (!(await usable(ACP_SERVER[0]))) {
+  echo(chalk.dim(` (α slots skipped — ${ACP_SERVER[0]} is not usable here; see examples/acp-word-slots.mjs)\n`))
+} else {
+  await section(`8. fleet — worker → α (${ACP_SERVER.join(' ')})`, () =>
+    fleet({ worker: 'α', server: ACP_SERVER, concurrency: 2, quiet: true })`
+name the letters registered by src/plugins/pi.ts, with their aliases
+name the letters registered by src/plugins/acp.ts, with their aliases
+`
+  )
+}
+
+// ── The same words, different letters ──────────────────────────────────────
 // Swap any slot by name or tag — the pattern is unchanged, the letters change:
 //
-//   await fleet({ worker: 'Π' })`fix the bugs in src/`   // parallel agents
+//   await fleet({ worker: 'Π' })`fix the bugs in src/`          // parallel agents
 //   await ralph({ execute: 'α', server: ['kiro-cli', 'acp'] })`refactor auth`
-//   await ralph({ review: 'fleet' })`…`                   // review via a fan-out word
-//   await chain({ steps: ['ralph', 'fleet'] })`…`         // a loop, then a fan-out
+//   await ralph({ review: 'fleet' })`…`                          // review via a fan-out
+//   await chain({ steps: ['ralph', 'fleet'] })`…`                // a loop, then a fan-out
 //   await route({ routes: { hard: 'ralph', easy: 'π' } })`…`
-//   await orchestrate({ worker: 'refine' })`…`            // refine every section
+//   await orchestrate({ worker: 'refine' })`…`                   // refine every section
 //
-// Words inherit everything letters have: .quiet, .cache, tracing, and globals.
+// Words inherit everything letters have: .quiet, .cache, tracing, globals.
 
-console.log(chalk.dim('  (words are letters — they compose recursively; see docs/words.md)\n'))
+echo(chalk.dim('  (words are letters — they compose recursively; see docs/words.md)\n'))

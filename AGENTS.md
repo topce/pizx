@@ -51,6 +51,11 @@ pizx script.mjs
 
 > Use `.mjs` (or `.ts`) — pizx scripts are ES modules and use top-level `await`.
 
+A runnable tour of the typed globals is
+[`examples/typed-globals.mjs`](examples/typed-globals.mjs)
+(`npm run example:typed`): it parses the model's JSON answer into a typed value
+and branches on it.
+
 ---
 
 ## The letters

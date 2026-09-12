@@ -24,8 +24,9 @@ script mode and `pizx/globals` are unaffected, which is why the bug survived:
 all examples run through the CLI.
 
 The other themes: error handling is magic-string-based instead of a structured
-contract, one documented option (`maxTurns`) does nothing, and `confirm`
-bypasses the boundary validation the rest of the system does so well.
+contract, one documented option (`maxTurns`) did nothing (it has since been
+removed — see H2), and `confirm` bypasses the boundary validation the rest of
+the system does so well.
 
 ---
 
@@ -134,11 +135,16 @@ bypasses the boundary validation the rest of the system does so well.
 
 - **Location:** `src/plugins/pi-agent.ts:36` (schema, default `10`) and
   `:113` (passed through); `src/core/llm.ts:511` (accepted)
-- **Problem:** `Llm.agentSession` accepts `maxTurns` but never reads it — it
-  is not in the session-pool key, not passed to `createAgentSession`, not
-  used anywhere. `Π({ maxTurns: 1 })` behaves identically to `maxTurns: 10`.
-  Documented in `docs/capital-pi.md:14` and used by `examples/hello-pizx.mjs`
-  and `examples/basic-capital-pi.mjs`.
+- **Problem (at the audited version, 1.1.0):** `Llm.agentSession` accepted
+  `maxTurns` but never read it — it was not in the session-pool key, not passed
+  to `createAgentSession`, not used anywhere. `Π({ maxTurns: 1 })` behaved
+  identically to `maxTurns: 10`.
+- **Current state (1.5.0): resolved by removal.** `maxTurns` is no longer in
+  the `Π` schema (`src/plugins/pi-agent.ts`) and is no longer documented in
+  `docs/capital-pi.md`; no example passes it as a `Π` option (the only
+  remaining matches for `maxTurns` are the ε flag-passthrough docs in
+  `src/plugins/epsilon.ts` and `examples/epsilon-basic.mjs`). The finding is
+  kept here as history.
 - **Suggestion:** Either wire it through to the pi-coding-agent session
   (`createAgentSession`/`AgentSession` options or per-turn enforcement), or
   remove the option and document its removal. If wired, it must also be part

@@ -9,31 +9,34 @@ plugin. This guide shows how to write your own.
 A **letter** is a template tag:
 
 ```js
-const summary = await Σ({ maxWords: 20 })`summarize this text…`
+const subject = await Ξ({ maxChars: 60 })`${diff}`
 ```
 
-A **letter plugin** is a cordis plugin that registers one on `ctx.letters`:
+A **letter plugin** is a cordis plugin that registers one on `ctx.letters` — the
+canonical example is
+[`examples/plugins/commit.mjs`](../examples/plugins/commit.mjs), which turns a
+diff into a conventional-commit subject line:
 
 ```js
-// plugins/summarize.mjs
+// plugins/commit.mjs
 import { Schema } from '@topce/pizx' // re-exported schemastery ('schemastery' also works)
 
-export const name = 'summarize'
+export const name = 'commit'
 export const inject = ['letters', 'llm']
 
 export function apply(ctx) {
-  ctx.letters.define('Σ', {
-    aliases: ['summarize'],
-    description: 'Summarize text',
+  ctx.letters.define('Ξ', {
+    aliases: ['commit'],
+    description: 'Write a conventional-commit subject line from a diff',
 
     options: Schema.object({
-      maxWords: Schema.natural().default(30),
+      maxChars: Schema.natural().default(72),
       model: Schema.string(),
     }),
 
     run: async (prompt, opts, env) => {
       const result = await env.ctx.llm.ask(
-        `Summarize in at most ${opts.maxWords} words:\n\n${prompt}`,
+        `Write one conventional-commit subject line (type(scope): summary) of at most ${opts.maxChars} characters:\n\n${prompt}`,
         { model: opts.model }
       )
       return result.text
@@ -50,20 +53,20 @@ Three ways, in order of preference:
 automatically by the CLI and `pizx/globals`):
 
 ```js
-import summarize from './plugins/summarize.mjs'
-export const plugins = [summarize]
+import commit from './plugins/commit.mjs'
+export const plugins = [commit]
 ```
 
-**2. Explicitly** via the CLI: `pizx --config ./plugins/summarize.mjs script.mjs`.
+**2. Explicitly** via the CLI: `pizx --config ./plugins/commit.mjs script.mjs`.
 
 **3. Programmatically**:
 
 ```js
 import { createPizx } from '@topce/pizx'
 
-const app = await createPizx({ plugins: [summarize] })
+const app = await createPizx({ plugins: [commit] })
 // or imperatively, after boot:
-app.define('Σ', { run: (prompt) => `handled: ${prompt}` })
+app.define('greet', { run: (prompt) => `handled: ${prompt}` })
 ```
 
 Once loaded, the letter is available as a global in scripts (no imports
@@ -100,13 +103,15 @@ against a *local* `node_modules`, not the global one. A plugin that
 - **Install locally (recommended for real plugins)** — `npm install @topce/pizx`
   in a project (or `npm link @topce/pizx`). Then `import { Schema } from
   '@topce/pizx'`, type imports, and the `/// <reference types="@topce/pizx/globals" />`
-  directive all resolve, giving you validated options and editor types.
+  directive all resolve, giving you validated options and editor types. A
+  runnable tour of the typed globals is
+  [`examples/typed-globals.mjs`](../examples/typed-globals.mjs).
 
 ## The LetterDefinition contract
 
 | Field | Purpose |
 |---|---|
-| `aliases` | Extra names the letter answers to (e.g. `['summarize']`) |
+| `aliases` | Extra names the letter answers to (e.g. `['commit']`) |
 | `description` | Shown by `pizx --letters` |
 | `options` | A [schemastery](https://github.com/cordiverse/schemastery) schema — validated at the boundary, defaults applied, and the inferred type becomes the tag's option type |
 | `cache: false` | Mark letters **with side effects** (agents, file writers) so they are never served from the result cache |
@@ -133,7 +138,7 @@ attribute usage to your span with `span.emit({ kind: 'llm-call', … })`.
 
 Every letter registered through `ctx.letters` automatically gets:
 
-- **Option chaining** — `Σ({ maxWords: 10 })`…``
+- **Option chaining** — `Ξ({ maxChars: 40 })`…``
 - **`.quiet`** — a variant with `quiet: true` merged in
 - **`.cache`** — a variant with `cache: true` merged in (works when your
   options schema declares a `cache` boolean)
@@ -206,8 +211,8 @@ export function apply(ctx) {
 - Name collisions throw descriptive errors naming both owners; unloading a
   plugin removes its letters and their globals automatically (cordis
   effects).
-- Ship reusable letters as npm packages (`@you/pizx-summarize`) — consumers
+- Ship reusable letters as npm packages (`@you/pizx-commit`) — consumers
   just add them to their `pizx.config.mjs`.
 
 See `examples/plugins/` in the repository for runnable examples
-(`summarize.mjs`, `ralph.mjs`, `fleet.mjs`).
+(`commit.mjs`, `ralph.mjs`, `fleet.mjs`, and the other word plugins).

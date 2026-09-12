@@ -116,7 +116,7 @@ pizx --letters                # list registered letters
 | `src/plugins/core.ts` | mounts the framework services |
 | `src/index.ts` / `src/globals.ts` | package entry / global injection |
 | `src/cli.ts` | the `pizx` CLI |
-| `examples/plugins/` | example letters and words (`summarize.mjs`, plus the seven word plugins: `ralph.mjs`, `fleet.mjs`, `chain.mjs`, `route.mjs`, `vote.mjs`, `refine.mjs`, `orchestrate.mjs`) |
+| `examples/plugins/` | example letters and words (`commit.mjs`, plus the seven word plugins: `ralph.mjs`, `fleet.mjs`, `chain.mjs`, `route.mjs`, `vote.mjs`, `refine.mjs`, `orchestrate.mjs`) |
 | `docs/extension.md` | authoring guide for user letters |
 | `docs/words.md` | words reference — the word catalog, slots/options, pattern map |
 | `docs/acp.md` | the α letter reference |

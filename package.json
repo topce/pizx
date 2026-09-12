@@ -41,12 +41,14 @@
     "test:coverage": "vitest --run --coverage",
     "prepublishOnly": "npm run build",
     "example:hello": "node dist/cli.js examples/hello-pizx.mjs",
-    "example:pi": "node dist/cli.js examples/basic-pi.mjs",
+    "example:release-notes": "node dist/cli.js examples/release-notes.mjs",
+    "example:pi": "npm run example:release-notes",
     "example:Pi": "node dist/cli.js examples/basic-capital-pi.mjs",
     "example:acp": "node dist/cli.js examples/acp-basic.mjs",
     "example:epsilon": "node dist/cli.js examples/epsilon-basic.mjs",
     "example:acp-word-slots": "node dist/cli.js examples/acp-word-slots.mjs",
     "example:quick": "node dist/cli.js examples/quick-ask.mjs",
+    "example:typed": "node dist/cli.js examples/typed-globals.mjs",
     "example:custom": "node dist/cli.js --trace --export-log examples/custom-letter.mjs",
     "example:words": "node dist/cli.js examples/words.mjs",
     "example:word-ralph": "node dist/cli.js examples/word-ralph.mjs",
@@ -57,7 +59,7 @@
     "example:word-refine": "node dist/cli.js examples/word-refine.mjs",
     "example:word-orchestrate": "node dist/cli.js examples/word-orchestrate.mjs",
     "example:trace": "node dist/cli.js --cache --trace --export-log examples/trace-and-cache.mjs",
-    "example:all": "npm run example:hello && npm run example:pi && npm run example:Pi && npm run example:custom && npm run example:trace"
+    "example:all": "npm run example:quick && npm run example:release-notes && npm run example:hello && npm run example:typed && npm run example:trace && npm run example:custom"
   },
   "keywords": [
     "zx",

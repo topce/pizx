@@ -16,6 +16,8 @@
 // sections skip cleanly when the binary is missing; any ACP v1 server works
 // — point SERVER at ['npx', '@github/copilot', '--acp'] or your own.
 //
+// level 5/5 ●●●●● · previous: examples/words.mjs (all seven words in one tour) · next: docs/words.md
+//
 // Run:    node dist/cli.js examples/acp-word-slots.mjs
 //         pizx examples/acp-word-slots.mjs
 
@@ -25,9 +27,9 @@ const SERVER = ['kiro-cli', 'acp']
 const MODEL = 'deepseek/deepseek-v4-flash'
 const TIMEOUT = 300000
 
-const hasServer = (await $({ nothrow: true })`which ${SERVER[0]}`).exitCode === 0
+const hasServer = (await $({ nothrow: true })`${SERVER[0]} --version`).exitCode === 0
 if (!hasServer) {
-  console.log(chalk.dim(`(skipped — ${SERVER[0]} not found; point \`server\` at any ACP v1 agent)\n`))
+  console.log(chalk.dim(`(skipped — ${SERVER[0]} is missing or not runnable; point \`server\` at any ACP v1 agent)\n`))
   process.exit(0)
 }
 
@@ -39,16 +41,31 @@ await fs.promises.mkdir(demo, { recursive: true })
 console.log(chalk.bold('\n1) ralph — the agent loop with an ACP executor\n'))
 console.log(chalk.dim(`(execute → α, cwd → ${demo})\n`))
 
-const looped = await ralph({
-  execute: 'α', // slot replacement: the ACP letter fills the executor
-  server: SERVER, // forwarded to the α slot by the word
-  cwd: demo, // … and so is the working directory
-  model: MODEL, // forwarded to the π slots (analyze/plan/review)
-  maxIterations: 2, // a second pass if the review says ITERATE
-  timeoutMs: TIMEOUT,
-})`
+// A server can answer `--version` and still fail to negotiate an ACP session
+// (stale version, expired login), so the first agent call is the real
+// preflight: if it fails, the rest of the tour says so instead of crashing
+// with an ACP error five steps in.
+let looped
+try {
+  looped = await ralph({
+    execute: 'α', // slot replacement: the ACP letter fills the executor
+    server: SERVER, // forwarded to the α slot by the word
+    cwd: demo, // … and so is the working directory
+    model: MODEL, // forwarded to the π slots (analyze/plan/review)
+    maxIterations: 2, // a second pass if the review says ITERATE
+    timeoutMs: TIMEOUT,
+  })`
 create NOTES.md containing exactly one line: A pizx word is an AI pattern composed from replaceable letter slots
 `
+} catch (err) {
+  const detail = err.message.split('\n').filter(Boolean)[0]
+  console.log(chalk.yellow(`\n  ${SERVER.join(' ')} did not complete an ACP session:`))
+  console.log(chalk.dim(`  ${detail}`))
+  console.log(chalk.dim('  check that the agent is logged in and supports ACP mode, or point'))
+  console.log(chalk.dim("  SERVER at another ACP v1 agent, e.g. ['npx', '@github/copilot', '--acp'].\n"))
+  await fs.promises.rm(demo, { recursive: true, force: true })
+  process.exit(0)
+}
 console.log(chalk.green(looped.text))
 console.log(chalk.dim(`\nduration: ${looped.duration}ms\n`))
 

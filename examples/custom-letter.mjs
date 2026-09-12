@@ -1,23 +1,52 @@
 #!/usr/bin/env pizx
 // ─── custom-letter.mjs — define your own letter as a cordis plugin ─────────
 //
-// pizx is built on cordis: a letter is just a plugin that registers a
-// template tag on ctx.letters. This example defines Σ (summarize) in a
-// plugin file, loads it via pizx.config.mjs, and uses it in this script.
+// pizx is built on cordis: a letter is just a plugin that registers a template
+// tag on ctx.letters. This example uses Ξ (commit), defined in
+// examples/plugins/commit.mjs and loaded through pizx.config.mjs.
 //
-// Run:   node dist/cli.js --trace --export-log examples/custom-letter.mjs
+// Ξ is a *useful* letter, not a demo one — it is the prompt you would
+// otherwise copy-paste into every commit-message script:
+//
+//   await Ξ({ maxChars: 60 })`${diff}`
+//
+// Because it is a letter, it also gets option chaining, `.quiet`/`.cache`,
+// tracing, and a line in `pizx --letters` for free.
+//
+// level 3/5 ●●●○○ · previous: examples/trace-and-cache.mjs (result cache + JSONL trace) · next: examples/epsilon-basic.mjs
+//
+// Run:   pizx examples/custom-letter.mjs
+//        pizx --letters examples/custom-letter.mjs     # Ξ listed with π/Π/α/ε
+//        pizx --trace --export-log examples/custom-letter.mjs
 
 import { chalk } from 'zx'
 
-console.log(chalk.bold('\n custom letter — Σ (summarize), defined by examples/plugins/summarize.mjs\n'))
+const MODEL = 'deepseek/deepseek-v4-flash'
 
-// Σ is injected as a global by the CLI (and pizx/globals) — no import needed.
-const summary = await Σ({ maxWords: 20 })`
-pizx is a zx fork with native Pi AI integration, built on the cordis plugin
-framework. It ships with π (text generation) and Π (coding agent) built in,
-and lets you define your own letters as plugins. Every run is traceable and
-can be exported as JSONL logs; cacheable letters can hit a local cache.
+// ── Real input: what is staged, or the last commit as a fallback ───────────
+const staged = (await $`git diff --staged`).stdout.trim()
+const diff = staged || (await $`git show HEAD`).stdout.trim()
+const source = staged ? 'staged changes' : 'the last commit'
+
+echo(chalk.bold(`\n custom letter Ξ — ${source} (${diff.split('\n').length} diff lines)\n`))
+
+// Ξ is injected as a global by the CLI (and pizx/globals) — no import needed.
+const subject = await Ξ.quiet({ model: MODEL, maxChars: 72 })`
+${diff.slice(0, 8000)}
 `
 
-console.log(`  ${chalk.cyan(summary)}`)
-console.log(chalk.dim('\n  try: pizx --letters   to see Σ listed with π and Π'))
+echo(`  ${chalk.cyan(subject.text.trim())}`)
+
+// ── Options are the letter's API — reuse it with different constraints ─────
+// Same letter, no prompt duplication: a short subject for a UI, a plain
+// imperative line for a squash commit.
+const short = await Ξ.quiet({ model: MODEL, maxChars: 40, conventional: false })`
+${diff.slice(0, 8000)}
+`
+
+echo(`\n  ${chalk.cyan(short.text.trim())}   ${chalk.dim('(≤40 chars, plain imperative)')}`)
+
+echo(chalk.dim(`\n  Ξ: ${subject.modelId} · ${subject.totalTokens} tokens · ${subject.duration}ms`))
+echo(chalk.dim('  try: pizx --letters   → Ξ appears alongside π, Π, α, ε and the words'))
+echo(chalk.dim('  see: examples/plugins/commit.mjs for the 40-line plugin that defines it'))
+echo(chalk.dim('  hook: .git/hooks/prepare-commit-msg can call this to prefill the subject\n'))
