@@ -1,12 +1,13 @@
 # pizx
 
-> A zx fork with native Pi AI integration on the cordis plugin framework — AI-powered shell scripting for Node.js. Scripts get template-tag "letters" as globals: π (text generation), Π (coding agent), α (any ACP-compatible agent), and ε (any CLI AI harness — claude, kiro-cli, …), plus user-definable letters. Runs are traceable and exportable as JSONL, and cacheable letters hit a local result cache.
+> A zx fork with native Pi AI integration on the cordis plugin framework — AI-powered shell scripting for Node.js. Scripts get template-tag "letters" as globals: π (text generation), Π (coding agent), α (any ACP-compatible agent), ε (any CLI AI harness — claude, kiro-cli, …), and TypeSafe's typed decisions choice/score/noul, plus user-definable letters. Runs are traceable and exportable as JSONL, and cacheable letters hit a local result cache.
 
 pizx scripts start with `#!/usr/bin/env pizx` and use `$`, `π`, `Π`, `α`, `ε`
 (and any letters you define) as globals. pizx is also usable as a library via
 `createPizx()` or `import '@topce/pizx/globals'`. The π/Π letters use Pi
 credentials (`pi auth login`); α drives an external ACP server and ε drives an
-external harness binary — neither needs pi.
+external harness binary — neither needs pi. The TypeSafe letters need a
+`TYPESAFE_API_KEY`.
 
 ## Docs
 
@@ -16,8 +17,9 @@ external harness binary — neither needs pi.
 - [Π reference](docs/capital-pi.md): The Π coding-agent letter, tools, and options.
 - [α reference](docs/acp.md): The α ACP-agent letter and its server configuration.
 - [ε reference](docs/epsilon.md): The ε CLI-harness letter, flag passthrough, and harness spec plugins.
+- [TypeSafe](docs/typesafe.md): Typed, calibrated decisions — the choice/score/noul letters, the `ctx.typesafe` service, and the fanout/composite/gate/intent pattern words.
 - [Defining letters](docs/extension.md): The cordis plugin API for custom letters.
-- [Words](docs/words.md): Composing letters into AI patterns — the word library (ralph, fleet, chain, route, vote, refine, orchestrate) and the `ctx.words` service.
+- [Words](docs/words.md): Composing letters into AI patterns — the word library (ralph, fleet, chain, route, vote, refine, orchestrate, fanout, composite, gate, intent) and the `ctx.words` service.
 - [Trace & logs](docs/trace.md): JSONL event format, log export, and cache behavior.
 - [Onboarding](docs/onboarding.md): Architecture and file map.
 

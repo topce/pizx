@@ -83,7 +83,58 @@ export class FakeLlm extends Service {
   }
 }
 
-/** Mount trace + cache + a fake llm + letters on a fresh context. */
+/** A service named 'typesafe' that returns deterministic typed answers. */
+export class FakeTypeSafe extends Service {
+  calls: { state: unknown; questions: Record<string, any>; model?: string }[] = []
+
+  constructor(ctx: Context) {
+    super(ctx, 'typesafe')
+  }
+
+  config = {}
+
+  get available() {
+    return true
+  }
+
+  async ask(state: unknown, questions: Record<string, any>, opts?: { model?: string }) {
+    // Mirror the real service: a null/absent state is sent as an empty string.
+    this.calls.push({ state: state ?? '', questions, model: opts?.model })
+    const answers: Record<string, any> = {}
+    for (const [name, q] of Object.entries(questions)) {
+      if (q.type === 'noul') {
+        answers[name] = { type: 'noul', noul: 0.87 }
+      } else if (q.type === 'choice') {
+        const first = Object.keys(q.criteria ?? {})[0] ?? 'x'
+        answers[name] = {
+          type: 'choice',
+          choice: first,
+          confidence: 0.78,
+          probabilities: { [first]: 0.85 },
+        }
+      } else if (q.type === 'score') {
+        answers[name] = {
+          type: 'score',
+          score: 1,
+          confidence: 0.9,
+          legend: {},
+          probabilities: {},
+        }
+      }
+    }
+    return {
+      model: opts?.model ?? 'fake-jev',
+      answers,
+      usage: { input_tokens: 100, output_tokens: 0 },
+    }
+  }
+
+  async listModels() {
+    return [{ name: 'fake-jev', description: 'fake', release_date: '2024-01-01' }]
+  }
+}
+
+/** Mount trace + cache + a fake llm + a fake typesafe + letters + words. */
 export function mountTestCore(
   ctx: Context,
   opts: { cache?: boolean; cacheDir?: string } = {}
@@ -98,6 +149,7 @@ export function mountTestCore(
         maxEntries: 10,
       })
       ctx.plugin(FakeLlm)
+      ctx.plugin(FakeTypeSafe)
       ctx.plugin(Letters)
       ctx.plugin(Words)
     },

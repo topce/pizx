@@ -20,6 +20,12 @@ Token counts are **disjoint** (deepseek-harness convention): `inputTokens` is
 uncached input only; prompt-cache reads/writes are reported separately, so a
 trace shows exactly how cache-friendly a run was.
 
+TypeSafe calls record an `llm-call` too (input tokens and cost at Jev's
+input-token price). Inside a letter or word it attaches to that span; a direct
+`ctx.typesafe.ask()` has no active span, so it is recorded run-scoped with span
+id `typesafe` — the totals always include it. See
+[docs/typesafe.md](typesafe.md).
+
 ## Exporting
 
 ```bash

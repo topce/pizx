@@ -92,6 +92,15 @@ export {
   type TraceEvent,
   TraceSpan,
 } from './core/trace.ts'
+// ── TypeSafe (typed System One decisions: choice/score/noul + pattern words) ──
+export {
+  JEV_USD_PER_MTOK,
+  mapTypeSafeError,
+  TypeSafe,
+  type TypeSafeAskOptions,
+  type TypeSafeConfig,
+  type TypeSafeModel,
+} from './core/typesafe.ts'
 // ── Utilities ───────────────────────────────────────────────────────────────
 export {
   build,
@@ -112,3 +121,10 @@ export {
   type WordResult,
   Words,
 } from './core/words.ts'
+// ── TypeSafe primitive letters ──────────────────────────────────────────────
+export {
+  type ChoiceOpts,
+  type NoulOpts,
+  type ScoreOpts,
+  typesafePlugin,
+} from './plugins/typesafe.ts'

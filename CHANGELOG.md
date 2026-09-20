@@ -2,6 +2,45 @@
 
 All notable changes to pizx are documented here.
 
+## [1.6.0] — 2026-09-20
+
+### Added
+
+- **TypeSafe — typed, calibrated decisions as letters and words** — six
+  new letters and four new word plugins on the cordis plugin framework:
+  - **`noul` / `choice` / `score` letters** (aliases `Noul`/`Choice`/`Score`)
+    wrap TypeSafe's three System One primitives. The template body is the
+    **state**, `instructions` is the question (omit it and the body becomes
+    the question); `.text` is the usable scalar (label / number /
+    probability) and `.answer` is the full typed answer with `confidence`,
+    `probabilities`, and `legend`. Cacheable, traced, and available as
+    globals — exactly like `π`/`Π`.
+  - **`ctx.typesafe` service** wrapping `@typesafe-ai/sdk`'s
+    `TypeSafeClient`. `ask(state, questions)` sends every question in one
+    `POST /v1/systemone` call. The SDK is imported lazily and the client
+    built on first use, so apps without a `TYPESAFE_API_KEY` still boot and
+    don't pay the SDK import cost. Records an `llm-call` trace event (input
+    tokens + Jev cost at $0.042/Mtok) — attached to the active span, or
+    run-scoped with span id `typesafe` for direct calls. SDK errors are
+    mapped onto the structured contract by class name and HTTP status, so
+    the mapping does not depend on a particular loaded SDK copy.
+  - **Four pattern words** in `examples/plugins/`: `fanout` (speculative
+    fan-out), `composite` (composite scoring), `gate` (confidence-gated
+    routing), and `intent` (intent routing). Each sets `.answer` with its
+    structured result. `gate`/`intent` take `classifierModel` for the
+    TypeSafe question and forward `model` to their handlers, matching the
+    rest of the word library; they share one classify-and-dispatch helper.
+  - **`LetterOutput.answer`** — an optional structured result alongside
+    `text`, set with the public `withAnswer()`, preserved (with `modelId`)
+    by the result cache, and included in `--json`.
+  - **New `TYPESAFE` error code and exit code 9** for rate limits,
+    connection failures, timeouts, and 5xx responses.
+- **Docs & examples** — `docs/typesafe.md`; updated AGENTS.md, README,
+  llms.txt, onboarding, extension, trace, and the word catalog. Eight
+  runnable examples: `typesafe-primitives.mjs`, `typesafe-service.mjs`,
+  `typesafe-cache.mjs`, `typesafe-custom-letter.mjs`, and
+  `word-{fanout,composite,gate,intent}.mjs`.
+
 ## [1.5.0] — 2026-09-07
 
 ### Added

@@ -14,6 +14,7 @@ export type PizxErrorCode =
   | 'AGENT'
   | 'ACP'
   | 'HARNESS'
+  | 'TYPESAFE'
   | 'CANCELLED'
   | 'INTERNAL'
 

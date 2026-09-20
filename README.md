@@ -5,7 +5,7 @@
 
 ![pizx — zx fork with native Pi AI integration](github-social-banner.png)
 
-> **AI-powered shell scripting for Node.js** — a [zx](https://github.com/google/zx) fork with native [Pi](https://github.com/earendil-works/pi) AI integration, built on the [cordis](https://github.com/cordiverse/cordis) plugin framework. Four letters ship in core — **π** (text generation), **Π** (coding agent), **α** (any ACP-compatible agent), and **ε** (any CLI AI harness — claude, kiro-cli, …) — and you define your own letters as plugins. Every run is traceable and exportable as JSONL, and cacheable letters hit a local result cache.
+> **AI-powered shell scripting for Node.js** — a [zx](https://github.com/google/zx) fork with native [Pi](https://github.com/earendil-works/pi) AI integration, built on the [cordis](https://github.com/cordiverse/cordis) plugin framework. Core ships **π** (text generation), **Π** (coding agent), **α** (any ACP-compatible agent), **ε** (any CLI AI harness — claude, kiro-cli, …), and TypeSafe's typed decisions **choice**/**score**/**noul** — and you define your own letters as plugins. Every run is traceable and exportable as JSONL, and cacheable letters hit a local result cache.
 
 ```js
 #!/usr/bin/env pizx
@@ -60,6 +60,9 @@ chmod +x hello.mjs
 | `Π` (`Pi`, `piAgent`, `codingAgent`) | Pi coding agent with tools (read, bash, edit, write, grep, …) |
 | `α` (`acp`, `agent`) | Any ACP-compatible coding agent (server required — no pi needed) |
 | `ε` (`run`, `harness`, `cli`) | Any CLI AI harness — claude, kiro-cli, opencode, … (binary required — no pi needed) |
+| `noul` (`Noul`) | TypeSafe yes/no probability — calibrated System One decisions |
+| `choice` (`Choice`) | TypeSafe pick-one-label classification, with confidence |
+| `score` (`Score`) | TypeSafe position on an ordered rubric, with confidence |
 
 ```js
 const answer = await π({ model: 'anthropic/claude-sonnet-4-5' })`explain async/await`
@@ -73,16 +76,27 @@ await α({ server: ['kiro-cli', 'acp'] })`fix the TypeScript errors in src/`
 
 // ε runs any CLI AI harness; unknown options become its CLI flags:
 await ε({ harness: 'claude', model: 'sonnet' })`review this diff`   // claude -p --model sonnet …
+
+// TypeSafe turns a model's judgment into a typed, calibrated value:
+const refund = await noul({ instructions: 'Is a refund requested?' })`${ticket}`
+const team   = await choice({ instructions: 'Which team?', criteria: { billing: '…', tech: '…' } })`${ticket}`
+refund.text            // '0.99' — the usable scalar
+refund.answer.confidence  // full typed answer (confidence, probabilities, …)
 ```
 
-All four return a `LetterOutput`: `text`, `modelId` (alias `modelUsed`),
+All letters return a `LetterOutput`: `text`, `modelId` (alias `modelUsed`),
 `isFromCache` (alias `fromCache`), timing, and token/cost getters — plus
-`output.trace` with the LLM calls of that invocation. Full option tables:
-[π](docs/pi.md), [Π](docs/capital-pi.md),
-[α](docs/acp.md), [ε](docs/epsilon.md). α and ε are independent of pi
+`output.trace` with the LLM calls of that invocation. TypeSafe letters and
+pattern words additionally set `.answer` with the structured result. Full
+option tables: [π](docs/pi.md), [Π](docs/capital-pi.md),
+[α](docs/acp.md), [ε](docs/epsilon.md),
+[TypeSafe](docs/typesafe.md). α and ε are independent of pi
 entirely: α drives any ACP server command you name; ε drives any harness
 binary you have installed (e.g. [Kiro](https://kiro.dev/docs/cli/),
 [Claude Code](https://code.claude.com/docs/en/cli-reference)).
+
+> TypeSafe letters need `TYPESAFE_API_KEY` ([get one](https://console.typesafe.ai/keys));
+the client is built lazily, so apps that never use them boot without a key.
 
 ## Define your own letters
 
@@ -133,10 +147,11 @@ dependencies make load order irrelevant.
 ## Words — composable AI patterns
 
 **Words** are named AI patterns built by composing letters; a word is itself
-a letter, so words compose recursively. Seven ship as ready-made plugins in
-[examples/plugins/](examples/plugins/) — the patterns from Anthropic's
+a letter, so words compose recursively. Eleven ship as ready-made plugins in
+[examples/plugins/](examples/plugins/) — the seven patterns from Anthropic's
 [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
-— and load through `pizx.config.mjs` like any plugin:
+plus four TypeSafe patterns — and load through `pizx.config.mjs` like any
+plugin:
 
 | Word | Aliases | Pattern |
 |---|---|---|
@@ -147,6 +162,10 @@ a letter, so words compose recursively. Seven ship as ready-made plugins in
 | `vote` | `jury` | Voting — N parallel answers, tallied |
 | `refine` | `optimize` | Evaluator-optimizer — revise against criteria until PASS |
 | `orchestrate` | `director` | Orchestrator-workers — decompose, fan out, synthesize |
+| `fanout` | `fan-out` | TypeSafe speculative fan-out — many questions, one call |
+| `composite` | `composite-scoring` | TypeSafe composite scoring — weighted dimensions |
+| `gate` | `confidence-routing` | TypeSafe confidence-gated routing |
+| `intent` | `intent-routing` | TypeSafe intent routing — classify and dispatch |
 
 ```js
 await chain({ steps: ['outline', 'π'] })`write a document about X`
@@ -190,7 +209,7 @@ await app.dispose()
 ## CLI
 
 ```bash
-pizx script.mjs                # run a script ($, π, Π, α, ε and your letters as globals)
+pizx script.mjs                # run a script (every registered letter is a global)
 pizx -p "your prompt"          # quick pi-ai query
 echo "your prompt" | pizx -p - # read the prompt from stdin
 pizx --acp --acp-server "kiro-cli acp" "your prompt"  # quick ACP agent query
@@ -242,8 +261,10 @@ pizx 1.0 rewrote the core on cordis and ships **π, Π, α, and ε** — the 16
 hardcoded pattern tags (Ralph, Fleet, Debate, Pipeline, …) are gone from the
 core and come back as letter plugins. Seven already have: `ralph`, `fleet`,
 `chain` (pipeline), `route` (branch), `vote` (jury), `refine` (optimize), and
-`orchestrate` (director) ship as word plugins in `examples/plugins/` — see
-[docs/words.md](docs/words.md). The old code lives in the 0.9 branch.
+`orchestrate` (director) ship as word plugins in `examples/plugins/` — plus
+the four TypeSafe pattern words (`fanout`, `composite`, `gate`, `intent`). See
+[docs/words.md](docs/words.md) and [docs/typesafe.md](docs/typesafe.md). The old
+code lives in the 0.9 branch.
 
 ## License
 

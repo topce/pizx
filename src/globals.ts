@@ -15,6 +15,7 @@ import type { AlphaOpts } from './plugins/acp.ts'
 import type { EpsilonOpts } from './plugins/epsilon.ts'
 import type { PiOpts } from './plugins/pi.ts'
 import type { AgentOpts } from './plugins/pi-agent.ts'
+import type { ChoiceOpts, NoulOpts, ScoreOpts } from './plugins/typesafe.ts'
 
 const app = await getDefaultApp()
 
@@ -53,6 +54,15 @@ declare global {
   const run: LetterFn<EpsilonOpts>
   const harness: LetterFn<EpsilonOpts>
   const cli: LetterFn<EpsilonOpts>
+  /** noul — TypeSafe probability that a yes/no statement is true. Aliases: `Noul`. */
+  const noul: LetterFn<NoulOpts>
+  const Noul: LetterFn<NoulOpts>
+  /** choice — TypeSafe pick-one-label classification. Aliases: `Choice`. */
+  const choice: LetterFn<ChoiceOpts>
+  const Choice: LetterFn<ChoiceOpts>
+  /** score — TypeSafe ordered-rubric scoring. Aliases: `Score`. */
+  const score: LetterFn<ScoreOpts>
+  const Score: LetterFn<ScoreOpts>
 }
 
 // The π/Π/α names and aliases (plus configureDefaultApp/disposeDefaultApp) are

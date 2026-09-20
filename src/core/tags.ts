@@ -20,6 +20,7 @@ export class LetterOutput {
   private _modelId: string | undefined
   private _fromCache: boolean
   private _turnCount: number | undefined
+  private _answer: unknown
 
   constructor(
     /** Full result text */
@@ -65,6 +66,24 @@ export class LetterOutput {
   /** Number of agent turns (agent letters only; undefined otherwise). */
   get turnCount(): number | undefined {
     return this._turnCount
+  }
+
+  /**
+   * Structured answer for letters that return typed data rather than prose
+   * (the TypeSafe `choice`/`score`/`noul` letters, and the pattern words built
+   * on them). `undefined` for text-only letters like π/Π/α/ε.
+   */
+  get answer(): unknown {
+    return this._answer
+  }
+
+  /**
+   * Attach a structured answer to this result (used by the TypeSafe letters and
+   * the pattern words built on them). Returns `this` for chaining.
+   */
+  withAnswer(answer: unknown): this {
+    this._answer = answer
+    return this
   }
 
   /** @internal — attach the invocation span's trace and model. */
@@ -216,6 +235,22 @@ interface RunResult {
   fromCache: boolean
 }
 
+/**
+ * What a memoized letter invocation stores. `answer` carries structured output
+ * (TypeSafe letters/words), `modelId` the model that produced it; legacy
+ * entries are bare strings.
+ */
+type CachedLetterValue = string | { text: string; answer?: unknown; modelId?: string }
+
+/** Rebuild a LetterOutput from a cache value (string legacy or payload). */
+function letterOutputFromCache(value: CachedLetterValue, t0: number): LetterOutput {
+  const text = typeof value === 'string' ? value : value.text
+  const modelId = typeof value === 'object' ? value.modelId : undefined
+  const output = new LetterOutput(text, modelId, true, t0, Date.now())
+  if (typeof value === 'object' && value.answer !== undefined) output.withAnswer(value.answer)
+  return output
+}
+
 async function runLetter(
   ctx: Context,
   name: string,
@@ -250,15 +285,23 @@ async function runLetter(
         prompt,
         opts,
       })
-      const hit = await cache.get<string>(key)
+      const hit = await cache.get<CachedLetterValue>(key)
       if (hit) {
         span?.emit({ kind: 'cache-hit', key })
-        output = new LetterOutput(hit.value, undefined, true, t0, Date.now())
+        output = letterOutputFromCache(hit.value, t0)
         fromCache = true
       } else {
         span?.emit({ kind: 'cache-miss', key })
         output = await execute(trace, def, prompt, opts, env, span, t0)
-        await cache.set(key, output.text)
+        const payload: CachedLetterValue =
+          output.answer !== undefined || output.modelId !== undefined
+            ? {
+                text: output.text,
+                ...(output.modelId !== undefined ? { modelId: output.modelId } : {}),
+                ...(output.answer !== undefined ? { answer: output.answer } : {}),
+              }
+            : output.text
+        await cache.set(key, payload)
       }
     } else {
       output = await execute(trace, def, prompt, opts, env, span, t0)

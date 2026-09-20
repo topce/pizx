@@ -16,7 +16,9 @@ Two ways to target pizx:
 credentials — run `pi auth login` once (`npm i -g @earendil-works/pi`). The `α`
 letter needs no pi; it drives any external ACP server you name. The `ε` letter
 needs no pi either; it runs any CLI AI harness (`claude`, `kiro-cli`, …) you
-have installed.
+have installed. The TypeSafe letters (`noul`/`choice`/`score`) need a
+`TYPESAFE_API_KEY`; their client is built lazily, so scripts that never use
+them run without one.
 
 ---
 
@@ -29,8 +31,8 @@ type-checking and autocomplete on the injected globals:
 #!/usr/bin/env pizx
 /// <reference types="@topce/pizx/globals" />
 
-// Globals available with no import: $, π, Π, α, ε (+ your own letters), plus
-// all of zx: cd, echo, chalk, fetch, fs, os, path, glob, question, sleep, within…
+// Globals available with no import: $, π, Π, α, ε, noul, choice, score (+ your
+// own letters), plus all of zx: cd, echo, chalk, fetch, fs, os, path, glob, question, sleep, within…
 
 const files = (await $`ls src`).stdout.trim()
 
@@ -66,6 +68,9 @@ and branches on it.
 | `Π` | `Pi`, `piAgent`, `codingAgent` | Pi coding agent with tools (read/bash/edit/write/…) | pi creds |
 | `α` | `acp`, `agent` | Any ACP-compatible coding agent | an ACP server command |
 | `ε` | `run`, `harness`, `cli` | Any CLI AI harness (claude, kiro-cli, …) | the harness binary |
+| `noul` | `Noul` | TypeSafe yes/no probability (System One) | `TYPESAFE_API_KEY` |
+| `choice` | `Choice` | TypeSafe choose-one-label classification | `TYPESAFE_API_KEY` |
+| `score` | `Score` | TypeSafe ordered-rubric scoring | `TYPESAFE_API_KEY` |
 
 Prefer the ASCII aliases (`pi`, `Pi`, `acp`, `run`) when emitting code where
 the Greek letters are awkward to type — they are the exact same tags.
@@ -75,6 +80,13 @@ const answer = await pi`what is the capital of France?`   // π
 await Pi`fix the TypeScript errors in src/`                // Π
 await acp({ server: ['kiro-cli', 'acp'] })`review this diff`  // α
 await run({ harness: 'claude', model: 'sonnet' })`review this diff`  // ε
+
+// TypeSafe typed decisions — body is the state, instructions is the question
+const refund = await noul({ instructions: 'Is a refund requested?' })`${ticket}`
+const team = await choice({ instructions: 'Which team?', criteria: { billing: '…', tech: '…' } })`${ticket}`
+const anger = await score({ instructions: 'How frustrated?', criteria: ['calm', 'angry'] })`${ticket}`
+refund.text            // '0.99'   — the usable scalar
+refund.answer.noul     // 0.99     — the full typed answer (+ confidence/probabilities)
 ```
 
 ### Every letter is a template tag with the same shape
@@ -112,6 +124,13 @@ Pass options as a plain object before the template: `` π({ ...opts })`prompt` `
 **other** option is forwarded to the harness CLI as a flag: camelCase →
 `--kebab-case`, booleans bare, `false` → `--no-*`, arrays repeated, 1-char →
 `-x`. Harness backends are spec plugins — see [docs/epsilon.md](docs/epsilon.md).
+
+**`noul` / `choice` / `score` (TypeSafe):** `instructions` (the question; when
+omitted the template body is used as the question), `state` (structured state;
+overrides the body), `criteria` (Choice: `label → description` map · Score:
+ordered levels ≥2 · Noul: optional `{ true, false }`), `model`, `timeoutMs`,
+`quiet`, `confirm`. The result's `.answer` carries the typed answer; `.text` is
+the scalar. Cacheable. Full reference: [docs/typesafe.md](docs/typesafe.md).
 
 `confirm` gates execution: `true` or `{ semi: true }` prompts at major phases,
 `{ hitl: true }` prompts at every phase, `{ auto: true }` (default) never
@@ -160,8 +179,8 @@ await app.flushLog('run.jsonl')          // write the run's JSONL event log
 await app.dispose()                      // always dispose to tear down sessions
 ```
 
-`createPizx()` returns `{ ctx, config, π, Π, α, ε, letter(name), define(name, def),
-exportLog(format?), traceSummary(), flushLog(path?, format?), dispose() }`.
+`createPizx()` returns `{ ctx, config, π, Π, α, ε, noul, choice, score, typesafe,
+letter(name), define(name, def), exportLog(format?), traceSummary(), flushLog(path?, format?), dispose() }`.
 
 Or inject everything as globals (boots a lazy default app):
 
@@ -231,12 +250,11 @@ to non-cacheable (set `cacheable: true` for pure words). See
 
 ### The word library
 
-pizx ships seven ready-made word plugins in `examples/plugins/` — the AI
-patterns from Anthropic's [*Building effective
+pizx ships seven ready-made Anthropic-pattern word plugins in
+`examples/plugins/` — the patterns from Anthropic's [*Building effective
 agents*](https://www.anthropic.com/engineering/building-effective-agents),
 all built from the five `ctx.words` operators. **Every word is a plugin**
-(core ships only the grammar); load the ones you want in
-`pizx.config.mjs`.
+(core ships only the grammar); load the ones you want in `pizx.config.mjs`.
 
 | Word | Aliases | Pattern | Slots (defaults) |
 |---|---|---|---|
@@ -254,6 +272,19 @@ compose recursively (`ralph({ review: 'fleet' })`). Full reference with
 options, output shapes, and the pattern map: [docs/words.md](docs/words.md);
 runnable tour: [examples/words.mjs](examples/words.mjs); one focused example
 per word: `examples/word-*.mjs` (also `npm run example:word-chain`, …).
+
+#### TypeSafe pattern words
+
+These four words implement TypeSafe's [architectural
+patterns](https://docs.typesafe.ai/patterns) over `ctx.typesafe`, in
+`examples/plugins/`. Each `.answer` carries its structured result.
+
+| Word | Aliases | Pattern | Key options |
+|---|---|---|---|
+| `fanout` | `fan-out` | Speculative fan-out — many questions, one call | `questions` (spec map), `pick`, `model` |
+| `composite` | `composite-scoring` | Composite scoring — weighted multi-score combination | `dimensions` (`{ instructions, criteria, weight? }`), `weights`, `normalize` |
+| `gate` | `confidence-routing` | Confidence-gated routing — act by confidence threshold | `instructions`, `criteria`, `routes`, `thresholds`, `floor`, `escalate`, `classifierModel` (TypeSafe); `model` → handlers |
+| `intent` | `intent-routing` | Intent routing — classify and dispatch | `instructions`, `criteria`, `intents`, `fallback`, `escalate`, `floor`, `classifierModel` (TypeSafe); `model` → handlers |
 
 ### Global install vs. local install
 
@@ -367,6 +398,7 @@ not on message text.
 - [README](README.md) — overview and quick start
 - [π](docs/pi.md) · [Π](docs/capital-pi.md) · [α](docs/acp.md) · [ε](docs/epsilon.md) — per-letter references
 - [Defining letters](docs/extension.md) — the plugin API
-- [Words](docs/words.md) — the word library (ralph, fleet, chain, route, vote, refine, orchestrate)
+- [Words](docs/words.md) — the word library (ralph, fleet, chain, route, vote, refine, orchestrate, fanout, composite, gate, intent)
+- [TypeSafe](docs/typesafe.md) — typed decisions (`choice`/`score`/`noul`) + pattern words
 - [Trace & logs](docs/trace.md) — event format, export, caching
 - [Onboarding](docs/onboarding.md) — architecture and file map

@@ -274,6 +274,7 @@ export const EXIT_CODES: Record<PizxErrorCode, number> = {
   AGENT: 4,
   ACP: 5,
   HARNESS: 8,
+  TYPESAFE: 9,
   CANCELLED: 6,
   INTERNAL: 7,
 }
@@ -330,6 +331,8 @@ export interface ResultJson {
   durationMs: number
   tokens: { input: number; output: number; cacheRead: number; cacheWrite: number; total: number }
   costUsd: number
+  /** Structured answer for TypeSafe letters/words (choice/score/noul/fanout/…). */
+  answer?: unknown
 }
 
 export interface ErrorJson {
@@ -358,6 +361,7 @@ export function resultToJson(o: LetterOutput): ResultJson {
       total: o.totalTokens,
     },
     costUsd: o.totalCost,
+    ...(o.answer !== undefined ? { answer: o.answer } : {}),
   }
 }
 

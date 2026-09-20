@@ -42,6 +42,12 @@ export const Π = forwardTag('Π', letter)
 export const α = forwardTag('α', letter)
 /** ε template tag — any CLI AI harness, e.g. { harness: 'claude' } (forwards to the default app). */
 export const ε = forwardTag('ε', letter)
+/** noul template tag — TypeSafe probability that a yes/no statement is true. */
+export const noul = forwardTag('noul', letter)
+/** choice template tag — TypeSafe pick-one-label classification. */
+export const choice = forwardTag('choice', letter)
+/** score template tag — TypeSafe ordered-rubric scoring. */
+export const score = forwardTag('score', letter)
 
 // English aliases (π = pi/ai, Π = Pi/piAgent/codingAgent, α = acp/agent, ε = run/harness/cli).
 export const pi = π
@@ -54,3 +60,8 @@ export const agent = α
 export const run = ε
 export const harness = ε
 export const cli = ε
+
+// TypeSafe primitive aliases (noul/Noul, choice/Choice, score/Score).
+export const Noul = noul
+export const Choice = choice
+export const Score = score

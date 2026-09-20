@@ -50,6 +50,16 @@ const CACHE_RELEVANT_KEYS = new Set([
   'appendSystemPrompt',
   'system',
   'timeoutMs',
+  // TypeSafe letters/words: the question and structured state are options, not
+  // part of the prompt, so they must be hashed into the key to avoid collisions.
+  'instructions',
+  'criteria',
+  'state',
+  'questions',
+  'dimensions',
+  'weights',
+  'pick',
+  'normalize',
 ])
 
 /** Reduce opts to the cache-relevant subset, with deterministic key order. */

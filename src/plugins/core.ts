@@ -15,12 +15,15 @@ import type { LlmConfig } from '../core/llm.ts'
 import { Llm } from '../core/llm.ts'
 import type { TraceConfig } from '../core/trace.ts'
 import { Trace } from '../core/trace.ts'
+import type { TypeSafeConfig } from '../core/typesafe.ts'
+import { TypeSafe } from '../core/typesafe.ts'
 import { Words } from '../core/words.ts'
 
 export interface CoreConfig {
   trace?: TraceConfig
   cache?: CacheConfig
   llm?: LlmConfig
+  typesafe?: TypeSafeConfig
 }
 
 export const corePlugin: Plugin.Object<Context, CoreConfig> = {
@@ -29,6 +32,7 @@ export const corePlugin: Plugin.Object<Context, CoreConfig> = {
     ctx.plugin(Trace, config.trace)
     ctx.plugin(Cache, config.cache)
     ctx.plugin(Llm, config.llm)
+    ctx.plugin(TypeSafe, config.typesafe)
     ctx.plugin(Letters)
     ctx.plugin(Harnesses)
     ctx.plugin(Words)

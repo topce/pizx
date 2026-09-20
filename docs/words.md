@@ -9,8 +9,10 @@ any ACP agent) and **words** — named AI patterns built by composing letters.
   composes recursively: **letters → words → sentences → a whole script**.
 
 The core ships only the composition grammar (`ctx.words`). **Every word is a
-plugin** — seven ship ready-made in `examples/plugins/` and load through
-`pizx.config.mjs` like any letter plugin.
+plugin** — seven Anthropic-pattern words ship ready-made in `examples/plugins/`
+and load through `pizx.config.mjs` like any letter plugin. Four more TypeSafe
+pattern words (`fanout`/`composite`/`gate`/`intent`) are covered in
+[typesafe.md](typesafe.md).
 
 ## The word catalog at a glance
 
@@ -23,6 +25,11 @@ plugin** — seven ship ready-made in `examples/plugins/` and load through
 | `vote` | `jury` | Parallelization: **voting** — N answers, tallied | `examples/plugins/vote.mjs` |
 | `refine` | `optimize` | **Evaluator-optimizer** — generate → evaluate → revise loop | `examples/plugins/refine.mjs` |
 | `orchestrate` | `director` | **Orchestrator-workers** — decompose → fan out → synthesize | `examples/plugins/orchestrate.mjs` |
+
+> TypeSafe adds four more pattern words built on `ctx.typesafe` — `fanout`
+> (speculative fan-out), `composite` (composite scoring), `gate`
+> (confidence-gated routing), and `intent` (intent routing). See
+> [TypeSafe](typesafe.md).
 
 Plus the building block and the agent itself, which are letters, not words:
 
@@ -125,8 +132,9 @@ builds that schema for you by merging the slot fields with your `options`.
 | `loop(body, until, maxIterations)` | Run `body(iteration)` up to `maxIterations` times, stopping when `until(result, iteration)` is true. Returns `{ results, iterations, terminatedEarly }`. `maxIterations` must be a positive integer. |
 | `slotOptions(opts)` | Extract the subset of a word's options that letters understand, for forwarding to slot calls. |
 
-All seven words are built from these five operators — no new core operators
-were needed for any of the article's patterns.
+All seven Anthropic-pattern words are built from these five operators — no new
+core operators were needed for any of the article's patterns (TypeSafe's four
+words add no operators either).
 
 ### Errors — one contract for bad usage
 

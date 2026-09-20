@@ -11,6 +11,23 @@
 
 ---
 
+## Post-audit API additions
+
+The audit above covers 1.1.0. These public exports were added later and have
+not been reviewed against the same principles yet:
+
+- `TypeSafe`, `TypeSafeConfig`, `TypeSafeAskOptions`, `TypeSafeModel`,
+  `mapTypeSafeError`, `JEV_USD_PER_MTOK` — `src/core/typesafe.ts`
+- `typesafePlugin`, `NoulOpts`, `ChoiceOpts`, `ScoreOpts` —
+  `src/plugins/typesafe.ts`
+- `noul` / `choice` / `score` letters (plus `Noul`/`Choice`/`Score` aliases)
+  registered globally; four pattern words in `examples/plugins/`
+- `LetterOutput.answer` (getter) and `LetterOutput.withAnswer` (internal) —
+  extends the L1 “public and mutable” note; `answer` is preserved by the cache
+- `PizxErrorCode` gains `TYPESAFE`; CLI **exit code 9**
+
+---
+
 ## Executive summary
 
 The architecture is sound — cordis services, schemastery-validated letter

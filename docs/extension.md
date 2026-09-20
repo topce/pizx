@@ -122,7 +122,7 @@ against a *local* `node_modules`, not the global one. A plugin that
 
 ```js
 {
-  ctx,    // the cordis context: ctx.llm, ctx.trace, ctx.cache, ctx.letters
+  ctx,    // the cordis context: ctx.llm, ctx.typesafe, ctx.trace, ctx.cache, ctx.letters, ctx.words
   pieces, // raw template pieces
   args,   // interpolated values
   span,   // this invocation's trace span (undefined when tracing is off)
@@ -131,8 +131,9 @@ against a *local* `node_modules`, not the global one. A plugin that
 
 Everything you call through `ctx.llm` is traced automatically: model, tokens
 (input/output/cache read/cache write), cost, and duration land on your
-letter's span and in the exported log. If you call providers yourself,
-attribute usage to your span with `span.emit({ kind: 'llm-call', … })`.
+letter's span and in the exported log. Calls through `ctx.typesafe.ask` are
+traced the same way. If you call providers yourself, attribute usage to your
+span with `span.emit({ kind: 'llm-call', … })`.
 
 ## Getting the DX for free
 
@@ -146,6 +147,41 @@ Every letter registered through `ctx.letters` automatically gets:
 - **Tracing** — a `letter-start`/`letter-end` span wrapping every invocation
 - **Caching** — side-effect-free letters hit the local content-addressed
   cache when enabled (per call, app-wide, or `pizx --cache`)
+
+## Building on TypeSafe
+
+The `ctx.typesafe` service turns TypeSafe's System One model into typed,
+calibrated decisions. A custom letter can wrap one reusable judgment and
+expose it with the same DX as the built-ins:
+
+```js
+// plugins/urgency.mjs — one fixed TypeSafe question as a reusable letter
+import { LetterOutput, Schema } from '@topce/pizx'
+
+export const name = 'urgency'
+export const inject = ['letters', 'typesafe']
+
+export function apply(ctx) {
+  ctx.letters.define('urgency', {
+    aliases: ['urgent'],
+    options: Schema.object({ model: Schema.string() }),
+    run: async (prompt, opts, env) => {
+      const { answers } = await env.ctx.typesafe.ask(
+        prompt || null,
+        { urgency: { type: 'noul', instructions: 'Is this urgent or time-sensitive?' } },
+        { model: opts.model }
+      )
+      // Attach the typed answer so callers get `.answer`; `.text` is the scalar.
+      return new LetterOutput(String(answers.urgency.noul)).withAnswer(answers.urgency)
+    },
+  })
+}
+```
+
+`ctx.typesafe.ask(state, questions, opts)` sends **every** question in one
+System One call — prefer batching speculative questions and filtering in the
+caller. Full reference: [docs/typesafe.md](typesafe.md); runnable tour:
+[examples/typesafe-custom-letter.mjs](../examples/typesafe-custom-letter.mjs).
 
 ## Harnesses — adding a CLI backend to ε
 

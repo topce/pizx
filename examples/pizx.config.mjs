@@ -15,5 +15,22 @@ import route from './plugins/route.mjs'
 import vote from './plugins/vote.mjs'
 import refine from './plugins/refine.mjs'
 import orchestrate from './plugins/orchestrate.mjs'
+import fanout from './plugins/fanout.mjs'
+import composite from './plugins/composite.mjs'
+import gate from './plugins/gate.mjs'
+import intent from './plugins/intent.mjs'
 
-export const plugins = [commit, ralph, fleet, chain, route, vote, refine, orchestrate]
+export const plugins = [
+  commit,
+  ralph,
+  fleet,
+  chain,
+  route,
+  vote,
+  refine,
+  orchestrate,
+  fanout,
+  composite,
+  gate,
+  intent,
+]

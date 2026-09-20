@@ -111,6 +111,41 @@ Concepts: giving the `review` slot real tools so the loop's exit condition is
 trustworthy, scratch directories for mutable demos, and objective pass/fail
 verification with `node --test` instead of trusting a summary.
 
+## Level 6 — TypeSafe: typed, calibrated decisions
+
+TypeSafe turns a model's judgment into a typed value with confidence and
+probabilities. Its three primitives are letters; its four architectural
+patterns are words. Requires `TYPESAFE_API_KEY`
+([get one](https://console.typesafe.ai/keys)) and pi credentials for the
+handler steps.
+
+| # | Script | Letter/word | What it does |
+|---|---|---|---|
+| 19 | `typesafe-primitives.mjs` | `noul`/`choice`/`score` | State + question → typed answers; branch in code |
+| 20 | `word-fanout.mjs` | `fanout` | Five speculative questions in one System One call |
+| 21 | `word-composite.mjs` | `composite` | Weighted resume scoring across four dimensions |
+| 22 | `word-gate.mjs` | `gate` | Approve a transfer only above a confidence threshold |
+| 23 | `word-intent.mjs` | `intent` | Classify, then dispatch to the best handler |
+| 24 | `typesafe-service.mjs` | `ctx.typesafe` | Call the service directly with structured state + confidence gating |
+| 25 | `typesafe-cache.mjs` | `.cache` | Identical question → cache hit; typed answer preserved |
+| 26 | `typesafe-custom-letter.mjs` | `app.define` | Build your own TypeSafe-backed letter on the public service |
+
+```bash
+TYPESAFE_API_KEY=… pizx examples/typesafe-primitives.mjs
+TYPESAFE_API_KEY=… pizx examples/word-fanout.mjs
+TYPESAFE_API_KEY=… pizx examples/word-composite.mjs
+TYPESAFE_API_KEY=… pizx examples/word-gate.mjs
+TYPESAFE_API_KEY=… pizx examples/word-intent.mjs
+TYPESAFE_API_KEY=… pizx examples/typesafe-service.mjs
+TYPESAFE_API_KEY=… pizx examples/typesafe-cache.mjs
+TYPESAFE_API_KEY=… pizx examples/typesafe-custom-letter.mjs
+```
+
+Concepts: the template body is the *state*, `instructions` is the question;
+`.text` is the scalar and `.answer` is the structured result; one API call
+answers many questions in parallel; confidence as a second decision axis.
+Reference: [docs/typesafe.md](../docs/typesafe.md).
+
 ---
 
 ## Quick queries (no script at all)

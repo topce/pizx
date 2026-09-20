@@ -33,15 +33,18 @@
 │   boots a cordis Context, mounts core services + plugins │
 ├──────────────────────────────────────────────────────────┤
 │ services (each a cordis Service)                         │
-│   trace   — spans, events, JSONL/JSON export             │
-│   cache   — content-addressed local result cache         │
-│   llm     — model/auth resolution, ask/stream, Π session │
-│   letters — the template-tag registry                    │
-│   words   — compose letters into AI patterns (words)     │
+│   trace    — spans, events, JSONL/JSON export            │
+│   cache    — content-addressed local result cache        │
+│   llm      — model/auth resolution, ask/stream, Π session │
+│   typesafe — TypeSafe System One typed decisions          │
+│   letters  — the template-tag registry                    │
+│   words    — compose letters into AI patterns (words)     │
 ├──────────────────────────────────────────────────────────┤
 │ letters (each a cordis plugin)                           │
 │   π  — text generation      Π — coding agent             │
 │   α  — any ACP agent (server required)                   │
+│   ε  — any CLI AI harness (binary required)              │
+│   noul / choice / score — TypeSafe typed decisions       │
 │   …your plugins: Σ, ralph, fleet, chain, route, vote, …  │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -53,14 +56,17 @@ mechanism, one trace, one cache.
 
 ## Key Concepts
 
-- **Letter** — a template tag (`π`, `Π`, `α`, your `Σ`). See
+- **Letter** — a template tag (`π`, `Π`, `α`, `ε`, TypeSafe's
+  `choice`/`score`/`noul`, your `Σ`). See
   [docs/extension.md](extension.md) to define your own.
 - **Word** — a named AI pattern (loop, fan-out, chaining, routing, …)
   composed from letters; a word is itself a letter, so patterns compose
-  recursively. Seven word plugins ship in `examples/plugins/`. See
-  [docs/words.md](words.md).
-- **Service** — a named capability on `ctx` (`ctx.llm`, `ctx.trace`,
-  `ctx.cache`, `ctx.letters`). Cordis gates plugin startup on `inject`.
+  recursively. Eleven word plugins ship in `examples/plugins/` — the seven
+  Anthropic patterns plus TypeSafe's `fanout`/`composite`/`gate`/`intent`.
+  See [docs/words.md](words.md) and [docs/typesafe.md](typesafe.md).
+- **Service** — a named capability on `ctx` (`ctx.llm`, `ctx.typesafe`,
+  `ctx.trace`, `ctx.cache`, `ctx.letters`, `ctx.words`). Cordis gates
+  plugin startup on `inject`.
 - **Span** — one letter invocation in the trace; nested LLM calls and cache
   events attach to it by span id.
 - **Trace event** — a JSON record (`llm-call`, `cache-hit`, …). Runs export
@@ -84,6 +90,10 @@ echo(answer)
 await Π`fix the TypeScript errors in src/`
 
 await α({ server: ['kiro-cli', 'acp'] })`run the linter and fix issues`
+
+// TypeSafe — typed, calibrated decisions (needs TYPESAFE_API_KEY)
+const refund = await noul({ instructions: 'Is a refund requested?' })`${ticket}`
+if (refund.answer.noul > 0.8) echo('likely refund')
 ```
 
 ```bash
@@ -107,18 +117,21 @@ pizx --letters                # list registered letters
 | `src/core/trace.ts` | the `Trace` service (spans, events, export) |
 | `src/core/cache.ts` | the `Cache` service (keys, TTL, LRU) |
 | `src/core/llm.ts` | the `Llm` service (auth, models, ask/stream, Π sessions) |
+| `src/core/typesafe.ts` | the `TypeSafe` service (System One client, `ask`, tracing, error mapping) |
 | `src/core/tags.ts` | `createLetterTag`, `LetterOutput`, `LetterPromise` |
 | `src/plugins/pi.ts` | the π letter |
 | `src/plugins/pi-agent.ts` | the Π letter |
 | `src/plugins/acp.ts` | the α letter |
 | `src/plugins/epsilon.ts` | the ε letter (zx wrapper + flag passthrough) |
+| `src/plugins/typesafe.ts` | the `noul`/`choice`/`score` TypeSafe letters |
 | `src/plugins/harness-kiro.ts` / `harness-claude.ts` | built-in harness spec plugins |
 | `src/plugins/core.ts` | mounts the framework services |
 | `src/index.ts` / `src/globals.ts` | package entry / global injection |
 | `src/cli.ts` | the `pizx` CLI |
-| `examples/plugins/` | example letters and words (`commit.mjs`, plus the seven word plugins: `ralph.mjs`, `fleet.mjs`, `chain.mjs`, `route.mjs`, `vote.mjs`, `refine.mjs`, `orchestrate.mjs`) |
+| `examples/plugins/` | example letters and words (`commit.mjs`, plus the seven Anthropic word plugins `ralph.mjs`, `fleet.mjs`, `chain.mjs`, `route.mjs`, `vote.mjs`, `refine.mjs`, `orchestrate.mjs`, and the four TypeSafe pattern words `fanout.mjs`, `composite.mjs`, `gate.mjs`, `intent.mjs`) |
 | `docs/extension.md` | authoring guide for user letters |
 | `docs/words.md` | words reference — the word catalog, slots/options, pattern map |
+| `docs/typesafe.md` | the TypeSafe service, the `choice`/`score`/`noul` letters, and the pattern words |
 | `docs/acp.md` | the α letter reference |
 | `docs/epsilon.md` | the ε letter reference + harness spec plugin guide |
 | `docs/trace.md` | trace format, export, cache-friendliness |

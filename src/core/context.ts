@@ -15,10 +15,17 @@ import { claudeHarnessPlugin } from '../plugins/harness-claude.ts'
 import { kiroHarnessPlugin } from '../plugins/harness-kiro.ts'
 import { type PiOpts, piPlugin } from '../plugins/pi.ts'
 import { type AgentOpts, piAgentPlugin } from '../plugins/pi-agent.ts'
+import {
+  type ChoiceOpts,
+  type NoulOpts,
+  type ScoreOpts,
+  typesafePlugin,
+} from '../plugins/typesafe.ts'
 import type { CacheConfig } from './cache.ts'
 import type { LlmConfig } from './llm.ts'
 import type { LetterDefinition, LetterFn } from './tags.ts'
 import type { TraceConfig } from './trace.ts'
+import type { TypeSafe, TypeSafeConfig } from './typesafe.ts'
 import { getErrorMessage } from './utils.ts'
 import type { Words } from './words.ts'
 
@@ -31,6 +38,8 @@ export interface PizxConfig extends LlmConfig {
   cacheConfig?: Omit<CacheConfig, 'enabled'>
   /** Trace storage tuning. */
   traceConfig?: TraceConfig
+  /** TypeSafe service tuning (apiKey, baseURL, defaultModel, …). */
+  typesafe?: TypeSafeConfig
   /** Extra plugins to mount before ready (letter plugins, exporters, …). */
   plugins?: Plugin[]
   /** Path to a config file exporting `plugins` (default: ./pizx.config.mjs). */
@@ -52,6 +61,14 @@ export interface Pizx {
   α: LetterFn<AlphaOpts>
   /** The ε letter (any CLI harness) — also available as ctx.letters.get('ε'). */
   ε: LetterFn<EpsilonOpts>
+  /** The noul letter (TypeSafe yes/no) — also available as ctx.letters.get('noul'). */
+  noul: LetterFn<NoulOpts>
+  /** The choice letter (TypeSafe classification) — ctx.letters.get('choice'). */
+  choice: LetterFn<ChoiceOpts>
+  /** The score letter (TypeSafe rubric scoring) — ctx.letters.get('score'). */
+  score: LetterFn<ScoreOpts>
+  /** The TypeSafe service — ask batched typed questions directly. */
+  typesafe: TypeSafe
   /** Look up any registered letter (user-defined ones included). */
   letter<T extends Record<string, unknown> = Record<string, unknown>>(
     name: string
@@ -93,11 +110,13 @@ export async function createPizx(config: PizxConfig = {}): Promise<Pizx> {
     trace: config.traceConfig,
     cache: { enabled: config.cache === true, ...config.cacheConfig },
     llm: config,
+    typesafe: config.typesafe,
   })
   ctx.plugin(piPlugin)
   ctx.plugin(piAgentPlugin)
   ctx.plugin(acpPlugin)
   ctx.plugin(epsilonPlugin)
+  ctx.plugin(typesafePlugin)
   ctx.plugin(kiroHarnessPlugin)
   ctx.plugin(claudeHarnessPlugin)
 
@@ -112,8 +131,13 @@ export async function createPizx(config: PizxConfig = {}): Promise<Pizx> {
   const Π = ctx.letters.get('Π')
   const α = ctx.letters.get('α')
   const ε = ctx.letters.get('ε')
-  if (!π || !Π || !α || !ε) {
-    throw new Error('pizx: built-in letters π/Π/α/ε failed to load (check plugin order)')
+  const noul = ctx.letters.get('noul')
+  const choice = ctx.letters.get('choice')
+  const score = ctx.letters.get('score')
+  if (!π || !Π || !α || !ε || !noul || !choice || !score) {
+    throw new Error(
+      'pizx: built-in letters π/Π/α/ε/choice/score/noul failed to load (check plugin order)'
+    )
   }
 
   const app: Pizx = {
@@ -123,6 +147,10 @@ export async function createPizx(config: PizxConfig = {}): Promise<Pizx> {
     Π,
     α,
     ε,
+    noul,
+    choice,
+    score,
+    typesafe: ctx.typesafe,
     letter: (name) => ctx.letters.get(name),
     define: (name, def) => ctx.letters.define(name, def, 'app'),
     words: ctx.words,

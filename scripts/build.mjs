@@ -1,6 +1,12 @@
+import { rm } from 'node:fs/promises'
 import * as esbuild from 'esbuild'
 
 const isWatch = process.argv.includes('--watch')
+
+// esbuild never prunes its outdir, so chunks from a previous build linger and
+// can ship — or mask a verification. Start every build (watch included) from a
+// clean dist. `build:dts` runs after this and emits the .d.ts files here too.
+await rm('dist', { recursive: true, force: true })
 
 /** @type {esbuild.BuildOptions} */
 const opts = {
@@ -19,6 +25,7 @@ const opts = {
   external: [
     'zx',
     '@agentclientprotocol/sdk',
+    '@typesafe-ai/sdk',
     '@earendil-works/pi-ai',
     '@earendil-works/pi-coding-agent',
     '@earendil-works/pi-agent-core',

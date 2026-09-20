@@ -1,7 +1,7 @@
 {
   "name": "@topce/pizx",
-  "version": "1.5.0",
-  "description": "zx fork with native Pi AI integration on the cordis plugin framework — shell scripting with AI agents, user-definable letter tags, traceable runs with JSONL log export, and a local result cache. Ships with π (text generation), Π (coding agent), α (any ACP-compatible agent), and ε (any CLI AI harness — claude, kiro-cli, …).",
+  "version": "1.6.0",
+  "description": "zx fork with native Pi AI integration on the cordis plugin framework — shell scripting with AI agents, user-definable letter tags, traceable runs with JSONL log export, and a local result cache. Ships with π (text generation), Π (coding agent), α (any ACP-compatible agent), ε (any CLI AI harness — claude, kiro-cli, …), and TypeSafe's typed decisions noul/choice/score (plus the fanout/composite/gate/intent pattern words).",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -58,6 +58,14 @@
     "example:word-vote": "node dist/cli.js examples/word-vote.mjs",
     "example:word-refine": "node dist/cli.js examples/word-refine.mjs",
     "example:word-orchestrate": "node dist/cli.js examples/word-orchestrate.mjs",
+    "example:typesafe": "node dist/cli.js --trace examples/typesafe-primitives.mjs",
+    "example:typesafe-service": "node dist/cli.js examples/typesafe-service.mjs",
+    "example:typesafe-cache": "node dist/cli.js examples/typesafe-cache.mjs",
+    "example:typesafe-custom": "node dist/cli.js examples/typesafe-custom-letter.mjs",
+    "example:word-fanout": "node dist/cli.js examples/word-fanout.mjs",
+    "example:word-composite": "node dist/cli.js examples/word-composite.mjs",
+    "example:word-gate": "node dist/cli.js examples/word-gate.mjs",
+    "example:word-intent": "node dist/cli.js examples/word-intent.mjs",
     "example:trace": "node dist/cli.js --cache --trace --export-log examples/trace-and-cache.mjs",
     "example:all": "npm run example:quick && npm run example:release-notes && npm run example:hello && npm run example:typed && npm run example:trace && npm run example:custom"
   },
@@ -99,6 +107,7 @@
     "@cordisjs/core": "^3.18.1",
     "@earendil-works/pi-ai": "0.85.1",
     "@earendil-works/pi-coding-agent": "0.85.1",
+    "@typesafe-ai/sdk": "^0.6.0",
     "schemastery": "^3.18.0",
     "zx": "8.8.5"
   },
