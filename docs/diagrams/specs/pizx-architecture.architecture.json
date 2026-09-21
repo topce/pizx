@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "pizx — AI letters on a cordis plugin host",
+    "output": "pizx-architecture.html",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "run-path",
+        "label": "One letter call, end to end",
+        "focus": ["script", "cli", "app", "letters", "llm", "pi"],
+        "note": "From a template tag in a script to a streamed Pi AI answer."
+      },
+      {
+        "id": "typesafe-path",
+        "label": "Typed decisions",
+        "focus": ["app", "letters", "typesafe", "typesafeApi"],
+        "note": "noul, choice and score answer through the TypeSafe service."
+      },
+      {
+        "id": "backends",
+        "label": "Two provider services",
+        "focus": ["letters", "llm", "pi", "agentClis"],
+        "note": "ctx.llm reaches Pi; α and ε shell out to any external agent CLI."
+      },
+      {
+        "id": "authoring",
+        "label": "Extending pizx",
+        "focus": ["app", "plugins", "words", "letters"],
+        "note": "User letters and words register on the same services the built-ins use."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "script",
+      "type": "external",
+      "label": "pizx script",
+      "sublabel": "#!/usr/bin/env pizx",
+      "tag": ".mjs · ESM",
+      "pos": [40, 40],
+      "size": [150, 64]
+    },
+    {
+      "id": "plugins",
+      "type": "external",
+      "label": "pizx.config.mjs",
+      "sublabel": "user letter & word plugins",
+      "tag": "loaded by createPizx()",
+      "pos": [310, 40],
+      "size": [150, 64]
+    },
+    {
+      "id": "words",
+      "type": "backend",
+      "label": "Words",
+      "sublabel": "ctx.words",
+      "tag": "7 + 4 patterns",
+      "pos": [580, 40],
+      "size": [150, 64]
+    },
+    {
+      "id": "cli",
+      "type": "frontend",
+      "label": "pizx CLI",
+      "sublabel": "src/cli.ts",
+      "tag": "run · -p · --json",
+      "pos": [40, 190],
+      "size": [150, 64]
+    },
+    {
+      "id": "app",
+      "type": "backend",
+      "label": "cordis app",
+      "sublabel": "createPizx()",
+      "tag": "one Context per run",
+      "pos": [310, 190],
+      "size": [150, 64]
+    },
+    {
+      "id": "letters",
+      "type": "backend",
+      "label": "Letters",
+      "sublabel": "ctx.letters",
+      "tag": "π Π α ε · noul choice score",
+      "pos": [580, 190],
+      "size": [150, 64]
+    },
+    {
+      "id": "llm",
+      "type": "backend",
+      "label": "Llm",
+      "sublabel": "ctx.llm",
+      "tag": "auth · ask/stream · Π session",
+      "pos": [850, 190],
+      "size": [150, 64]
+    },
+    {
+      "id": "pi",
+      "type": "cloud",
+      "label": "Pi",
+      "sublabel": "pi-ai · pi-coding-agent",
+      "tag": "π text · Π tools",
+      "pos": [1120, 190],
+      "size": [150, 64]
+    },
+    {
+      "id": "agentClis",
+      "type": "external",
+      "label": "Agent CLIs",
+      "sublabel": "acp · claude · kiro",
+      "tag": "α spawns · ε runs",
+      "pos": [310, 340],
+      "size": [150, 64]
+    },
+    {
+      "id": "state",
+      "type": "database",
+      "label": "Local state",
+      "sublabel": ".pizx/cache · .pizx/logs",
+      "tag": "content-addressed",
+      "pos": [580, 340],
+      "size": [150, 64]
+    },
+    {
+      "id": "typesafe",
+      "type": "backend",
+      "label": "TypeSafe",
+      "sublabel": "ctx.typesafe",
+      "tag": "System One · one batch",
+      "pos": [850, 340],
+      "size": [150, 64]
+    },
+    {
+      "id": "typesafeApi",
+      "type": "cloud",
+      "label": "TypeSafe API",
+      "sublabel": "POST /v1/systemone",
+      "tag": "Jev · typed answers",
+      "pos": [1120, 340],
+      "size": [150, 64]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "cordis core services — src/core",
+      "wraps": ["letters", "words", "llm"]
+    },
+    {
+      "kind": "region",
+      "label": "TypeSafe integration",
+      "wraps": ["typesafe", "typesafeApi"]
+    }
+  ],
+  "connections": [
+    { "id": "script-to-cli", "from": "script", "to": "cli", "label": "pizx run.mjs", "variant": "emphasis", "labelAt": [115, 118] },
+    { "id": "cli-boots-app", "from": "cli", "to": "app", "label": "boots cordis", "variant": "emphasis" },
+    { "id": "plugins-define-letters", "from": "plugins", "to": "letters", "label": "ctx.letters.define" },
+    { "id": "plugins-define-words", "from": "plugins", "to": "words", "label": "ctx.words.define" },
+    { "id": "app-mounts-letters", "from": "app", "to": "letters", "label": "mounts ctx.letters", "variant": "emphasis", "fromSide": "right", "toSide": "left", "labelAt": [520, 245] },
+    { "id": "words-compose-letters", "from": "words", "to": "letters", "label": "composes slots", "fromSide": "bottom", "toSide": "top", "labelAt": [655, 130] },
+    { "id": "letters-call-llm", "from": "letters", "to": "llm", "label": "π · Π calls", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "id": "llm-to-pi", "from": "llm", "to": "pi", "label": "pi-ai provider", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "id": "letters-to-typesafe", "from": "letters", "to": "typesafe", "label": "noul · choice · score", "fromSide": "bottom", "toSide": "top" },
+    { "id": "typesafe-to-api", "from": "typesafe", "to": "typesafeApi", "label": "POST /v1/systemone", "fromSide": "right", "toSide": "left" },
+    { "id": "letters-to-agent-clis", "from": "letters", "to": "agentClis", "label": "α spawns · ε runs", "fromSide": "bottom", "toSide": "top" },
+    { "id": "letters-to-state", "from": "letters", "to": "state", "label": "spans · cache", "fromSide": "bottom", "toSide": "top", "labelAt": [655, 316] }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Entry points",
+      "items": [
+        "pizx script.mjs runs a script with every letter as a global",
+        "pizx -p, --acp and --run are one-shot shell queries"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Two provider services",
+      "items": [
+        "π and Π ride ctx.llm; α and ε shell out to any agent CLI",
+        "noul, choice and score answer through ctx.typesafe"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Composable and traceable",
+      "items": [
+        "Words compose letters through replaceable slots",
+        "Side-effect-free letters hit the .pizx/cache; runs export as JSONL"
+      ]
+    }
+  ]
+}

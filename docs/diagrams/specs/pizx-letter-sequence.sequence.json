@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "pizx — one gated letter call",
+    "output": "pizx-letter-sequence.html",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [1060, 620],
+    "column_fit": "spread",
+    "views": [
+      {
+        "id": "dispatch",
+        "label": "A word call opens a span",
+        "focus": ["script", "letters", "trace"],
+        "note": "The tag opens one letter span before any provider is touched."
+      },
+      {
+        "id": "classify",
+        "label": "TypeSafe decides",
+        "focus": ["letters", "typesafe", "typesafeApi"],
+        "note": "One POST carries the choice question; confidence comes back."
+      },
+      {
+        "id": "handle",
+        "label": "The handler letter runs",
+        "focus": ["letters", "llm", "pi"],
+        "note": "The winning route dispatches to an LLM handler letter."
+      }
+    ]
+  },
+  "participants": [
+    { "id": "script", "type": "external", "label": "pizx script", "sublabel": "your .mjs" },
+    { "id": "letters", "type": "backend", "label": "Letters", "sublabel": "ctx.letters · ctx.words" },
+    { "id": "typesafe", "type": "backend", "label": "TypeSafe", "sublabel": "ctx.typesafe" },
+    { "id": "typesafeApi", "type": "cloud", "label": "TypeSafe API", "sublabel": "System One" },
+    { "id": "llm", "type": "backend", "label": "Llm", "sublabel": "ctx.llm" },
+    { "id": "pi", "type": "cloud", "label": "Pi", "sublabel": "pi-ai provider" },
+    { "id": "trace", "type": "messagebus", "label": "Trace", "sublabel": "JSONL events" }
+  ],
+  "segments": [
+    { "from": 150, "to": 236, "label": "Dispatch" },
+    { "from": 244, "to": 316, "label": "TypeSafe classify" },
+    { "from": 326, "to": 486, "label": "Handle + return" }
+  ],
+  "messages": [
+    { "id": "tag-call", "from": "script", "to": "letters", "y": 170, "label": "gate`command`", "variant": "emphasis" },
+    { "id": "span-open", "from": "letters", "to": "trace", "y": 196, "label": "letter-start", "variant": "dashed" },
+    { "id": "classify", "from": "letters", "to": "typesafe", "y": 224, "label": "choice(state, criteria)", "variant": "emphasis" },
+    { "id": "post", "from": "typesafe", "to": "typesafeApi", "y": 252, "label": "POST /v1/systemone", "variant": "emphasis" },
+    { "id": "answers", "from": "typesafeApi", "to": "typesafe", "y": 280, "label": "label + confidence", "variant": "return" },
+    { "id": "typed-answer", "from": "typesafe", "to": "letters", "y": 308, "label": ".answer", "variant": "return" },
+    { "id": "handler", "from": "letters", "to": "llm", "y": 340, "label": "handler ask(prompt)", "variant": "emphasis" },
+    { "id": "stream", "from": "llm", "to": "pi", "y": 368, "label": "stream completion", "variant": "emphasis" },
+    { "id": "chunks", "from": "pi", "to": "llm", "y": 396, "label": "text chunks", "variant": "return" },
+    { "id": "output", "from": "llm", "to": "letters", "y": 424, "label": "LetterOutput", "variant": "return" },
+    { "id": "span-close", "from": "letters", "to": "trace", "y": 452, "label": "llm-call + letter-end", "variant": "dashed" },
+    { "id": "result", "from": "letters", "to": "script", "y": 478, "label": "text · confidence · handledBy", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "letters", "from": 170, "to": 484, "type": "backend" },
+    { "participant": "typesafe", "from": 218, "to": 314, "type": "backend" },
+    { "participant": "typesafeApi", "from": 246, "to": 286, "type": "cloud" },
+    { "participant": "llm", "from": 334, "to": 430, "type": "backend" },
+    { "participant": "pi", "from": 362, "to": 402, "type": "cloud" },
+    { "participant": "trace", "from": 190, "to": 202, "type": "messagebus" },
+    { "participant": "trace", "from": 446, "to": 458, "type": "messagebus" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "TypeSafe decides",
+      "items": [
+        "One POST /v1/systemone carries the classify question",
+        "Confidence and thresholds decide whether to act"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Words compose letters",
+      "items": [
+        "gate classifies, then dispatches to a handler LetterRef",
+        "Handlers can be names or pre-configured tags"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Span, trace, cache",
+      "items": [
+        "Every step lands in one letter span in the trace",
+        "Pure TypeSafe letters and words are cacheable; gate is not"
+      ]
+    }
+  ]
+}
