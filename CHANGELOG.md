@@ -2,6 +2,46 @@
 
 All notable changes to pizx are documented here.
 
+## [1.7.0] — 2026-09-21
+
+### Added
+
+- **`Acp` service — pooled ACP server connections for α.** A new `Acp` service
+  (`ctx.acp`, `app.acp`) keeps one live ACP server process per
+  `{ server, cwd, env }` key and reuses it across α invocations: the first call
+  spawns and initializes, later calls run their turn in a fresh session on the
+  same process. Concurrent first calls share one spawn, and several turns can
+  run at once on one connection (updates route per session id). Each
+  agent-side session is closed after its turn when the agent advertises
+  `session/close` (best-effort), so a pooled connection does not accumulate
+  sessions. Idle connections are killed after 60 s, unref their handles so
+  scripts still exit naturally, and are torn down on `dispose()` (with a
+  process-exit hook as a safety net). `AcpConnection`, `Acp`, `AcpConfig`,
+  `AcpStreamOptions`, and `AcpStreamTurnOptions` are exported, and
+  `PixzConfig.acp` wires `AcpConfig` through.
+- **Pooling kill switch.** `createPizx({ acp: { pool: false } })` or
+  `PIZX_ACP_POOL=0` spawns a fresh process per call — the escape hatch for an
+  agent that misbehaves on a reused connection.
+
+### Changed
+
+- **α (ACP) pools server processes instead of spawning per call.** The α
+  letter used to spawn a fresh ACP server, run the `initialize` handshake,
+  create a session, run one turn, and kill the process on every invocation.
+  Pooling removes process-boot + handshake from every call after the first —
+  measured ~337 ms → ~0 ms per extra call against a 250 ms-startup agent, and
+  ~30 ms → ~0 ms against the offline mock.
+- **`timeoutMs` for α is now a per-turn timeout** that cancels only the
+  affected session via `session/cancel`; the connection is torn down only if
+  the agent ignores the cancel, so a slow turn no longer aborts concurrent
+  siblings.
+- **Streaming options no longer accept `onText`.** `streamAcpPrompt` /
+  `Acp.streamPrompt` deliver text through the async iterator; the new
+  `AcpStreamOptions`/`AcpStreamTurnOptions` omit `onText`, so a callback that
+  would never run cannot be attached.
+- The one-shot `runAcpPrompt` / `streamAcpPrompt` exports keep spawning per
+  call (unchanged behavior).
+
 ## [1.6.0] — 2026-09-20
 
 ### Added

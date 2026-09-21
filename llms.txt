@@ -15,7 +15,7 @@ external harness binary — neither needs pi. The TypeSafe letters need a
 - [README](README.md): Project overview, quick start, feature tour, and CLI reference.
 - [π reference](docs/pi.md): The π text-generation letter and its options.
 - [Π reference](docs/capital-pi.md): The Π coding-agent letter, tools, and options.
-- [α reference](docs/acp.md): The α ACP-agent letter and its server configuration.
+- [α reference](docs/acp.md): The α ACP-agent letter, its server configuration, and the pooled `ctx.acp` service.
 - [ε reference](docs/epsilon.md): The ε CLI-harness letter, flag passthrough, and harness spec plugins.
 - [TypeSafe](docs/typesafe.md): Typed, calibrated decisions — the choice/score/noul letters, the `ctx.typesafe` service, and the fanout/composite/gate/intent pattern words.
 - [Defining letters](docs/extension.md): The cordis plugin API for custom letters.

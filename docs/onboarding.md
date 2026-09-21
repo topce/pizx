@@ -122,6 +122,8 @@ pizx --letters                # list registered letters
 | `src/plugins/pi.ts` | the π letter |
 | `src/plugins/pi-agent.ts` | the Π letter |
 | `src/plugins/acp.ts` | the α letter |
+| `src/core/acp-client.ts` | the ACP protocol client (`AcpConnection`, one-shot `runAcpPrompt`) |
+| `src/core/acp-service.ts` | the `Acp` service — pools α server processes by `{ server, cwd, env }` |
 | `src/plugins/epsilon.ts` | the ε letter (zx wrapper + flag passthrough) |
 | `src/plugins/typesafe.ts` | the `noul`/`choice`/`score` TypeSafe letters |
 | `src/plugins/harness-kiro.ts` / `harness-claude.ts` | built-in harness spec plugins |

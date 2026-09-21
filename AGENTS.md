@@ -117,7 +117,13 @@ Pass options as a plain object before the template: `` π({ ...opts })`prompt` `
 `skills`, `timeoutMs`, `maxRetries`, `apiKey`, `confirm`.
 
 **`α` (ACP agent):** `server` (**required** — string array, e.g.
-`['kiro-cli', 'acp']`), `cwd`, `env`, `quiet`, `timeoutMs`, `confirm`.
+`['kiro-cli', 'acp']`), `cwd`, `env`, `quiet`, `timeoutMs`, `confirm`. Server
+processes are pooled by `{ server, cwd, env }`: the first call spawns and
+initializes the agent, later calls reuse the connection in a fresh session
+(closed after the turn when the agent supports `session/close`). `timeoutMs`
+cancels just that turn; the connection is torn down only if the agent ignores
+the cancel. Disable pooling with `createPizx({ acp: { pool: false } })` or
+`PIZX_ACP_POOL=0`.
 
 **`ε` (CLI harness):** `harness` (**required** — e.g. `'claude'` or `'kiro'`),
 `cwd`, `env`, `quiet`, `timeoutMs`, `confirm`, `args` (raw extra argv). Every
@@ -180,7 +186,7 @@ await app.dispose()                      // always dispose to tear down sessions
 ```
 
 `createPizx()` returns `{ ctx, config, π, Π, α, ε, noul, choice, score, typesafe,
-letter(name), define(name, def), exportLog(format?), traceSummary(), flushLog(path?, format?), dispose() }`.
+acp, letter(name), define(name, def), exportLog(format?), traceSummary(), flushLog(path?, format?), dispose() }`.
 
 Or inject everything as globals (boots a lazy default app):
 

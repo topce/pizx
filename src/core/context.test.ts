@@ -44,6 +44,14 @@ describe('createPizx', () => {
     expect(out.text).toBe('σ:hi')
   })
 
+  it('accepts ACP service config and exposes app.acp', async () => {
+    app = await createPizx({ acp: { pool: false, idleMs: 123 } })
+    expect(app.acp.config).toMatchObject({ pool: false, idleMs: 123 })
+    expect(app.acp.size).toBe(0)
+    await app.dispose()
+    app = undefined
+  })
+
   it('loads plugins from a config file', async () => {
     dir = await mkdtemp(join(tmpdir(), 'pizx-cfg-'))
     const { writeFile } = await import('node:fs/promises')

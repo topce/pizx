@@ -7,16 +7,19 @@
  *   for await (const c of α({ server: ['kiro-cli', 'acp'] }).stream`explain x`) ...
  *
  * α speaks the generic Agent Client Protocol (agentclientprotocol.com): it
- * spawns the given server command per invocation and consumes its
- * session/update stream. It has no relationship to pi — the server is an
- * explicit, required command line. Tool permissions are auto-approved and
- * the letter is cache: false: agent runs mutate the filesystem.
+ * spawns the given server command and consumes its session/update stream. It
+ * has no relationship to pi — the server is an explicit, required command
+ * line. Tool permissions are auto-approved and the letter is cache: false:
+ * agent runs mutate the filesystem.
+ *
+ * Server processes are pooled by the `Acp` service: the first call spawns and
+ * initializes, later calls reuse the same connection (each in a fresh session).
  */
 
 import type { Plugin } from '@cordisjs/core'
 import Schema from 'schemastery'
 import type { AcpToolEvent, AcpUsage } from '../core/acp-client.ts'
-import { runAcpPrompt, streamAcpPrompt } from '../core/acp-client.ts'
+import { Acp, type AcpConfig } from '../core/acp-service.ts'
 import { isPizxError, PizxError } from '../core/errors.ts'
 import type { LetterEnv } from '../core/tags.ts'
 import { LetterOutput } from '../core/tags.ts'
@@ -101,7 +104,7 @@ async function run(prompt: string, opts: AlphaOpts, env: LetterEnv): Promise<Let
 
   const t0 = Date.now()
   try {
-    const result = await runAcpPrompt({
+    const result = await env.ctx.acp.runPrompt({
       server,
       prompt,
       cwd: opts.cwd,
@@ -145,7 +148,7 @@ async function* stream(prompt: string, opts: AlphaOpts, env: LetterEnv): AsyncGe
   const label = server.join(' ')
   const t0 = Date.now()
 
-  yield* streamAcpPrompt({
+  yield* env.ctx.acp.streamPrompt({
     server,
     prompt,
     cwd: opts.cwd,
@@ -159,7 +162,8 @@ async function* stream(prompt: string, opts: AlphaOpts, env: LetterEnv): AsyncGe
 export const acpPlugin: Plugin.Object = {
   name: 'pizx-acp',
   inject: ['letters'],
-  apply(ctx) {
+  apply(ctx, config) {
+    ctx.plugin(Acp, (config ?? {}) as AcpConfig)
     ctx.letters.define('α', {
       aliases: ['acp', 'agent'],
       description: 'Any ACP-compatible coding agent (server required)',

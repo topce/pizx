@@ -3,16 +3,27 @@
  * (https://agentclientprotocol.com), built on the official
  * @agentclientprotocol/sdk.
  *
- * The client spawns any ACP v1 agent server as a subprocess, speaks
- * JSON-RPC 2.0 over newline-delimited stdio (initialize → session/new →
- * session/prompt → session/update → stop), and returns the aggregated text.
- * It has no relationship to pi: the server is an explicit command line, e.g.
- * ['kiro-cli', 'acp'] or ['npx', '@github/copilot', '--acp'].
+ * The client speaks to any ACP v1 agent server over newline-delimited stdio
+ * (initialize → session/new → session/prompt → session/update → stop) and
+ * returns the aggregated text. It has no relationship to pi: the server is an
+ * explicit command line, e.g. ['kiro-cli', 'acp'] or ['npx', '@github/copilot',
+ * '--acp'].
+ *
+ * Two layers live here:
+ * - `AcpConnection` — one live server process + ACP connection, able to run
+ *   many prompt turns (each in a fresh session). `AcpConnection.open()` spawns
+ *   and initializes; `close()` tears down.
+ * - `runAcpPrompt` / `streamAcpPrompt` — one-shot helpers that open a
+ *   connection, run a single turn, and close it again.
+ *
+ * Pooling (reusing one process across calls) is owned by the `Acp` service in
+ * `acp-service.ts`, which keys connections by { server, cwd, env }.
  *
  * Behavior notes:
  * - Tool permissions are auto-approved (allow_always > allow_once).
  * - File-system requests delegated to the client are served honestly.
- * - The child process is killed on every exit path (error, timeout, stop).
+ * - Idle pooled connections unref their handles so a script can still exit
+ *   naturally; a process-exit hook kills any surviving children.
  * - stderr of the agent is mirrored to our stderr and kept as a tail for
  *   error diagnostics.
  */
@@ -60,7 +71,10 @@ export interface AcpRunOptions {
   cwd?: string
   /** Extra environment variables for the server process. */
   env?: Record<string, string>
-  /** Kill the server after this many ms (optional). */
+  /**
+   * Timeout in ms for the `initialize` handshake and, unless a turn overrides
+   * it, for each prompt turn. Omit for no timeout.
+   */
   timeoutMs?: number
   /** Called for every text chunk as it streams in. */
   onText?: (chunk: string) => void
@@ -81,11 +95,92 @@ export interface AcpRunResult {
   toolCallCount: number
 }
 
+/** Options for opening a pooled connection. */
+export interface AcpConnectionOptions {
+  /** Server command line: argv[0] + arguments. */
+  server: string[]
+  /** Absolute working directory handed to the agent. */
+  cwd: string
+  /** Extra environment variables for the server process. */
+  env?: Record<string, string>
+  /** Handshake timeout in ms. Also the default per-turn timeout for turns that do not set one. */
+  timeoutMs?: number
+  /** Kill the connection after this many ms idle; 0 disables. */
+  idleMs?: number
+  /** Called when a pooled connection becomes unusable (crash or idle eviction). */
+  onClose?: (conn: AcpConnection) => void
+}
+
+/** Per-turn options (a connection may serve many turns). */
+export interface AcpTurnOptions {
+  timeoutMs?: number
+  onText?: (chunk: string) => void
+  onToolCall?: (ev: AcpToolEvent) => void
+  onUsage?: (usage: AcpUsage) => void
+}
+
+/**
+ * Per-turn options for a streaming turn. Text is delivered by the async
+ * iterator, so `onText` is intentionally not part of this contract.
+ */
+export type AcpStreamTurnOptions = Omit<AcpTurnOptions, 'onText'>
+
+/**
+ * Options for streaming a prompt. Text is delivered by the async iterator, so
+ * `onText` is intentionally not part of this contract.
+ */
+export type AcpStreamOptions = Omit<AcpRunOptions, 'onText'>
+
 // ── Internals ───────────────────────────────────────────────────────────────
 
 const PREFIX = 'pizx/α'
 /** Keep at most this many stderr bytes for error diagnostics. */
 const STDERR_TAIL_BYTES = 4096
+/** Grace period for an agent to honor `session/cancel` before the connection is torn down. */
+const CANCEL_GRACE_MS = 1000
+
+/** Child stdio pipes expose ref/unref even though their public type does not. */
+interface Refable {
+  ref?: () => void
+  unref?: () => void
+}
+
+/**
+ * Every live child is tracked so a `process.on('exit')` hook can kill it. This
+ * is the safety net for consumers that never call `dispose()` — a pooled
+ * process must not outlive the script that spawned it.
+ */
+const liveChildren = new Set<ChildProcess>()
+let exitHookInstalled = false
+
+function trackChild(child: ChildProcess): void {
+  liveChildren.add(child)
+  if (!exitHookInstalled) {
+    exitHookInstalled = true
+    process.once('exit', () => {
+      for (const c of liveChildren) {
+        try {
+          c.kill()
+        } catch {
+          // best-effort
+        }
+      }
+    })
+  }
+}
+
+function untrackChild(child: ChildProcess | undefined): void {
+  if (child) liveChildren.delete(child)
+}
+
+function setRef(handle: Refable | null | undefined, ref: boolean): void {
+  try {
+    if (ref) handle?.ref?.()
+    else handle?.unref?.()
+  } catch {
+    // best-effort
+  }
+}
 
 function serverLabel(server: string[]): string {
   return server.join(' ')
@@ -95,6 +190,22 @@ function serverLabel(server: string[]): string {
 function normalizeCommand(command: string): string {
   if (command === 'npx' && process.platform === 'win32') return 'npx.cmd'
   return command
+}
+
+/** Resolve true when `promise` settles (either way) within `ms`; false on timeout. */
+async function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
+  let timer: NodeJS.Timeout | undefined
+  const settled = promise.then(
+    () => true,
+    () => true
+  )
+  const timedOut = new Promise<boolean>((resolve) => {
+    timer = setTimeout(() => resolve(false), ms)
+    timer.unref?.()
+  })
+  const result = await Promise.race([settled, timedOut])
+  if (timer) clearTimeout(timer)
+  return result
 }
 
 async function wrapError(
@@ -236,185 +347,459 @@ function toolEventFromUpdate(update: SessionUpdate): AcpToolEvent | undefined {
   }
 }
 
-/** Spawn the server and run one prompt turn; returns the aggregated result. */
-async function connectAndPrompt(opts: AcpRunOptions): Promise<AcpRunResult> {
-  const cwd = resolve(opts.cwd ?? process.cwd())
-  const [command, ...args] = opts.server
-  const child = spawn(normalizeCommand(command), args, {
-    cwd,
-    stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, ...opts.env },
-  })
+// ── Connection ──────────────────────────────────────────────────────────────
 
-  let stderrTail = ''
-  child.stderr.on('data', (chunk: Buffer) => {
-    stderrTail = `${stderrTail}${chunk.toString('utf-8')}`.slice(-STDERR_TAIL_BYTES)
-    process.stderr.write(chunk)
-  })
+/**
+ * One live ACP server process + connection. A connection can serve many prompt
+ * turns; each turn runs in its own session, so turns never share conversation
+ * state.
+ */
+export class AcpConnection {
+  private readonly server: string[]
+  private readonly cwd: string
+  private readonly env: Record<string, string> | undefined
+  private readonly label: string
+  private readonly defaultTimeoutMs: number | undefined
+  private readonly idleMs: number
+  private readonly onClose: ((conn: AcpConnection) => void) | undefined
 
-  let killTimer: NodeJS.Timeout | undefined
-  const timeoutError = new Promise<never>((_, reject) => {
-    if (!opts.timeoutMs) return
-    killTimer = setTimeout(() => {
-      child.kill('SIGKILL')
-      reject(
-        new PizxError(
-          'ACP',
-          `${PREFIX}: ACP server '${serverLabel(opts.server)}' timed out after ${opts.timeoutMs}ms`
-        )
-      )
-    }, opts.timeoutMs)
-  })
+  private child: ChildProcess | undefined
+  private connection: acp.ClientConnection | undefined
+  private client: acp.ClientContext | undefined
+  private stderrTail = ''
+  private sessionCloseSupported = false
+  private inflight = 0
+  private dead = false
+  private closing = false
+  private idleTimer: NodeJS.Timeout | undefined
 
-  const spawnError = new Promise<never>((_, reject) => {
-    child.once('error', (err) => reject(err))
-  })
+  private constructor(opts: AcpConnectionOptions) {
+    this.server = opts.server
+    this.cwd = opts.cwd
+    this.env = opts.env
+    this.label = serverLabel(opts.server)
+    this.defaultTimeoutMs = opts.timeoutMs
+    this.idleMs = opts.idleMs ?? 0
+    this.onClose = opts.onClose
+  }
 
-  const work = (async (): Promise<AcpRunResult> => {
+  /** Spawn the server and perform the ACP initialize handshake. */
+  static async open(opts: AcpConnectionOptions): Promise<AcpConnection> {
+    assertServer(opts.server)
+    const conn = new AcpConnection(opts)
+    await conn.connect()
+    return conn
+  }
+
+  /** True while the process is running and the ACP connection is open. */
+  isAlive(): boolean {
+    if (this.dead || this.closing) return false
+    if (!this.child || this.child.exitCode !== null || this.child.signalCode !== null) return false
+    return !this.connection?.signal.aborted
+  }
+
+  /**
+   * Run one prompt turn in a fresh session on this connection. A connection
+   * may run several turns concurrently: the SDK routes updates per session id.
+   */
+  async runTurn(prompt: string, turn: AcpTurnOptions = {}): Promise<AcpRunResult> {
+    return this.runTracked(prompt, turn, true)
+  }
+
+  /**
+   * Shared lifecycle for a turn: mark it in-flight (so idle eviction waits),
+   * run it, then release the connection back to the pool. A timeout is handled
+   * inside `runTurnWork` by cancelling the session, so it never tears down a
+   * connection that concurrent turns are still using.
+   */
+  private async runTracked(
+    prompt: string,
+    turn: AcpTurnOptions,
+    collectText: boolean
+  ): Promise<AcpRunResult> {
+    if (!this.isAlive()) {
+      throw new PizxError('ACP', `${PREFIX}: ACP server '${this.label}' is not running`)
+    }
+
+    this.inflight += 1
+    this.setRefs(true)
+    this.clearIdle()
+
+    try {
+      return await this.runTurnWork(prompt, turn, collectText)
+    } catch (err) {
+      // Only a dead process is evicted here; a per-turn timeout has already
+      // decided (in runTurnWork) whether the connection was wedged.
+      if (!this.isAlive()) this.close()
+      throw await this.wrap(err)
+    } finally {
+      this.inflight -= 1
+      if (this.inflight === 0 && this.isAlive()) {
+        this.setRefs(false)
+        this.scheduleIdle()
+      }
+    }
+  }
+
+  /** Run one prompt turn, yielding text chunks as they arrive. */
+  async *streamTurn(prompt: string, turn: AcpStreamTurnOptions = {}): AsyncGenerator<string> {
+    const queue: string[] = []
+    let waiting: ((chunk: string | undefined) => void) | undefined
+    let done = false
+    let error: unknown
+
+    const work = this.runTracked(
+      prompt,
+      {
+        ...turn,
+        onText: (chunk) => {
+          if (waiting) {
+            const resolve = waiting
+            waiting = undefined
+            resolve(chunk)
+          } else {
+            queue.push(chunk)
+          }
+        },
+      },
+      false
+    )
+    void work.then(
+      () => {
+        done = true
+        waiting?.(undefined)
+      },
+      (err) => {
+        error = err
+        done = true
+        waiting?.(undefined)
+      }
+    )
+
+    for (;;) {
+      if (queue.length > 0) {
+        yield queue.shift() as string
+      } else if (done) {
+        if (error) {
+          throw error instanceof Error ? error : new Error(getErrorMessage(error))
+        }
+        return
+      } else {
+        const chunk = await new Promise<string | undefined>((resolve) => {
+          waiting = resolve
+        })
+        if (chunk !== undefined) yield chunk
+      }
+    }
+  }
+
+  /** Close the connection and kill the server process. Idempotent. */
+  close(): void {
+    if (this.dead) {
+      this.killChild()
+      return
+    }
+    this.closing = true
+    this.clearIdle()
+    try {
+      this.connection?.close()
+    } catch {
+      // best-effort
+    }
+    this.killChild()
+    this.dead = true
+    untrackChild(this.child)
+  }
+
+  // ── Internals ─────────────────────────────────────────────────────────────
+
+  private async connect(): Promise<void> {
+    const [command, ...args] = this.server
+    const child = spawn(normalizeCommand(command), args, {
+      cwd: this.cwd,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, ...this.env },
+    })
+    this.child = child
+    trackChild(child)
+
+    child.stderr?.on('data', (chunk: Buffer) => {
+      this.stderrTail = `${this.stderrTail}${chunk.toString('utf-8')}`.slice(-STDERR_TAIL_BYTES)
+      process.stderr.write(chunk)
+    })
+
+    const spawnError = new Promise<never>((_, reject) => child.once('error', reject))
+    spawnError.catch(() => {})
+
+    if (!child.stdin || !child.stdout) {
+      this.close()
+      throw await this.wrap(new Error('server produced no stdio pipes'))
+    }
+
     const input = Writable.toWeb(child.stdin)
     const output = Readable.toWeb(child.stdout) as ReadableStream<Uint8Array>
     const stream = acp.ndJsonStream(input, output)
 
-    return acp
+    const app = acp
       .client({ name: 'pizx' })
       .onRequest(acp.methods.client.session.requestPermission, ({ params }) => autoApprove(params))
       .onRequest(acp.methods.client.fs.readTextFile, ({ params }) =>
-        handleReadTextFile(params, cwd)
+        handleReadTextFile(params, this.cwd)
       )
       .onRequest(acp.methods.client.fs.writeTextFile, ({ params }) =>
-        handleWriteTextFile(params, cwd)
+        handleWriteTextFile(params, this.cwd)
       )
-      .connectWith(stream, async (ctx) => {
-        await ctx.request(acp.methods.agent.initialize, {
-          protocolVersion: acp.PROTOCOL_VERSION,
-          clientCapabilities: { fs: { readTextFile: true, writeTextFile: true } },
-          clientInfo: { name: 'pizx', version: pizxVersion },
-        })
 
-        return ctx.buildSession(cwd).withSession(async (session) => {
-          let text = ''
-          const toolCallIds = new Set<string>()
+    this.connection = app.connect(stream)
+    this.client = this.connection.agent
+    // A remote close is only "unexpected" when we did not ask for it.
+    this.connection.closed.then(
+      () => this.markDead(),
+      () => this.markDead()
+    )
 
-          void session.prompt(opts.prompt)
-
-          for (;;) {
-            const message = await session.nextUpdate()
-            if (message.kind === 'stop') {
-              if (message.response.usage) opts.onUsage?.(normalizeUsage(message.response.usage))
-              return {
-                text,
-                stopReason: message.stopReason,
-                serverLabel: serverLabel(opts.server),
-                toolCallCount: toolCallIds.size,
-              }
-            }
-
-            const update = message.update
-            if (update.sessionUpdate === 'agent_message_chunk' && update.content.type === 'text') {
-              text += update.content.text
-              opts.onText?.(update.content.text)
-            }
-
-            const toolEvent = toolEventFromUpdate(update)
-            if (toolEvent) {
-              toolCallIds.add(toolEvent.toolCallId)
-              opts.onToolCall?.(toolEvent)
-            }
-          }
-        })
+    try {
+      const initialized = this.client.request(acp.methods.agent.initialize, {
+        protocolVersion: acp.PROTOCOL_VERSION,
+        clientCapabilities: { fs: { readTextFile: true, writeTextFile: true } },
+        clientInfo: { name: 'pizx', version: pizxVersion },
       })
-  })()
+      initialized.catch(() => {})
+      const response = await this.withTimeout(
+        Promise.race([initialized, spawnError]),
+        this.defaultTimeoutMs
+      )
+      this.sessionCloseSupported = Boolean(response.agentCapabilities?.sessionCapabilities?.close)
+    } catch (err) {
+      this.close()
+      throw await this.wrap(err)
+    }
+  }
 
-  // Attach no-op handlers so a promise that loses the race never surfaces as
-  // an unhandled rejection.
-  work.catch(() => {})
-  spawnError.catch(() => {})
-  timeoutError.catch(() => {})
+  private async runTurnWork(
+    prompt: string,
+    turn: AcpTurnOptions,
+    collectText: boolean
+  ): Promise<AcpRunResult> {
+    const client = this.client
+    if (!client) throw new PizxError('ACP', `${PREFIX}: ACP connection is not initialized`)
 
-  try {
-    return await Promise.race([work, spawnError, timeoutError])
-  } catch (err) {
-    throw await wrapError(err, opts.server, child, stderrTail)
-  } finally {
-    if (killTimer) clearTimeout(killTimer)
-    child.kill()
+    const session = await client.buildSession(this.cwd).start()
+    try {
+      const drain = this.drainSession(session, prompt, turn, collectText)
+      // The drain may settle after a timeout (the agent honours cancel late);
+      // never let that surface as an unhandled rejection.
+      drain.catch(() => {})
+
+      const timeoutMs = turn.timeoutMs ?? this.defaultTimeoutMs
+      if (timeoutMs && !(await settlesWithin(drain, timeoutMs))) {
+        await this.cancelAndSettle(client, session, drain)
+        throw new PizxError(
+          'ACP',
+          `${PREFIX}: ACP server '${this.label}' timed out after ${timeoutMs}ms`
+        )
+      }
+
+      const { text, stopReason, toolCallCount } = await drain
+      return { text, stopReason, serverLabel: this.label, toolCallCount }
+    } finally {
+      await this.closeSession(client, session.sessionId)
+      session.dispose()
+    }
+  }
+
+  /** Read updates from one session until the prompt turn stops. */
+  private async drainSession(
+    session: acp.ActiveSession,
+    prompt: string,
+    turn: AcpTurnOptions,
+    collectText: boolean
+  ): Promise<{ text: string; stopReason: string; toolCallCount: number }> {
+    let text = ''
+    const toolCallIds = new Set<string>()
+    void session.prompt(prompt)
+    for (;;) {
+      const message = await session.nextUpdate()
+      if (message.kind === 'stop') {
+        if (message.response.usage) turn.onUsage?.(normalizeUsage(message.response.usage))
+        return { text, stopReason: message.stopReason, toolCallCount: toolCallIds.size }
+      }
+
+      const update = message.update
+      if (update.sessionUpdate === 'agent_message_chunk' && update.content.type === 'text') {
+        if (collectText) text += update.content.text
+        turn.onText?.(update.content.text)
+      }
+
+      const toolEvent = toolEventFromUpdate(update)
+      if (toolEvent) {
+        toolCallIds.add(toolEvent.toolCallId)
+        turn.onToolCall?.(toolEvent)
+      }
+    }
+  }
+
+  /**
+   * Free the agent-side session so pooled connections do not accumulate one
+   * session per call. Best-effort: only when the agent advertises the
+   * capability, and never blocking on an unresponsive server.
+   */
+  private async closeSession(client: acp.ClientContext, sessionId: string): Promise<void> {
+    if (!this.sessionCloseSupported || !this.isAlive()) return
+    try {
+      const closing = client.request(acp.methods.agent.session.close, { sessionId })
+      closing.catch(() => {})
+      await this.withTimeout(closing, CANCEL_GRACE_MS)
+    } catch {
+      // best-effort — the connection may have closed during the turn
+    }
+  }
+
+  /**
+   * Ask the agent to cancel only this session, then give it a grace period to
+   * settle. If it does not, the connection is wedged and is torn down — but a
+   * cooperating agent leaves the connection healthy for concurrent turns.
+   */
+  private async cancelAndSettle(
+    client: acp.ClientContext,
+    session: acp.ActiveSession,
+    drain: Promise<unknown>
+  ): Promise<void> {
+    try {
+      await client.notify(acp.methods.agent.session.cancel, { sessionId: session.sessionId })
+    } catch {
+      // best-effort — a failed cancel is handled by the grace period below
+    }
+    if (!(await settlesWithin(drain, CANCEL_GRACE_MS))) this.close()
+  }
+
+  private markDead(): void {
+    if (this.dead) return
+    this.dead = true
+    this.clearIdle()
+    untrackChild(this.child)
+    if (!this.closing) {
+      this.killChild()
+      this.onClose?.(this)
+    }
+  }
+
+  private killChild(): void {
+    const child = this.child
+    if (!child) return
+    untrackChild(child)
+    try {
+      child.kill()
+    } catch {
+      // best-effort
+    }
+  }
+
+  private setRefs(ref: boolean): void {
+    setRef(this.child, ref)
+    setRef(this.child?.stdin as unknown as Refable, ref)
+    setRef(this.child?.stdout as unknown as Refable, ref)
+    setRef(this.child?.stderr as unknown as Refable, ref)
+  }
+
+  private clearIdle(): void {
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer)
+      this.idleTimer = undefined
+    }
+  }
+
+  private scheduleIdle(): void {
+    if (!this.idleMs || this.idleMs <= 0) return
+    if (this.inflight > 0 || !this.isAlive()) return
+    this.clearIdle()
+    this.idleTimer = setTimeout(() => {
+      this.idleTimer = undefined
+      if (this.inflight === 0) {
+        this.close()
+        // Explicit `close()` suppresses onClose; idle eviction must still let
+        // the pool drop its reference to this dead connection.
+        this.onClose?.(this)
+      }
+    }, this.idleMs)
+    this.idleTimer.unref?.()
+  }
+
+  private async withTimeout<T>(work: Promise<T>, timeoutMs?: number): Promise<T> {
+    if (!timeoutMs) return work
+    let timer: NodeJS.Timeout | undefined
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(
+          new PizxError(
+            'ACP',
+            `${PREFIX}: ACP server '${this.label}' timed out after ${timeoutMs}ms`
+          )
+        )
+      }, timeoutMs)
+      timer.unref?.()
+    })
+    try {
+      return await Promise.race([work, timeout])
+    } finally {
+      if (timer) clearTimeout(timer)
+    }
+  }
+
+  private wrap(err: unknown): Promise<Error> {
+    if (!this.child) return Promise.resolve(err instanceof Error ? err : new Error(String(err)))
+    return wrapError(err, this.server, this.child, this.stderrTail)
   }
 }
 
-// ── Public API ──────────────────────────────────────────────────────────────
+// ── One-shot public API ─────────────────────────────────────────────────────
 
-/** Run one prompt turn against an ACP server; returns the aggregated text. */
+function assertServer(server: string[] | undefined): asserts server is string[] {
+  if (!server || server.length === 0) {
+    throw new PizxError(
+      'VALIDATION',
+      `${PREFIX}: no ACP server specified — pass { server: ['kiro-cli', 'acp'] } or any other ` +
+        'ACP-compatible agent command'
+    )
+  }
+}
+
+/** Validate options and open a fresh, non-pooled connection. */
+async function openFresh(opts: AcpRunOptions): Promise<AcpConnection> {
+  assertServer(opts.server)
+  return AcpConnection.open({
+    server: opts.server,
+    cwd: resolve(opts.cwd ?? process.cwd()),
+    env: opts.env,
+    timeoutMs: opts.timeoutMs,
+  })
+}
+
+/** Run one prompt turn against a fresh ACP server; returns the aggregated text. */
 export async function runAcpPrompt(opts: AcpRunOptions): Promise<AcpRunResult> {
-  if (!opts.server || opts.server.length === 0) {
-    throw new PizxError(
-      'VALIDATION',
-      `${PREFIX}: no ACP server specified — pass { server: ['kiro-cli', 'acp'] } or any other ` +
-        'ACP-compatible agent command'
-    )
+  const conn = await openFresh(opts)
+  try {
+    return await conn.runTurn(opts.prompt, {
+      timeoutMs: opts.timeoutMs,
+      onText: opts.onText,
+      onToolCall: opts.onToolCall,
+      onUsage: opts.onUsage,
+    })
+  } finally {
+    conn.close()
   }
-  let text = ''
-  const result = await connectAndPrompt({
-    ...opts,
-    onText: (chunk) => {
-      text += chunk
-      opts.onText?.(chunk)
-    },
-  })
-  return { ...result, text }
 }
 
-/** Stream one prompt turn against an ACP server, yielding text chunks. */
-export async function* streamAcpPrompt(opts: AcpRunOptions): AsyncGenerator<string> {
-  if (!opts.server || opts.server.length === 0) {
-    throw new PizxError(
-      'VALIDATION',
-      `${PREFIX}: no ACP server specified — pass { server: ['kiro-cli', 'acp'] } or any other ` +
-        'ACP-compatible agent command'
-    )
-  }
-
-  const queue: string[] = []
-  let waiting: ((chunk: string | undefined) => void) | undefined
-  let done = false
-  let error: unknown
-
-  const work = connectAndPrompt({
-    ...opts,
-    onText: (chunk) => {
-      if (waiting) {
-        const resolve = waiting
-        waiting = undefined
-        resolve(chunk)
-      } else {
-        queue.push(chunk)
-      }
-    },
-  })
-  void work.then(
-    () => {
-      done = true
-      waiting?.(undefined)
-    },
-    (err) => {
-      error = err
-      done = true
-      waiting?.(undefined)
-    }
-  )
-
-  for (;;) {
-    if (queue.length > 0) {
-      yield queue.shift() as string
-    } else if (done) {
-      if (error) {
-        throw error instanceof Error ? error : new Error(getErrorMessage(error))
-      }
-      return
-    } else {
-      const chunk = await new Promise<string | undefined>((resolve) => {
-        waiting = resolve
-      })
-      if (chunk !== undefined) yield chunk
-    }
+/** Stream one prompt turn against a fresh ACP server, yielding text chunks. */
+export async function* streamAcpPrompt(opts: AcpStreamOptions): AsyncGenerator<string> {
+  const conn = await openFresh(opts)
+  try {
+    yield* conn.streamTurn(opts.prompt, {
+      timeoutMs: opts.timeoutMs,
+      onToolCall: opts.onToolCall,
+      onUsage: opts.onUsage,
+    })
+  } finally {
+    conn.close()
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@topce/pizx",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "zx fork with native Pi AI integration on the cordis plugin framework — shell scripting with AI agents, user-definable letter tags, traceable runs with JSONL log export, and a local result cache. Ships with π (text generation), Π (coding agent), α (any ACP-compatible agent), ε (any CLI AI harness — claude, kiro-cli, …), and TypeSafe's typed decisions noul/choice/score (plus the fanout/composite/gate/intent pattern words).",
   "type": "module",
   "main": "./dist/index.js",

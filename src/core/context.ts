@@ -21,6 +21,7 @@ import {
   type ScoreOpts,
   typesafePlugin,
 } from '../plugins/typesafe.ts'
+import type { Acp, AcpConfig } from './acp-service.ts'
 import type { CacheConfig } from './cache.ts'
 import type { LlmConfig } from './llm.ts'
 import type { LetterDefinition, LetterFn } from './tags.ts'
@@ -40,6 +41,8 @@ export interface PizxConfig extends LlmConfig {
   traceConfig?: TraceConfig
   /** TypeSafe service tuning (apiKey, baseURL, defaultModel, …). */
   typesafe?: TypeSafeConfig
+  /** ACP service tuning (pooling, idle eviction) for the α letter. */
+  acp?: AcpConfig
   /** Extra plugins to mount before ready (letter plugins, exporters, …). */
   plugins?: Plugin[]
   /** Path to a config file exporting `plugins` (default: ./pizx.config.mjs). */
@@ -69,6 +72,8 @@ export interface Pizx {
   score: LetterFn<ScoreOpts>
   /** The TypeSafe service — ask batched typed questions directly. */
   typesafe: TypeSafe
+  /** The ACP service — pooled α server connections (idle config, diagnostics). */
+  acp: Acp
   /** Look up any registered letter (user-defined ones included). */
   letter<T extends Record<string, unknown> = Record<string, unknown>>(
     name: string
@@ -114,7 +119,7 @@ export async function createPizx(config: PizxConfig = {}): Promise<Pizx> {
   })
   ctx.plugin(piPlugin)
   ctx.plugin(piAgentPlugin)
-  ctx.plugin(acpPlugin)
+  ctx.plugin(acpPlugin, config.acp)
   ctx.plugin(epsilonPlugin)
   ctx.plugin(typesafePlugin)
   ctx.plugin(kiroHarnessPlugin)
@@ -151,6 +156,7 @@ export async function createPizx(config: PizxConfig = {}): Promise<Pizx> {
     choice,
     score,
     typesafe: ctx.typesafe,
+    acp: ctx.acp,
     letter: (name) => ctx.letters.get(name),
     define: (name, def) => ctx.letters.define(name, def, 'app'),
     words: ctx.words,

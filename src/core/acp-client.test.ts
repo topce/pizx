@@ -9,7 +9,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import type { AcpToolEvent, AcpUsage } from './acp-client.ts'
-import { runAcpPrompt, streamAcpPrompt } from './acp-client.ts'
+import { AcpConnection, runAcpPrompt, streamAcpPrompt } from './acp-client.ts'
 
 const MOCK = fileURLToPath(new URL('../testing/acp-mock-server.mjs', import.meta.url))
 
@@ -122,6 +122,14 @@ describe('ACP client file-system handlers (M2)', () => {
 
     expect(result.text).toContain('ERR:')
     expect(result.text).not.toContain('TOP-SECRET-OUTSIDE')
+  })
+})
+
+describe('AcpConnection', () => {
+  it('rejects a missing server with a VALIDATION error at the open boundary', async () => {
+    await expect(AcpConnection.open({ server: [], cwd: process.cwd() })).rejects.toMatchObject({
+      code: 'VALIDATION',
+    })
   })
 })
 

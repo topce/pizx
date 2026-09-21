@@ -32,13 +32,20 @@ export { default as Schema } from 'schemastery'
 export * from 'zx'
 // ── ACP client (α) ───────────────────────────────────────────────────────────
 export {
+  AcpConnection,
+  type AcpConnectionOptions,
   type AcpRunOptions,
   type AcpRunResult,
+  type AcpStreamOptions,
+  type AcpStreamTurnOptions,
   type AcpToolEvent,
+  type AcpTurnOptions,
   type AcpUsage,
   runAcpPrompt,
   streamAcpPrompt,
 } from './core/acp-client.ts'
+// ── ACP service (pools α server processes) ───────────────────────────────────
+export { Acp, type AcpConfig } from './core/acp-service.ts'
 // ── Core services ───────────────────────────────────────────────────────────
 export {
   Cache,
