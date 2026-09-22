@@ -29,6 +29,7 @@ import {
   DefaultResourceLoader,
   ModelRegistry,
   ModelRuntime,
+  SettingsManager,
 } from '@earendil-works/pi-coding-agent'
 import { PizxError } from './errors.ts'
 import { isPiInstalled, loadPiSettings, type PiSettings } from './load-pi-settings.ts'
@@ -205,7 +206,9 @@ export function _resetForTests(): void {
 
 /**
  * Wrap streamSimple with async auth resolution: the returned stream resolves
- * credentials before delegating to the pi-ai compat stream.
+ * credentials before delegating to the pi-ai compat stream. An explicit
+ * `options.apiKey` always wins over the registry lookup, and lets a call run
+ * without any stored credentials.
  */
 function streamWithAuth(
   regPromise: Promise<ModelRegistry>,
@@ -216,8 +219,9 @@ function streamWithAuth(
   const outer = createAssistantMessageEventStream()
   void (async () => {
     const reg = await regPromise
+    const explicitApiKey = options?.apiKey
     const auth = await reg.getApiKeyAndHeaders(model)
-    if (!auth.ok) {
+    if (!explicitApiKey && !auth.ok) {
       outer.push({
         type: 'error',
         reason: 'error',
@@ -238,8 +242,8 @@ function streamWithAuth(
     }
     const inner = streamSimple(model, context, {
       ...options,
-      apiKey: auth.apiKey,
-      headers: auth.headers,
+      apiKey: explicitApiKey ?? (auth.ok ? auth.apiKey : undefined),
+      headers: auth.ok ? auth.headers : options?.headers,
     })
     try {
       for await (const event of inner) outer.push(event)
@@ -536,6 +540,10 @@ export class Llm extends Service<LlmConfig> {
     system?: string
     appendSystemPrompt?: string
     skills?: string[]
+    /** Per-provider-request timeout in ms (Pi `retry.provider.timeoutMs`). */
+    timeoutMs?: number
+    /** Retry budget for transient failures (Pi `retry.maxRetries` + `retry.provider.maxRetries`). */
+    maxRetries?: number
   }): Promise<{ session: AgentSession; modelId: string }> {
     const model = await this.pick(opts.model ?? this.config.model)
     if (!model) {
@@ -550,6 +558,8 @@ export class Llm extends Service<LlmConfig> {
       skills: [...(opts.skills ?? [])].sort(),
       system: opts.system ?? '',
       appendSystemPrompt: opts.appendSystemPrompt ?? '',
+      timeoutMs: opts.timeoutMs,
+      maxRetries: opts.maxRetries,
     })
 
     const entry = this.sessions.get(key)
@@ -582,6 +592,7 @@ export class Llm extends Service<LlmConfig> {
       tools: opts.tools,
       excludeTools: opts.excludeTools,
       resourceLoader: loader,
+      settingsManager: agentSettingsManager(opts),
     })
     this.sessions.set(key, session)
     return { session, modelId: model.id }
@@ -630,4 +641,38 @@ function createLoader(opts: {
     systemPrompt: opts.system,
     appendSystemPrompt: opts.appendSystemPrompt ? [opts.appendSystemPrompt] : undefined,
   })
+}
+
+/**
+ * Build a settings manager that layers the letter's `timeoutMs`/`maxRetries`
+ * overrides over the user's real Pi settings. Pi reads provider request
+ * timeouts/retries from `retry.provider` and agent-turn retries from
+ * `retry.maxRetries`, so passing this to `createAgentSession` makes the
+ * documented Π options take effect without disturbing other settings.
+ *
+ * Returns undefined when neither option is set, letting Pi build its own
+ * default manager.
+ *
+ * @internal — exported for tests only; not part of the public API.
+ */
+export function agentSettingsManager(opts: {
+  cwd?: string
+  timeoutMs?: number
+  maxRetries?: number
+}): SettingsManager | undefined {
+  const hasTimeout = opts.timeoutMs !== undefined
+  const hasRetries = opts.maxRetries !== undefined
+  if (!hasTimeout && !hasRetries) return undefined
+
+  const manager = SettingsManager.create(opts.cwd ?? process.cwd())
+  manager.applyOverrides({
+    retry: {
+      ...(hasRetries ? { maxRetries: opts.maxRetries } : {}),
+      provider: {
+        ...(hasTimeout ? { timeoutMs: opts.timeoutMs } : {}),
+        ...(hasRetries ? { maxRetries: opts.maxRetries } : {}),
+      },
+    },
+  })
+  return manager
 }

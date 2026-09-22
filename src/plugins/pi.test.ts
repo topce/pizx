@@ -69,6 +69,14 @@ describe('π letter plugin', () => {
     expect(() => π({ maxTokens: -5 })`q`).toThrow(/maxTokens/)
   })
 
+  it('accepts the max thinking level (pi-ai MAX effort)', async () => {
+    await bootPi()
+    const π = mustLetter('π')
+    const out = await π({ thinkingLevel: 'max' }).quiet`q`
+    expect(out.text).toBe('hello from fake')
+    expect(() => π({ thinkingLevel: 'ultra' as never })`q`).toThrow(/thinkingLevel/)
+  })
+
   it('validates the confirm gate at the boundary (M1)', async () => {
     await bootPi()
     const π = mustLetter('π')

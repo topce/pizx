@@ -12,7 +12,8 @@
  */
 
 import type { Plugin } from '@cordisjs/core'
-import type { ThinkingLevel, Usage } from '@earendil-works/pi-ai'
+import type { ThinkingLevel } from '@earendil-works/pi-ai'
+import type { AgentSession, SessionStats } from '@earendil-works/pi-coding-agent'
 import Schema from 'schemastery'
 import { isPizxError, PizxError } from '../core/errors.ts'
 import type { LetterEnv } from '../core/tags.ts'
@@ -29,6 +30,7 @@ const options = Schema.object({
     'medium',
     'high',
     'xhigh',
+    'max',
   ] as const).description('Thinking effort'),
   thinkingBudgets: Schema.dict(Schema.number()).description(
     'Token budgets per thinking level (token-based providers only)'
@@ -49,9 +51,50 @@ const options = Schema.object({
 
 export type AgentOpts = ReturnType<typeof options>
 
-interface AgentMessage {
-  role: string
-  usage?: Usage
+/**
+ * Per-session accounting cursor. Π sessions are pooled, so a session's stats
+ * grow with every invocation; remembering the last snapshot lets each
+ * invocation report only the usage and turns it actually produced instead of
+ * re-billing earlier ones.
+ */
+const agentStats = new WeakMap<AgentSession, SessionStats>()
+
+/**
+ * Record the usage produced since this session was last accounted and return
+ * the number of assistant turns this invocation added. Uses the SDK's
+ * cumulative `getSessionStats()` (which also covers compacted-away history),
+ * so a reused pooled session never double-reports earlier turns.
+ */
+function recordAgentUsage(session: AgentSession, modelId: string, ctx: LetterEnv['ctx']): number {
+  const stats = session.getSessionStats()
+  const prev = agentStats.get(session)
+  agentStats.set(session, stats)
+
+  const delta = {
+    input: stats.tokens.input - (prev?.tokens.input ?? 0),
+    output: stats.tokens.output - (prev?.tokens.output ?? 0),
+    cacheRead: stats.tokens.cacheRead - (prev?.tokens.cacheRead ?? 0),
+    cacheWrite: stats.tokens.cacheWrite - (prev?.tokens.cacheWrite ?? 0),
+    total: stats.tokens.total - (prev?.tokens.total ?? 0),
+  }
+  const cost = stats.cost - (prev?.cost ?? 0)
+  const turnCount = stats.assistantMessages - (prev?.assistantMessages ?? 0)
+
+  if (delta.total > 0 || cost > 0) {
+    ctx.llm.recordUsage(
+      modelId,
+      {
+        input: delta.input,
+        output: delta.output,
+        cacheRead: delta.cacheRead,
+        cacheWrite: delta.cacheWrite,
+        totalTokens: delta.total,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: cost },
+      },
+      0
+    )
+  }
+  return turnCount
 }
 
 /**
@@ -73,7 +116,7 @@ function cleanAssistantText(text: string | undefined): string {
 }
 
 async function run(prompt: string, opts: AgentOpts, env: LetterEnv): Promise<LetterOutput> {
-  const { ctx, span } = env
+  const { ctx } = env
 
   const toolsInfo = opts.tools
     ? `\n    Tools: ${opts.tools.join(', ')}`
@@ -108,26 +151,24 @@ async function run(prompt: string, opts: AgentOpts, env: LetterEnv): Promise<Let
       system: opts.system,
       appendSystemPrompt: opts.appendSystemPrompt,
       skills: opts.skills,
+      timeoutMs: opts.timeoutMs,
+      maxRetries: opts.maxRetries,
     })
 
-    await session.sendUserMessage(prompt)
-
-    // Best-effort per-turn usage recording into the trace span.
-    if (span) {
-      for (const message of session.messages as readonly AgentMessage[]) {
-        if (message.role === 'assistant' && message.usage) {
-          ctx.llm.recordUsage(modelId, message.usage, 0)
-        }
-      }
+    // Record usage in a finally: an aborted/failed run still consumes tokens,
+    // and advancing the per-session cursor here keeps them from being billed to
+    // the next invocation's span.
+    let turnCount = 0
+    try {
+      await session.sendUserMessage(prompt)
+    } finally {
+      turnCount = recordAgentUsage(session, modelId, ctx)
     }
 
     const t1 = Date.now()
     // The SDK's canonical extractor returns only text content blocks; clean it
     // further so any inline tool-call markup never leaks into the result.
     const text = cleanAssistantText(session.getLastAssistantText())
-    const turnCount = (session.messages as readonly AgentMessage[]).filter(
-      (m) => m.role === 'assistant'
-    ).length
     if (!opts.quiet) {
       process.stderr.write(`  Π: done (${turnCount} assistant turn(s))\n`)
     }

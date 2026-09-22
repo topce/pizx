@@ -37,7 +37,7 @@ export interface PiSettings {
   /** Default provider, e.g. "anthropic" */
   defaultProvider?: string
   /** Default thinking level */
-  defaultThinkingLevel?: 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh'
+  defaultThinkingLevel?: 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 }
 
 /**

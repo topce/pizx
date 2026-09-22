@@ -1,6 +1,6 @@
 {
   "name": "@topce/pizx",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "zx fork with native Pi AI integration on the cordis plugin framework — shell scripting with AI agents, user-definable letter tags, traceable runs with JSONL log export, and a local result cache. Ships with π (text generation), Π (coding agent), α (any ACP-compatible agent), ε (any CLI AI harness — claude, kiro-cli, …), and TypeSafe's typed decisions noul/choice/score (plus the fanout/composite/gate/intent pattern words).",
   "type": "module",
   "main": "./dist/index.js",
@@ -103,21 +103,21 @@
     "node": ">=22.19.0"
   },
   "dependencies": {
-    "@agentclientprotocol/sdk": "^1.4.0",
+    "@agentclientprotocol/sdk": "^1.5.0",
     "@cordisjs/core": "^3.18.1",
-    "@earendil-works/pi-ai": "0.85.1",
-    "@earendil-works/pi-coding-agent": "0.85.1",
+    "@earendil-works/pi-ai": "0.87.0",
+    "@earendil-works/pi-coding-agent": "0.87.0",
     "@typesafe-ai/sdk": "^0.6.0",
     "schemastery": "^3.18.0",
     "zx": "8.8.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.12",
-    "@types/node": "26.4.1",
-    "@vitest/coverage-v8": "^5.0.0",
+    "@biomejs/biome": "2.5.14",
+    "@types/node": "26.6.2",
+    "@vitest/coverage-v8": "^5.0.1",
     "esbuild": "0.28.2",
     "typescript": "7.0.2",
-    "vitest": "5.0.0"
+    "vitest": "5.0.1"
   },
   "bugs": {
     "url": "https://github.com/topce/pizx/issues"

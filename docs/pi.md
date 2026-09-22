@@ -30,7 +30,7 @@ cached.fromCache // true on the second identical call
 | Option | Type | Default | Notes |
 |---|---|---|---|
 | `model` | string | provider default | e.g. `anthropic/claude-sonnet-4-5` |
-| `thinkingLevel` | `'off' \| 'minimal' \| 'low' \| 'medium' \| 'high' \| 'xhigh'` | `'medium'` | reasoning effort |
+| `thinkingLevel` | `'off' \| 'minimal' \| 'low' \| 'medium' \| 'high' \| 'xhigh' \| 'max'` | `'medium'` | reasoning effort |
 | `thinkingBudgets` | dict | — | token budgets per thinking level |
 | `maxTokens` | number | `4096` | |
 | `system` / `appendSystemPrompt` | string | — | system context |

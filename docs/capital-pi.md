@@ -23,18 +23,20 @@ await Π.quiet()`update import paths to the new module layout`
 | `model` | string | provider default | |
 | `cwd` | string | `process.cwd()` | agent working directory |
 | `tools` / `excludeTools` | string[] | all / none | tool selection |
-| `thinkingLevel` | `'off' \| 'minimal' \| 'low' \| 'medium' \| 'high' \| 'xhigh'` | `'medium'` | |
+| `thinkingLevel` | `'off' \| 'minimal' \| 'low' \| 'medium' \| 'high' \| 'xhigh' \| 'max'` | `'medium'` | |
 | `system` / `appendSystemPrompt` | string | — | prompt overrides |
 | `skills` | string[] | — | skill names loaded from skill paths |
 | `quiet` | boolean | `false` | suppress status output |
-| `timeoutMs` / `maxRetries` | number | provider default | per-call resilience |
+| `timeoutMs` / `maxRetries` | number | provider default | per-provider-request timeout; retry budget for provider requests and agent turns |
 | `apiKey` | string | env | bypass credential lookup |
 | `confirm` | `true \| { semi } \| { hitl } \| { auto }` | off | human-in-the-loop gate |
 
 ## Session pooling & caching
 
-Agent sessions are pooled per (model, cwd, tools, skills): repeated Π calls
-reuse the conversation — and keep the provider's prompt cache warm. Sessions
-are disposed when the app disposes. Per-assistant-turn usage is recorded into
-the trace span on a best-effort basis; the letter start/end span always
-appears in the exported log. See [Trace & logs](trace.md).
+Agent sessions are pooled per (model, cwd, tools, skills, thinking level,
+`timeoutMs`, `maxRetries`): repeated Π calls reuse the conversation — and keep
+the provider's prompt cache warm. Sessions are disposed when the app disposes.
+Each invocation records only the usage and assistant turns it produced (the
+pooled session's cumulative `getSessionStats()` is diffed against the previous
+call), so an exported log never re-bills earlier turns. The letter start/end
+span always appears in the exported log. See [Trace & logs](trace.md).

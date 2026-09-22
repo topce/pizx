@@ -2,6 +2,40 @@
 
 All notable changes to pizx are documented here.
 
+## [1.8.0] — 2026-09-22
+
+### Added
+
+- **`max` thinking level for π and Π.** pi-ai exposes an opt-in `max` effort
+  above `xhigh` (native on GPT-5.6 and adaptive Claude models). The π/Π
+  `thinkingLevel` unions now accept `'max'`, matching the Pi CLI and SDK.
+
+### Changed
+
+- **Dependencies bumped to latest** — `@earendil-works/pi-ai` and
+  `@earendil-works/pi-coding-agent` 0.85.1 → 0.87.0, `@agentclientprotocol/sdk`
+  1.4.0 → 1.5.0, `@biomejs/biome` 2.5.12 → 2.5.14, `@types/node` 26.4.1 →
+  26.6.2, `vitest` / `@vitest/coverage-v8` 5.0.0 → 5.0.1.
+
+### Fixed
+
+- **Π honors `timeoutMs` and `maxRetries`.** Both were documented but silently
+  ignored. They now flow into the pooled agent session as Pi's provider retry
+  settings (`retry.provider.timeoutMs` / `retry.provider.maxRetries`) plus the
+  agent-turn retry budget (`retry.maxRetries`), and are part of the session-pool
+  key so different budgets get separate sessions.
+- **π honors an explicit `apiKey`.** The option was silently overridden by the
+  registry-resolved credential. An explicit `apiKey` now takes precedence and
+  lets a call run without stored credentials.
+- **Π no longer double-reports pooled-session usage.** Because sessions are
+  reused across invocations, each call used to rescan the whole conversation,
+  re-record every earlier assistant turn's tokens/cost into the new span, and
+  report a cumulative `turnCount`. Usage and turn count are now diffed against
+  the session's cumulative `getSessionStats()`, so each invocation reports only
+  what it produced — including aborted/failed runs, whose usage is folded into
+  their own span instead of leaking into the next call — and the totals stay
+  correct across compaction.
+
 ## [1.7.0] — 2026-09-21
 
 ### Added

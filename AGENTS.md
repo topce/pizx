@@ -108,7 +108,7 @@ Options and chaining combine: `π.quiet({ model })\`…\``,
 
 Pass options as a plain object before the template: `` π({ ...opts })`prompt` ``.
 
-**`π` (text):** `model`, `thinkingLevel` (`off`|`minimal`|`low`|`medium`|`high`|`xhigh`),
+**`π` (text):** `model`, `thinkingLevel` (`off`|`minimal`|`low`|`medium`|`high`|`xhigh`|`max`),
 `thinkingBudgets`, `quiet`, `system`, `appendSystemPrompt`, `maxTokens`,
 `timeoutMs`, `maxRetries`, `apiKey`, `cache`, `confirm`.
 

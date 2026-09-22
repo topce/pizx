@@ -18,7 +18,7 @@ import { confirmGateSchema, confirmPhase, getErrorMessage } from '../core/utils.
 
 const options = Schema.object({
   model: Schema.string().description('Model id, e.g. anthropic/claude-sonnet-4-5'),
-  thinkingLevel: Schema.union(['off', 'minimal', 'low', 'medium', 'high', 'xhigh'] as const)
+  thinkingLevel: Schema.union(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const)
     .default('medium')
     .description('Thinking effort'),
   thinkingBudgets: Schema.dict(Schema.number()).description(
