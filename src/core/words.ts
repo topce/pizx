@@ -45,6 +45,7 @@ const LETTER_OPTION_KEYS = [
   'tools',
   'excludeTools',
   'skills',
+  'session',
 ] as const
 
 /** A per-item result from a parallel fan-out. */

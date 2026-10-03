@@ -51,6 +51,20 @@ pizx --cache --trace --export-log examples/trace-and-cache.mjs
 Concepts: branching on a model's answer, typed globals, read-only agent tool
 lists, caching and JSONL traces.
 
+### Durable sessions
+
+| Script | What it does |
+|---|---|
+| `durable-session.mjs` | A Π conversation resumed by name across two app instances (the boundary stands in for a process restart) |
+
+```bash
+pizx examples/durable-session.mjs
+```
+
+Concepts: `Π({ session })` persists a named conversation and resumes it on a
+later run; unnamed Π calls stay in-memory, pooled only within the process. One
+name is one open conversation per process — parallel calls need their own names.
+
 ## Level 3 — extending the letters
 
 | # | Script | What it does |

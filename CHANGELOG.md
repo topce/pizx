@@ -2,6 +2,48 @@
 
 All notable changes to pizx are documented here.
 
+## [2.0.0] — 2026-10-03
+
+### Added
+
+- **Quick Π mode — `pizx --Pi <prompt>`.** A one-shot coding-agent query,
+  with `--session <name>` for a durable conversation, `--tools`/`--exclude-tools`
+  for a one-off allow/deny list, and the existing `--model`/`--system`/`--json`
+  flags. Π-only flags used without `--Pi` are a `VALIDATION` error rather than
+  being silently ignored; agent failures keep exit code 4.
+- **Durable Π sessions — `Π({ session: 'name' })`.** A named conversation is
+  persisted in pi's session store (`~/.pi/agent/sessions/<cwd>/`), created on
+  the first run and resumed by name afterwards — from a later run, another
+  process, or the `pi` CLI session picker. The name is part of the
+  session-pool key and forwards through words. A name may be open only once per
+  process: a second open is refused with a `VALIDATION` error, because two live
+  handles on one JSONL would fork the conversation silently. The claim is
+  released on dispose and never left behind by a failed build.
+
+### Changed
+
+- **Unnamed Π sessions no longer write files.** `createAgentSession` now
+  receives an explicit `SessionManager.inMemory()`; previously every Π call
+  without a `session` name left an orphan session file in pi's session
+  directory.
+- **Π usage accounting diffs a pre-turn snapshot** of `getSessionStats()`
+  instead of a per-session cursor, so an invocation records exactly the tokens
+  and turns it produced — including the first turn of a session resumed with
+  history.
+- **The session-pool key is built from the whole options object**, with sorted
+  keys and sorted array values, so a newly added option can no longer be
+  silently missing from it.
+- **Dependencies bumped to latest.** `@earendil-works/pi-ai` and
+  `@earendil-works/pi-coding-agent` 0.87.0 → 1.0.0 (a major, which pulls
+  `openai` 6 → 7 plus pi's `pi-mcp`, `pi-codemode`, and `quickjs-wasi`
+  transitively), `@agentclientprotocol/sdk` 1.5.0 → 1.7.0,
+  `@biomejs/biome` 2.5.14 → 2.5.15, `@types/node` 26.6.2 → 26.6.4, and
+  `vitest` / `@vitest/coverage-v8` 5.0.1 → 5.0.3. A root `overrides` entry
+  forces the patched `brace-expansion` 5.0.12 (transitive via
+  `pi-coding-agent` → `minimatch`), clearing a high-severity DoS advisory so
+  `npm audit` reports zero vulnerabilities. pi's 1.0.0 changelog has no
+  breaking-change section; typecheck, lint, build, and the full suite pass.
+
 ## [1.8.0] — 2026-09-22
 
 ### Added

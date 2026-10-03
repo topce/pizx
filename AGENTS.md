@@ -114,7 +114,9 @@ Pass options as a plain object before the template: `` π({ ...opts })`prompt` `
 
 **`Π` (coding agent):** `cwd`, `model`, `thinkingLevel`, `thinkingBudgets`,
 `quiet`, `tools` (allow-list), `excludeTools`, `system`, `appendSystemPrompt`,
-`skills`, `timeoutMs`, `maxRetries`, `apiKey`, `confirm`.
+`skills`, `session`, `timeoutMs`, `maxRetries`, `apiKey`, `confirm`.
+`session: 'name'` persists and resumes one conversation in pi's session store;
+unnamed Π calls stay in-memory, and a name may be open only once per process.
 
 **`α` (ACP agent):** `server` (**required** — string array, e.g.
 `['kiro-cli', 'acp']`), `cwd`, `env`, `quiet`, `timeoutMs`, `confirm`. Server
@@ -337,6 +339,9 @@ pizx -p -                             # read the prompt from stdin
 echo "prompt" | pizx -p               # empty prompt + piped stdin also reads stdin
 pizx --acp --acp-server "kiro-cli acp" "prompt"   # quick α query
 pizx --run --run-harness claude "prompt"          # quick ε query (harness CLI)
+pizx --Pi "prompt"                    # quick Π query (coding agent, tools)
+pizx --Pi --session auth "continue"   # resume a durable Π conversation
+pizx --Pi --tools read,edit "prompt"  # restrict the tool allow-list
 pizx --letters                        # list registered letters
 pizx --model <id> script.mjs          # set the model for the run
 pizx --cache | --no-cache script.mjs  # toggle the local result cache
@@ -351,7 +356,7 @@ pizx --version | --help
 
 ### `--json` output
 
-`--json` makes `-p`, `--acp`, `--run`, and `--letters` emit one JSON
+`--json` makes `-p`, `--acp`, `--run`, `--Pi`, and `--letters` emit one JSON
 object/array on stdout (streaming is suppressed). A result envelope:
 
 ```json

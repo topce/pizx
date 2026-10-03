@@ -41,6 +41,7 @@ const options = Schema.object({
   system: Schema.string().description('Custom system prompt (replaces Pi default)'),
   appendSystemPrompt: Schema.string().description('Text appended after the system prompt'),
   skills: Schema.array(Schema.string()).description('Skill names to load'),
+  session: Schema.string().description('Named persistent session; resumes across runs'),
   timeoutMs: Schema.natural().description('Timeout in ms for each LLM call'),
   maxRetries: Schema.natural().description('Max retries for transient failures'),
   apiKey: Schema.string().description('API key overriding environment lookup'),
@@ -52,33 +53,28 @@ const options = Schema.object({
 export type AgentOpts = ReturnType<typeof options>
 
 /**
- * Per-session accounting cursor. Π sessions are pooled, so a session's stats
- * grow with every invocation; remembering the last snapshot lets each
- * invocation report only the usage and turns it actually produced instead of
- * re-billing earlier ones.
+ * Record the usage produced since `before` and return the number of assistant
+ * turns this invocation added. The caller snapshots `getSessionStats()` before
+ * the run, which covers pooled sessions and a resumed session's pre-existing
+ * history alike — no per-session cursor needed.
  */
-const agentStats = new WeakMap<AgentSession, SessionStats>()
-
-/**
- * Record the usage produced since this session was last accounted and return
- * the number of assistant turns this invocation added. Uses the SDK's
- * cumulative `getSessionStats()` (which also covers compacted-away history),
- * so a reused pooled session never double-reports earlier turns.
- */
-function recordAgentUsage(session: AgentSession, modelId: string, ctx: LetterEnv['ctx']): number {
+function recordAgentUsage(
+  session: AgentSession,
+  modelId: string,
+  ctx: LetterEnv['ctx'],
+  before: SessionStats
+): number {
   const stats = session.getSessionStats()
-  const prev = agentStats.get(session)
-  agentStats.set(session, stats)
 
   const delta = {
-    input: stats.tokens.input - (prev?.tokens.input ?? 0),
-    output: stats.tokens.output - (prev?.tokens.output ?? 0),
-    cacheRead: stats.tokens.cacheRead - (prev?.tokens.cacheRead ?? 0),
-    cacheWrite: stats.tokens.cacheWrite - (prev?.tokens.cacheWrite ?? 0),
-    total: stats.tokens.total - (prev?.tokens.total ?? 0),
+    input: stats.tokens.input - before.tokens.input,
+    output: stats.tokens.output - before.tokens.output,
+    cacheRead: stats.tokens.cacheRead - before.tokens.cacheRead,
+    cacheWrite: stats.tokens.cacheWrite - before.tokens.cacheWrite,
+    total: stats.tokens.total - before.tokens.total,
   }
-  const cost = stats.cost - (prev?.cost ?? 0)
-  const turnCount = stats.assistantMessages - (prev?.assistantMessages ?? 0)
+  const cost = stats.cost - before.cost
+  const turnCount = stats.assistantMessages - before.assistantMessages
 
   if (delta.total > 0 || cost > 0) {
     ctx.llm.recordUsage(
@@ -151,18 +147,20 @@ async function run(prompt: string, opts: AgentOpts, env: LetterEnv): Promise<Let
       system: opts.system,
       appendSystemPrompt: opts.appendSystemPrompt,
       skills: opts.skills,
+      session: opts.session,
       timeoutMs: opts.timeoutMs,
       maxRetries: opts.maxRetries,
     })
 
-    // Record usage in a finally: an aborted/failed run still consumes tokens,
-    // and advancing the per-session cursor here keeps them from being billed to
-    // the next invocation's span.
+    // Snapshot before the run: `getSessionStats()` is cumulative, so this is
+    // what keeps a resumed session's history from being re-billed. An
+    // aborted/failed run still consumes tokens, so record in a finally.
+    const before = session.getSessionStats()
     let turnCount = 0
     try {
       await session.sendUserMessage(prompt)
     } finally {
-      turnCount = recordAgentUsage(session, modelId, ctx)
+      turnCount = recordAgentUsage(session, modelId, ctx, before)
     }
 
     const t1 = Date.now()

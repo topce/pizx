@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  assertPiFlags,
   EXIT_CODES,
   errorToJson,
   exitCodeFor,
@@ -92,6 +93,48 @@ describe('cli parseArgs', () => {
     expect(flags.run).toBe(true)
     expect(flags.runHarness).toBeUndefined()
     expect(positional).toEqual(['hello'])
+  })
+
+  it('parses --Pi with its Π options', () => {
+    const { flags, positional } = parseArgs([
+      '--Pi',
+      '--session',
+      'auth-refactor',
+      '--tools',
+      'read,edit',
+      '--exclude-tools',
+      'bash write',
+      'fix the failing tests',
+    ])
+    expect(flags.pi).toBe(true)
+    expect(flags.session).toBe('auth-refactor')
+    expect(flags.tools).toEqual(['read', 'edit'])
+    expect(flags.excludeTools).toEqual(['bash', 'write'])
+    expect(positional).toEqual(['fix the failing tests'])
+  })
+
+  it('accepts --pi-agent as an alias for --Pi', () => {
+    expect(parseArgs(['--pi-agent', 'hello']).flags.pi).toBe(true)
+  })
+})
+
+describe('assertPiFlags', () => {
+  it('rejects Π-only flags without --Pi as VALIDATION', () => {
+    for (const flag of [{ session: 'auth' }, { tools: ['read'] }, { excludeTools: ['bash'] }]) {
+      expect(() => assertPiFlags({ pi: false, ...flag })).toThrowError(
+        expect.objectContaining({ code: 'VALIDATION' })
+      )
+    }
+  })
+
+  it('accepts them with --Pi', () => {
+    expect(() =>
+      assertPiFlags({ pi: true, session: 'auth', tools: ['read'], excludeTools: ['bash'] })
+    ).not.toThrow()
+  })
+
+  it('accepts a run with no Π-only flags', () => {
+    expect(() => assertPiFlags({ pi: false })).not.toThrow()
   })
 })
 

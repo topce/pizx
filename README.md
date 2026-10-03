@@ -214,6 +214,8 @@ pizx -p "your prompt"          # quick pi-ai query
 echo "your prompt" | pizx -p - # read the prompt from stdin
 pizx --acp --acp-server "kiro-cli acp" "your prompt"  # quick ACP agent query
 pizx --run --run-harness claude "your prompt"         # quick CLI harness query
+pizx --Pi "your prompt"        # quick coding-agent query (Π, tools enabled)
+pizx --Pi --session auth --tools read,edit "continue"  # durable Π conversation
 pizx --model <id> script.mjs   # model for the run
 pizx --config ./cfg.mjs s.mjs  # load plugins from a config file
 pizx --letters                 # list registered letters

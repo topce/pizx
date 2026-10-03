@@ -9,6 +9,7 @@
  *   pizx -p "prompt"               Quick pi-ai query (print mode)
  *   pizx --acp --acp-server "kiro-cli acp" "prompt"   Quick ACP agent query
  *   pizx --run --run-harness claude "prompt"          Quick CLI harness query
+ *   pizx --Pi "prompt"             Quick coding-agent query (Π, tools enabled)
  *   pizx --trace script.mjs        Print a trace summary when done
  *   pizx --export-log script.mjs   Write the run trace as JSONL
  *   pizx --cache script.mjs        Enable the local result cache
@@ -58,6 +59,10 @@ interface Flags {
   acpServer?: string
   run: boolean
   runHarness?: string
+  pi: boolean
+  session?: string
+  tools?: string[]
+  excludeTools?: string[]
   trace: boolean
   letters: boolean
   cache: boolean
@@ -71,6 +76,11 @@ interface Flags {
   quiet: boolean
 }
 
+/** Split a comma/space separated CLI list (`read,edit` or `read edit`). */
+function splitList(value: string): string[] {
+  return value.split(/[\s,]+/).filter(Boolean)
+}
+
 /** Parse CLI arguments (exported for tests). */
 export function parseArgs(argv: string[]): { flags: Flags; positional: string[] } {
   const flags: Flags = {
@@ -79,6 +89,7 @@ export function parseArgs(argv: string[]): { flags: Flags; positional: string[] 
     print: false,
     acp: false,
     run: false,
+    pi: false,
     trace: false,
     letters: false,
     cache: false,
@@ -117,6 +128,19 @@ export function parseArgs(argv: string[]): { flags: Flags; positional: string[] 
         break
       case '--run-harness':
         if (argv[i + 1] && !argv[i + 1].startsWith('-')) flags.runHarness = argv[++i]
+        break
+      case '--Pi':
+      case '--pi-agent':
+        flags.pi = true
+        break
+      case '--session':
+        if (argv[i + 1] && !argv[i + 1].startsWith('-')) flags.session = argv[++i]
+        break
+      case '--tools':
+        if (argv[i + 1] && !argv[i + 1].startsWith('-')) flags.tools = splitList(argv[++i])
+        break
+      case '--exclude-tools':
+        if (argv[i + 1] && !argv[i + 1].startsWith('-')) flags.excludeTools = splitList(argv[++i])
         break
       case '--trace':
         flags.trace = true
@@ -169,6 +193,29 @@ export function parseArgs(argv: string[]): { flags: Flags; positional: string[] 
   return { flags, positional }
 }
 
+/**
+ * Π-only flags must be used with `--Pi`; without it they would be parsed and
+ * then silently ignored in script mode. Exported for tests.
+ */
+export function assertPiFlags(flags: {
+  pi: boolean
+  session?: string
+  tools?: string[]
+  excludeTools?: string[]
+}): void {
+  if (flags.pi) return
+  const used = [
+    flags.session ? '--session' : undefined,
+    flags.tools ? '--tools' : undefined,
+    flags.excludeTools ? '--exclude-tools' : undefined,
+  ].filter(Boolean)
+  if (used.length === 0) return
+  throw new PizxError(
+    'VALIDATION',
+    `pizx: ${used.join(', ')} can only be used with --Pi (durable sessions and tool selection are Π options)`
+  )
+}
+
 // ── Help ────────────────────────────────────────────────────────────────────
 
 function printHelp() {
@@ -182,6 +229,7 @@ function printHelp() {
    pizx -p <prompt>             Quick pi-ai query
    pizx --acp <prompt>          Quick query to an ACP agent
    pizx --run <prompt>          Quick query to a CLI harness (claude, kiro, …)
+   pizx --Pi <prompt>           Quick coding-agent query (Π, tools enabled)
    pizx --letters               List registered letters
 
  ${chalk.bold('Options')}
@@ -190,6 +238,10 @@ function printHelp() {
    --acp-server <line>    ACP server command line, e.g. "kiro-cli acp"
    --run <prompt>         Run a CLI AI harness (needs --run-harness; "-" = stdin)
    --run-harness <name>   Harness name, e.g. "claude" or "kiro" (see --letters)
+   --Pi <prompt>          Run the Pi coding agent (Π, alias --pi-agent; "-" = stdin)
+   --session <name>       Durable Π conversation to resume or create (with --Pi)
+   --tools <list>         Π tool allow-list, e.g. "read,edit" (with --Pi)
+   --exclude-tools <list> Π tools to disable, e.g. "bash,write" (with --Pi)
    -m, --model <id>       Model to use (e.g. anthropic/claude-sonnet-4-5)
    --system <text>        System context for pi-ai
    --trace                Print a token/cache/cost summary when done
@@ -492,6 +544,44 @@ async function runRunMode(flags: Flags, args: string[]): Promise<void> {
   }
 }
 
+// ── Coding-agent (Π) quick-ask mode ─────────────────────────────────────────
+
+async function runPiMode(flags: Flags, args: string[]): Promise<void> {
+  let prompt = args.join(' ') || ''
+  if (shouldReadStdin(prompt, process.stdin.isTTY)) {
+    prompt = (await readStdin()).trim()
+  }
+  if (!prompt) {
+    throw new PizxError(
+      'VALIDATION',
+      'pizx: no prompt provided. Use: pizx --Pi "your prompt" (or pipe via stdin)'
+    )
+  }
+
+  const app = await bootApp(flags)
+  try {
+    const opts: Record<string, unknown> = {}
+    if (flags.session) opts.session = flags.session
+    if (flags.tools) opts.tools = flags.tools
+    if (flags.excludeTools) opts.excludeTools = flags.excludeTools
+    if (flags.model) opts.model = flags.model
+    if (flags.system) opts.system = flags.system
+    if (flags.quiet || flags.json) opts.quiet = true
+
+    const tag = Object.keys(opts).length > 0 ? app.Π(opts) : app.Π
+    const result = await tag`${prompt}`
+    if (flags.json) {
+      process.stdout.write(`${JSON.stringify(resultToJson(result))}\n`)
+    } else {
+      // Π never streams to stdout (π/α/ε do), so the result is always printed;
+      // --quiet only silences the agent's status lines on stderr.
+      process.stdout.write(`${result.toString()}\n`)
+    }
+  } finally {
+    await finishRun(app, flags)
+  }
+}
+
 // ── Script mode ─────────────────────────────────────────────────────────────
 
 async function runScriptMode(flags: Flags, scriptPath: string): Promise<void> {
@@ -581,6 +671,8 @@ async function main() {
     return
   }
 
+  assertPiFlags(flags)
+
   if (flags.letters) {
     await runLettersMode(flags, positional[0])
     return
@@ -598,6 +690,11 @@ async function main() {
 
   if (flags.run) {
     await runRunMode(flags, positional)
+    return
+  }
+
+  if (flags.pi) {
+    await runPiMode(flags, positional)
     return
   }
 

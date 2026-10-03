@@ -9,7 +9,7 @@
 
 import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { type Context, Service } from '@cordisjs/core'
 import type {
   Api,
@@ -29,6 +29,7 @@ import {
   DefaultResourceLoader,
   ModelRegistry,
   ModelRuntime,
+  SessionManager,
   SettingsManager,
 } from '@earendil-works/pi-coding-agent'
 import { PizxError } from './errors.ts'
@@ -324,6 +325,24 @@ export interface AskResult {
   durationMs: number
 }
 
+/** Options that select and shape a Π (coding agent) session. */
+export interface AgentSessionOptions {
+  cwd?: string
+  model?: string
+  thinkingLevel?: ThinkingLevel
+  tools?: string[]
+  excludeTools?: string[]
+  system?: string
+  appendSystemPrompt?: string
+  skills?: string[]
+  /** Name of a persistent session to resume (or create). Omit for an in-memory session. */
+  session?: string
+  /** Per-provider-request timeout in ms (Pi `retry.provider.timeoutMs`). */
+  timeoutMs?: number
+  /** Retry budget for transient failures (Pi `retry.maxRetries` + `retry.provider.maxRetries`). */
+  maxRetries?: number
+}
+
 declare module '@cordisjs/core' {
   interface Context {
     llm: Llm
@@ -349,14 +368,7 @@ export class Llm extends Service<LlmConfig> {
   }
 
   protected stop(): void {
-    for (const session of this.sessions.values()) {
-      try {
-        session.dispose()
-      } catch {
-        // best-effort teardown
-      }
-    }
-    this.sessions.clear()
+    this.closeAgentSessions()
   }
 
   // ── Model resolution ──────────────────────────────────────────────────────
@@ -531,35 +543,18 @@ export class Llm extends Service<LlmConfig> {
   // ── Coding agent (Π) ──────────────────────────────────────────────────────
 
   /** Get (or reuse) a shared agent session keyed by every behavior-affecting option. */
-  async agentSession(opts: {
-    cwd?: string
-    model?: string
-    thinkingLevel?: ThinkingLevel
-    tools?: string[]
-    excludeTools?: string[]
-    system?: string
-    appendSystemPrompt?: string
-    skills?: string[]
-    /** Per-provider-request timeout in ms (Pi `retry.provider.timeoutMs`). */
-    timeoutMs?: number
-    /** Retry budget for transient failures (Pi `retry.maxRetries` + `retry.provider.maxRetries`). */
-    maxRetries?: number
-  }): Promise<{ session: AgentSession; modelId: string }> {
+  async agentSession(
+    opts: AgentSessionOptions
+  ): Promise<{ session: AgentSession; modelId: string }> {
     const model = await this.pick(opts.model ?? this.config.model)
     if (!model) {
       throw new PizxError('AUTH', 'pizx: No AI models configured. Run `pi auth login` first.')
     }
-    const key = JSON.stringify({
+    const key = agentSessionKey({
+      ...opts,
       model: model.id,
       cwd: opts.cwd ?? process.cwd(),
       thinkingLevel: opts.thinkingLevel ?? this.config.thinkingLevel ?? 'medium',
-      tools: [...(opts.tools ?? [])].sort(),
-      excludeTools: [...(opts.excludeTools ?? [])].sort(),
-      skills: [...(opts.skills ?? [])].sort(),
-      system: opts.system ?? '',
-      appendSystemPrompt: opts.appendSystemPrompt ?? '',
-      timeoutMs: opts.timeoutMs,
-      maxRetries: opts.maxRetries,
     })
 
     const entry = this.sessions.get(key)
@@ -585,7 +580,11 @@ export class Llm extends Service<LlmConfig> {
       }
     }
 
-    const { session } = await createAgentSession({
+    const sessionManager = opts.session
+      ? await openNamedSession(opts.cwd ?? process.cwd(), opts.session)
+      : SessionManager.inMemory()
+
+    const created = await createAgentSession({
       cwd: opts.cwd,
       model,
       thinkingLevel: opts.thinkingLevel,
@@ -593,14 +592,25 @@ export class Llm extends Service<LlmConfig> {
       excludeTools: opts.excludeTools,
       resourceLoader: loader,
       settingsManager: agentSettingsManager(opts),
+      sessionManager,
+    }).catch((err: unknown) => {
+      // A failed build must not leave the durable name claimed forever.
+      releaseNamedSession(sessionManager.getSessionFile())
+      throw err
     })
+    const { session } = created
     this.sessions.set(key, session)
     return { session, modelId: model.id }
   }
 
-  /** Dispose a specific shared session (used when Π resets). */
+  /**
+   * Dispose every pooled agent session — used by `stop()` and by Π resets.
+   * Durable sessions release their name claim, so a later app in this process
+   * can open the same name again.
+   */
   closeAgentSessions(): void {
     for (const session of this.sessions.values()) {
+      releaseNamedSession(session.sessionFile)
       try {
         session.dispose()
       } catch {
@@ -675,4 +685,70 @@ export function agentSettingsManager(opts: {
     },
   })
   return manager
+}
+
+/**
+ * Canonical pool key for a Π session. Object keys and array values are sorted,
+ * so option order never splits the pool, and `undefined` collapses to `null`.
+ * Every option handed to `agentSession()` is part of the key by construction,
+ * so a future option cannot be forgotten here.
+ *
+ * @internal — exported for tests only; not part of the public API.
+ */
+export function agentSessionKey(opts: Record<string, unknown>): string {
+  const canonical: Record<string, unknown> = {}
+  for (const key of Object.keys(opts).sort()) {
+    const value = opts[key]
+    canonical[key] = Array.isArray(value) ? [...value].sort() : (value ?? null)
+  }
+  return JSON.stringify(canonical)
+}
+
+/**
+ * Durable sessions open in this process, keyed by `<cwd>\0<name>` and holding
+ * the session file. Pi sessions are append-only JSONL with a leaf pointer per
+ * open handle, so two live handles on one file fork the conversation: both
+ * append children of the same entry, and the branch that is not last in the
+ * file silently drops out of the resumed context. A second open of a name
+ * already held in this process is therefore refused; the claim is released by
+ * `releaseNamedSession()` when the owning app disposes.
+ */
+const claimedSessions = new Map<string, string>()
+
+/**
+ * Open the persisted session named `name` in `cwd`, or create and name a new
+ * one. Uses pi's standard session directory, so named sessions also appear in
+ * pi's own session picker and can be resumed by the `pi` CLI.
+ *
+ * @internal — exported for tests only; not part of the public API.
+ */
+export async function openNamedSession(cwd: string, name: string): Promise<SessionManager> {
+  const claim = `${resolve(cwd)}\u0000${name}`
+  const alreadyOpen = claimedSessions.get(claim)
+  if (alreadyOpen) {
+    throw new PizxError(
+      'VALIDATION',
+      `pizx/Π: durable session "${name}" is already open in this process (${alreadyOpen}). ` +
+        'Use the same Π options, pick a different session name, or dispose the app that opened it.',
+      { letter: 'Π' }
+    )
+  }
+
+  const hit = (await SessionManager.list(cwd)).find((s) => s.name === name)
+  const manager = hit ? SessionManager.open(hit.path) : SessionManager.create(cwd)
+  if (!hit) manager.appendSessionInfo(name)
+  claimedSessions.set(claim, manager.getSessionFile() ?? name)
+  return manager
+}
+
+/**
+ * Release the name claim held by a disposed durable session.
+ *
+ * @internal — exported for tests only; not part of the public API.
+ */
+export function releaseNamedSession(sessionFile: string | undefined): void {
+  if (!sessionFile) return
+  for (const [claim, file] of claimedSessions) {
+    if (file === sessionFile) claimedSessions.delete(claim)
+  }
 }

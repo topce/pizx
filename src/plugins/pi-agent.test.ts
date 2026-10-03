@@ -38,11 +38,14 @@ function fakeStats(assistantMessages: number) {
 }
 
 function fakeSession(overrides: Partial<Record<keyof AgentSession, unknown>> = {}): AgentSession {
+  let turns = 0
   return {
-    sendUserMessage: vi.fn(async () => {}),
+    sendUserMessage: vi.fn(async () => {
+      turns += 1
+    }),
     getLastAssistantText: () => 'ok',
     messages: [],
-    getSessionStats: () => fakeStats(1),
+    getSessionStats: () => fakeStats(turns),
     ...overrides,
   } as unknown as AgentSession
 }
@@ -117,6 +120,16 @@ describe('Π letter plugin', () => {
     )
   })
 
+  it('forwards a durable session name to the agent session', async () => {
+    const Π = await bootAgent('done')
+
+    await Π.quiet({ session: 'review' })`fix it`
+
+    expect(vi.mocked(ctx.llm.agentSession)).toHaveBeenCalledWith(
+      expect.objectContaining({ session: 'review' })
+    )
+  })
+
   it('reports only the latest invocation on a reused pooled session', async () => {
     mountTestCore(ctx)
     ctx.plugin(piAgentPlugin)
@@ -153,6 +166,42 @@ describe('Π letter plugin', () => {
       totalTokens: FAKE_USAGE.totalTokens,
     })
     expect(usage.mock.calls[1][1].cost.total).toBeCloseTo(FAKE_USAGE.cost.total)
+  })
+
+  it('bills only the new turns of a resumed session that already has history', async () => {
+    mountTestCore(ctx)
+    ctx.plugin(piAgentPlugin)
+    await ctx.start()
+
+    // A durable session reopened from disk arrives with prior turns already in
+    // its cumulative stats; only the turns this invocation adds may be billed.
+    const history = 4
+    let added = 0
+    const session = fakeSession({
+      sendUserMessage: vi.fn(async () => {
+        added += 1
+      }),
+      getSessionStats: () => fakeStats(history + added),
+    })
+    vi.spyOn(ctx.llm, 'agentSession').mockResolvedValue({
+      session,
+      modelId: FAKE_MODEL.id,
+    })
+    const usage = vi.spyOn(ctx.llm, 'recordUsage')
+
+    const Π = ctx.letters.get('Π')
+    if (!Π) throw new Error('Π not registered')
+
+    const out = await Π.quiet`continue where we left off`
+
+    expect(out.turnCount).toBe(1)
+    expect(usage).toHaveBeenCalledTimes(1)
+    expect(usage.mock.calls[0][1]).toMatchObject({
+      input: FAKE_USAGE.input,
+      output: FAKE_USAGE.output,
+      totalTokens: FAKE_USAGE.totalTokens,
+    })
+    expect(usage.mock.calls[0][1].cost.total).toBeCloseTo(FAKE_USAGE.cost.total)
   })
 
   it('records a failed run and does not bill it to the next call', async () => {

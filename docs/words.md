@@ -169,8 +169,12 @@ await vote({ voter: 'π', model: 'deepseek/deepseek-v4-flash', votes: 5 })`revie
 
 Recognized keys: `model`, `thinkingLevel`, `thinkingBudgets`, `system`,
 `appendSystemPrompt`, `maxTokens`, `timeoutMs`, `maxRetries`, `apiKey`, `cwd`,
-`env`, `server`, `tools`, `excludeTools`, `skills`. `quiet` is deliberately
-not forwarded — slot calls stay quiet and the word owns its status output.
+`env`, `server`, `tools`, `excludeTools`, `skills`, `session`. `quiet` is
+deliberately not forwarded — slot calls stay quiet and the word owns its status
+output. `session` (a durable Π conversation) is forwarded, but only
+*sequential* words can use it: `ralph`/orchestrate-style loops carry one
+conversation across iterations, while parallel words such as `fleet` or `vote`
+would hand every worker the same name, which Π refuses.
 
 Alternatively, bind a **pre-configured tag** directly into a slot — the tag
 carries its own options, which is how you give *different* letters *different*

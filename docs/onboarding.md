@@ -100,6 +100,8 @@ if (refund.answer.noul > 0.8) echo('likely refund')
 pizx script.mjs               # run a script (letters are globals)
 pizx -p "your prompt"         # quick query
 pizx --acp --acp-server "kiro-cli acp" "your prompt"   # quick ACP agent query
+pizx --Pi "your prompt"       # quick coding-agent (Π) query
+pizx --Pi --session auth "continue"   # durable Π conversation by name
 pizx --trace script.mjs       # token/cache/cost summary at the end
 pizx --export-log script.mjs  # JSONL run log in .pizx/logs/
 pizx --cache script.mjs       # enable the local result cache

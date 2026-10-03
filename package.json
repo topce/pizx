@@ -1,6 +1,6 @@
 {
   "name": "@topce/pizx",
-  "version": "1.8.0",
+  "version": "2.0.0",
   "description": "zx fork with native Pi AI integration on the cordis plugin framework — shell scripting with AI agents, user-definable letter tags, traceable runs with JSONL log export, and a local result cache. Ships with π (text generation), Π (coding agent), α (any ACP-compatible agent), ε (any CLI AI harness — claude, kiro-cli, …), and TypeSafe's typed decisions noul/choice/score (plus the fanout/composite/gate/intent pattern words).",
   "type": "module",
   "main": "./dist/index.js",
@@ -44,6 +44,7 @@
     "example:release-notes": "node dist/cli.js examples/release-notes.mjs",
     "example:pi": "npm run example:release-notes",
     "example:Pi": "node dist/cli.js examples/basic-capital-pi.mjs",
+    "example:durable": "node dist/cli.js examples/durable-session.mjs",
     "example:acp": "node dist/cli.js examples/acp-basic.mjs",
     "example:epsilon": "node dist/cli.js examples/epsilon-basic.mjs",
     "example:acp-word-slots": "node dist/cli.js examples/acp-word-slots.mjs",
@@ -94,6 +95,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "overrides": {
+    "brace-expansion": "5.0.12"
+  },
   "homepage": "https://github.com/topce/pizx#readme",
   "repository": {
     "type": "git",
@@ -103,21 +107,21 @@
     "node": ">=22.19.0"
   },
   "dependencies": {
-    "@agentclientprotocol/sdk": "^1.5.0",
+    "@agentclientprotocol/sdk": "^1.7.0",
     "@cordisjs/core": "^3.18.1",
-    "@earendil-works/pi-ai": "0.87.0",
-    "@earendil-works/pi-coding-agent": "0.87.0",
+    "@earendil-works/pi-ai": "1.0.0",
+    "@earendil-works/pi-coding-agent": "1.0.0",
     "@typesafe-ai/sdk": "^0.6.0",
     "schemastery": "^3.18.0",
     "zx": "8.8.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.14",
-    "@types/node": "26.6.2",
-    "@vitest/coverage-v8": "^5.0.1",
+    "@biomejs/biome": "2.5.15",
+    "@types/node": "26.6.4",
+    "@vitest/coverage-v8": "^5.0.3",
     "esbuild": "0.28.2",
     "typescript": "7.0.2",
-    "vitest": "5.0.1"
+    "vitest": "5.0.3"
   },
   "bugs": {
     "url": "https://github.com/topce/pizx/issues"

@@ -154,6 +154,7 @@ describe('Words service', () => {
       model: 'm',
       server: ['kiro-cli', 'acp'],
       cwd: '/x',
+      session: 'review', // durable Π session name
       env: undefined, // undefined values are skipped
       unknown: 1, // unrecognized keys are skipped
     }
@@ -161,6 +162,7 @@ describe('Words service', () => {
       model: 'm',
       server: ['kiro-cli', 'acp'],
       cwd: '/x',
+      session: 'review',
     })
   })
 })
