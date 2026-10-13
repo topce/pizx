@@ -162,6 +162,35 @@ Reference: [docs/typesafe.md](../docs/typesafe.md).
 
 ---
 
+## Level 7 — Pi 1.2 on pizx 2.4: codemode, MCP, and non-chat models
+
+The Pi SDK does not load the built-in extensions the CLI does, so pizx exposes
+them as Π options: `codemode` (a JavaScript sandbox over the session's tools),
+`toolSearch` (`tool_search` for undeclared tools), and `mcp` (servers from
+`mcp.json`). The same service also reaches Pi's non-chat models, and Π now
+records one `tool-call` trace event per completed tool execution.
+
+| # | Script | What it does |
+|---|---|---|
+| 27 | `pi-codemode.mjs` | Π `codemode: true` — one JS script reads the whole source tree in parallel; the shell verifies the table |
+| 28 | `pi-mcp.mjs` | Π `mcp: true` + `toolSearch: true` — finds configured MCP servers, has the agent call one read-only tool; skips with setup instructions when none is configured |
+| 29 | `pi-tool-trace.mjs` | The new `tool-call` trace events (`source: 'pi'`) for a real Π inventory run, plus a JSONL export proof |
+| 30 | `llm-nonchat.mjs` | `ctx.llm.modelsOfType`/`pickOfType`/`classify`/`generateImages`; demonstrates the no-throw `stopReason` contract |
+
+```bash
+pizx examples/pi-codemode.mjs
+pizx examples/pi-mcp.mjs
+pizx examples/pi-tool-trace.mjs
+pizx examples/llm-nonchat.mjs
+```
+
+Concepts: opting into the SDK extensions the CLI loads for free, `tool-call`
+events discriminated by `source`, and `classify`/`generateImages` resolving with
+`stopReason` instead of throwing. References: [docs/capital-pi.md](../docs/capital-pi.md),
+[docs/trace.md](../docs/trace.md), [docs/pi.md](../docs/pi.md).
+
+---
+
 ## Quick queries (no script at all)
 
 ```bash
@@ -170,6 +199,8 @@ git diff | pizx -p "write a conventional-commit subject for this diff"
 pizx -p "summarize this" --json | jq -r .text
 pizx --run --run-harness claude "review this diff"
 pizx --acp --acp-server "kiro-cli acp" "list the source files"
+pizx --Pi --codemode "count the TypeScript files in src/"
+pizx --Pi --mcp "use the radius server to look up ticket 42"
 ```
 
 ## The word plugins (AI patterns)

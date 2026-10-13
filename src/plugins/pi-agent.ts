@@ -13,7 +13,7 @@
 
 import type { Plugin } from '@cordisjs/core'
 import type { ThinkingLevel } from '@earendil-works/pi-ai'
-import type { AgentSession, SessionStats } from '@earendil-works/pi-coding-agent'
+import type { AgentSession, AgentSessionEvent, SessionStats } from '@earendil-works/pi-coding-agent'
 import Schema from 'schemastery'
 import { isPizxError, PizxError } from '../core/errors.ts'
 import type { LetterEnv } from '../core/tags.ts'
@@ -41,6 +41,15 @@ const options = Schema.object({
   system: Schema.string().description('Custom system prompt (replaces Pi default)'),
   appendSystemPrompt: Schema.string().description('Text appended after the system prompt'),
   skills: Schema.array(Schema.string()).description('Skill names to load'),
+  codemode: Schema.boolean()
+    .default(false)
+    .description('Enable the codemode tool (JS sandbox calling tools/models)'),
+  toolSearch: Schema.boolean()
+    .default(false)
+    .description('Enable the tool_search tool (find tools not yet declared)'),
+  mcp: Schema.boolean()
+    .default(false)
+    .description('Connect MCP servers from mcp.json (implies codemode)'),
   session: Schema.string().description('Named persistent session; resumes across runs'),
   timeoutMs: Schema.natural().description('Timeout in ms for each LLM call'),
   maxRetries: Schema.natural().description('Max retries for transient failures'),
@@ -112,7 +121,7 @@ function cleanAssistantText(text: string | undefined): string {
 }
 
 async function run(prompt: string, opts: AgentOpts, env: LetterEnv): Promise<LetterOutput> {
-  const { ctx } = env
+  const { ctx, span } = env
 
   const toolsInfo = opts.tools
     ? `\n    Tools: ${opts.tools.join(', ')}`
@@ -147,6 +156,9 @@ async function run(prompt: string, opts: AgentOpts, env: LetterEnv): Promise<Let
       system: opts.system,
       appendSystemPrompt: opts.appendSystemPrompt,
       skills: opts.skills,
+      codemode: opts.codemode,
+      toolSearch: opts.toolSearch,
+      mcp: opts.mcp,
       session: opts.session,
       timeoutMs: opts.timeoutMs,
       maxRetries: opts.maxRetries,
@@ -156,12 +168,25 @@ async function run(prompt: string, opts: AgentOpts, env: LetterEnv): Promise<Let
     // what keeps a resumed session's history from being re-billed. An
     // aborted/failed run still consumes tokens, so record in a finally.
     const before = session.getSessionStats()
+    const tracked = trackSession(session, span)
     let turnCount = 0
+    let failure: unknown
     try {
       await session.sendUserMessage(prompt)
+    } catch (err) {
+      failure = err
     } finally {
+      tracked.unsubscribe()
       turnCount = recordAgentUsage(session, modelId, ctx, before)
     }
+    // A run pi reports as aborted is a cancellation, not a normal result.
+    if (tracked.aborted()) {
+      throw new PizxError('CANCELLED', 'pizx/Π: agent run was aborted', {
+        letter: 'Π',
+        cause: failure,
+      })
+    }
+    if (failure) throw failure
 
     const t1 = Date.now()
     // The SDK's canonical extractor returns only text content blocks; clean it
@@ -180,6 +205,43 @@ async function run(prompt: string, opts: AgentOpts, env: LetterEnv): Promise<Let
       cause: err,
     })
   }
+}
+
+/**
+ * Subscribe to a session's events for the duration of one turn.
+ *
+ * Each completed tool execution is recorded as a `tool-call` trace event
+ * (duration from pi, or measured locally when absent), and `agent_settled`
+ * tells us whether the run was aborted. Returns the aborted getter and an
+ * unsubscribe function; both must be used per invocation, because Π sessions
+ * are pooled and outlive a single run.
+ */
+function trackSession(
+  session: AgentSession,
+  span: LetterEnv['span']
+): { aborted: () => boolean; unsubscribe: () => void } {
+  let aborted = false
+  const startedAt = new Map<string, number>()
+  const unsubscribe = session.subscribe((event: AgentSessionEvent) => {
+    if (event.type === 'tool_execution_start') {
+      startedAt.set(event.toolCallId, Date.now())
+    } else if (event.type === 'tool_execution_end') {
+      const start = startedAt.get(event.toolCallId)
+      startedAt.delete(event.toolCallId)
+      span?.emit({
+        kind: 'tool-call',
+        source: 'pi',
+        toolName: event.toolName,
+        toolCallId: event.toolCallId,
+        title: event.toolName,
+        status: event.isError ? 'error' : 'ok',
+        durationMs: event.durationMs ?? (start !== undefined ? Date.now() - start : undefined),
+      })
+    } else if (event.type === 'agent_settled') {
+      aborted = event.aborted
+    }
+  })
+  return { aborted: () => aborted, unsubscribe }
 }
 
 export const piAgentPlugin: Plugin.Object = {

@@ -63,6 +63,9 @@ interface Flags {
   session?: string
   tools?: string[]
   excludeTools?: string[]
+  codemode: boolean
+  toolSearch: boolean
+  mcp: boolean
   trace: boolean
   letters: boolean
   cache: boolean
@@ -90,6 +93,9 @@ export function parseArgs(argv: string[]): { flags: Flags; positional: string[] 
     acp: false,
     run: false,
     pi: false,
+    codemode: false,
+    toolSearch: false,
+    mcp: false,
     trace: false,
     letters: false,
     cache: false,
@@ -141,6 +147,15 @@ export function parseArgs(argv: string[]): { flags: Flags; positional: string[] 
         break
       case '--exclude-tools':
         if (argv[i + 1] && !argv[i + 1].startsWith('-')) flags.excludeTools = splitList(argv[++i])
+        break
+      case '--codemode':
+        flags.codemode = true
+        break
+      case '--tool-search':
+        flags.toolSearch = true
+        break
+      case '--mcp':
+        flags.mcp = true
         break
       case '--trace':
         flags.trace = true
@@ -202,17 +217,23 @@ export function assertPiFlags(flags: {
   session?: string
   tools?: string[]
   excludeTools?: string[]
+  codemode?: boolean
+  toolSearch?: boolean
+  mcp?: boolean
 }): void {
   if (flags.pi) return
   const used = [
     flags.session ? '--session' : undefined,
     flags.tools ? '--tools' : undefined,
     flags.excludeTools ? '--exclude-tools' : undefined,
+    flags.codemode ? '--codemode' : undefined,
+    flags.toolSearch ? '--tool-search' : undefined,
+    flags.mcp ? '--mcp' : undefined,
   ].filter(Boolean)
   if (used.length === 0) return
   throw new PizxError(
     'VALIDATION',
-    `pizx: ${used.join(', ')} can only be used with --Pi (durable sessions and tool selection are Π options)`
+    `pizx: ${used.join(', ')} can only be used with --Pi (sessions, tool selection, codemode, tool search, and MCP are Π options)`
   )
 }
 
@@ -242,6 +263,9 @@ function printHelp() {
    --session <name>       Durable Π conversation to resume or create (with --Pi)
    --tools <list>         Π tool allow-list, e.g. "read,edit" (with --Pi)
    --exclude-tools <list> Π tools to disable, e.g. "bash,write" (with --Pi)
+   --codemode             Enable the codemode tool (Π; JS sandbox over tools)
+   --tool-search          Enable the tool_search tool (Π)
+   --mcp                  Connect MCP servers from mcp.json (Π)
    -m, --model <id>       Model to use (e.g. anthropic/claude-sonnet-4-5)
    --system <text>        System context for pi-ai
    --trace                Print a token/cache/cost summary when done
@@ -564,6 +588,9 @@ async function runPiMode(flags: Flags, args: string[]): Promise<void> {
     if (flags.session) opts.session = flags.session
     if (flags.tools) opts.tools = flags.tools
     if (flags.excludeTools) opts.excludeTools = flags.excludeTools
+    if (flags.codemode) opts.codemode = true
+    if (flags.toolSearch) opts.toolSearch = true
+    if (flags.mcp) opts.mcp = true
     if (flags.model) opts.model = flags.model
     if (flags.system) opts.system = flags.system
     if (flags.quiet || flags.json) opts.quiet = true

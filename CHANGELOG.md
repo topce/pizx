@@ -2,6 +2,68 @@
 
 All notable changes to pizx are documented here.
 
+## [2.4.0] — 2026-10-13
+
+_2.4.0 targets Pi 1.2.0: a pizx version is twice the Pi version it is built
+against (2.0.0 ↔ Pi 1.0.0). This scheme is deliberately **not** SemVer, so
+breaking changes can land in a minor — see
+[RELEASING.md](RELEASING.md#versioning)._
+
+### Added
+
+- **Π codemode, tool search, and MCP.** Π sessions now opt into the Pi
+  extensions the CLI loads by default but the SDK does not. `codemode: true`
+  (CLI `--codemode`) enables the `codemode` tool — a JavaScript sandbox that
+  calls the session's other tools in parallel and non-LLM models;
+  `toolSearch: true` (`--tool-search`) enables `tool_search`; and `mcp: true`
+  (`--mcp`) connects the MCP servers from `~/.pi/agent/mcp.json` and a trusted
+  project's `.pi/mcp.json`, activating `codemode` for servers with the default
+  exposure. `codemode`/`tool_search` are added on top of the default tool
+  selection, so `read`/`bash`/`edit`/`write` stay available; an explicit `tools`
+  allow-list still wins. New options flow through words and the session pool
+  key automatically, and MCP servers reuse the pooled session connection.
+- **Non-chat models on the `ctx.llm` service.** `modelsOfType(type, provider?)`
+  and `pickOfType(type, preferred?)` list and select Pi's non-chat models
+  (`classifier`, `image`); `classify(model, context, options?)` runs a
+  classifier over structured state, and `generateImages(model, context,
+  options?)` generates images. Both resolve credentials at request time, record
+  their token usage into the active trace span, and **do not reject on a
+  provider error** — inspect `stopReason` (and `errorMessage`) on the result
+  instead. See [docs/pi.md](docs/pi.md).
+- **Π tool-call tracing.** Π records one `tool-call` trace event per completed
+  tool execution, carrying `source: 'pi'`, the `toolName`, a `status` of `ok`
+  or `error`, and the execution `durationMs` when Pi reports it.
+
+### Changed
+
+- **`tool-call` trace events are now discriminated by `source`.** The event
+  gained a required `source: 'acp' | 'pi'` field, and `server` became
+  **optional** — it is set only for α (ACP) calls, while `toolName` is set only
+  for Π. The type `AcpToolCallEvent` is renamed `ToolCallEvent`; the old name is
+  kept as a deprecated alias. TypeScript consumers reading `event.server` now
+  need to narrow on `source` first — see [docs/trace.md](docs/trace.md).
+- **An aborted Π run is now a `CANCELLED` error** (CLI exit code 6) instead of
+  a partial result. The tokens the aborted run consumed are still attributed to
+  its span.
+- **The Π resource loader now uses Pi's real agent directory**
+  (`getAgentDir()`, honoring `PI_CODING_AGENT_DIR`) instead of an empty string
+  when `system`/`appendSystemPrompt` are set, matching the default SDK loader
+  and letting MCP find `mcp.json`.
+- **Dependencies.** `@earendil-works/pi-ai` and
+  `@earendil-works/pi-coding-agent` 1.0.0 → 1.2.0, and `source-map-js` is
+  pinned to 1.2.2 via `overrides` (dev-only — the vitest/vite chain).
+
+### Fixed
+
+- **Π SDK extensions now actually register.** `agentSession` attached the
+  `codemode`, `tool_search`, and MCP extension factories to the
+  `DefaultResourceLoader` but never called `loader.reload()`, so the factories
+  never ran and their tools stayed unavailable — `codemode: true` (and
+  `tool_search`/MCP) silently had no effect. The loader is now reloaded before
+  the session is created, matching the Pi SDK's own example, so an explicit
+  allow-list that names `codemode` (e.g. `tools: ['read', 'bash', 'codemode']`)
+  activates it.
+
 ## [2.0.0] — 2026-10-03
 
 ### Added

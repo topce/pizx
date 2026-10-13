@@ -26,6 +26,9 @@ await Π.quiet()`update import paths to the new module layout`
 | `thinkingLevel` | `'off' \| 'minimal' \| 'low' \| 'medium' \| 'high' \| 'xhigh' \| 'max'` | `'medium'` | |
 | `system` / `appendSystemPrompt` | string | — | prompt overrides |
 | `skills` | string[] | — | skill names loaded from skill paths |
+| `codemode` | boolean | `false` | enable the `codemode` tool (JS sandbox over tools/models) |
+| `toolSearch` | boolean | `false` | enable the `tool_search` tool |
+| `mcp` | boolean | `false` | connect MCP servers from `mcp.json` (implies `codemode`) |
 | `session` | string | — | resume (or create) a named persistent conversation; see [Durable sessions](#durable-sessions) |
 | `quiet` | boolean | `false` | suppress status output |
 | `timeoutMs` / `maxRetries` | number | provider default | per-provider-request timeout; retry budget for provider requests and agent turns |
@@ -81,3 +84,42 @@ pointer per open handle):
 
 The conversation is context, not a result: durable sessions are never cached
 (`cache: false`).
+
+## Codemode, tool search & MCP
+
+The Pi **CLI** loads `codemode`, `tool_search`, and MCP as built-in extensions,
+but the **SDK** does not. Π therefore opts into them explicitly:
+
+```js
+// Let the model write JavaScript that calls read/bash/edit in parallel.
+await Π({ codemode: true })`count the TypeScript files and list the three largest`
+
+// Find and declare tools that are not declared up front.
+await Π({ toolSearch: true })`…`
+
+// Connect the MCP servers from ~/.pi/agent/mcp.json and the trusted project's
+// .pi/mcp.json. Servers with the default codemode exposure also enable codemode.
+await Π({ mcp: true })`use the radius server to look up ticket 42`
+```
+
+The same options exist on the quick `--Pi` mode:
+
+```bash
+pizx --Pi --codemode "count the TypeScript files in src/"
+pizx --Pi --mcp "use the radius server to look up ticket 42"
+```
+
+Notes:
+
+- `codemode` and `tool_search` are added with `+name` on top of the default tool
+  selection, so `read`/`bash`/`edit`/`write` stay available. `codemode` runs in a
+  QuickJS sandbox and reaches tools through `tools.<name>(args)`; the
+  [Codemode](https://github.com/earendil-works/pi/blob/main/docs/codemode.md)
+  reference describes the script API and the `models` global.
+- MCP config is read from the Pi agent directory (`~/.pi/agent/mcp.json`, or
+  `PI_CODING_AGENT_DIR`) and, for trusted projects, `<project>/.pi/mcp.json`.
+  Servers are pooled with the session, so a repeated Π call reuses the same
+  connection. Tool names are `mcp__<server>__<tool>`.
+- An explicit `tools` allow-list wins. With `tools: ['read', 'bash']` the
+  extensions are registered but inactive; add them to the list
+  (`tools: ['read', 'bash', 'codemode']`) or use the option without an allow-list.

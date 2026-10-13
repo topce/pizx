@@ -84,17 +84,30 @@ export interface CacheEvent {
   ts: number
 }
 
-/** A tool call reported by an ACP agent (α letter) inside a span. */
-export interface AcpToolCallEvent {
+/**
+ * A tool call reported inside a span. α (ACP agents) reports calls as they
+ * stream; Π (the Pi coding agent) reports each completed tool execution.
+ */
+export interface ToolCallEvent {
   kind: 'tool-call'
   spanId: string
-  /** The ACP server command line that reported the tool call. */
-  server: string
+  /** Which letter produced the call. */
+  source: 'acp' | 'pi'
+  /** The ACP server command line that reported the tool call (source: 'acp'). */
+  server?: string
+  /** The tool name (source: 'pi'). */
+  toolName?: string
   toolCallId: string
+  /** Human-readable label: the ACP title, or the Π tool name. */
   title: string
   status: string
+  /** Tool execution time in ms, when the runtime reports it. */
+  durationMs?: number
   ts: number
 }
+
+/** @deprecated Use {@link ToolCallEvent}; kept as an alias for existing imports. */
+export type AcpToolCallEvent = ToolCallEvent
 
 export interface TraceErrorEvent {
   kind: 'error'
@@ -110,7 +123,7 @@ export type TraceEvent =
   | LetterEndEvent
   | LlmCallEvent
   | CacheEvent
-  | AcpToolCallEvent
+  | ToolCallEvent
   | TraceErrorEvent
 
 /** Any trace event with an optional/omitted timestamp (stamped by record). */
@@ -121,7 +134,7 @@ export type TraceEventInput =
   | Omit<LetterEndEvent, 'ts'>
   | Omit<LlmCallEvent, 'ts'>
   | Omit<CacheEvent, 'ts'>
-  | Omit<AcpToolCallEvent, 'ts'>
+  | Omit<ToolCallEvent, 'ts'>
   | Omit<TraceErrorEvent, 'ts'>
 
 /** Events a span may emit (spanId is stamped by the span itself). */
@@ -130,7 +143,7 @@ export type SpanEventInput =
   | Omit<LetterEndEvent, 'ts' | 'spanId'>
   | Omit<LlmCallEvent, 'ts' | 'spanId'>
   | Omit<CacheEvent, 'ts' | 'spanId'>
-  | Omit<AcpToolCallEvent, 'ts' | 'spanId'>
+  | Omit<ToolCallEvent, 'ts' | 'spanId'>
   | Omit<TraceErrorEvent, 'ts' | 'spanId'>
 
 // ── Span ────────────────────────────────────────────────────────────────────
@@ -188,9 +201,9 @@ export class TraceSpan {
     return this.events.filter((e) => e.kind === 'cache-hit').length
   }
 
-  /** ACP tool calls recorded within this span (α letter). */
-  get toolCalls(): AcpToolCallEvent[] {
-    return this.events.filter((e): e is AcpToolCallEvent => e.kind === 'tool-call')
+  /** Tool calls recorded within this span (α and Π letters). */
+  get toolCalls(): ToolCallEvent[] {
+    return this.events.filter((e): e is ToolCallEvent => e.kind === 'tool-call')
   }
 
   /** @internal — called by Trace.record to attach events to this span. */

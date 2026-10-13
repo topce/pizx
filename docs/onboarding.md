@@ -118,7 +118,7 @@ pizx --letters                # list registered letters
 | `src/core/words.ts` | the `Words` service (slots, `call`/`parallel`/`loop` operators) |
 | `src/core/trace.ts` | the `Trace` service (spans, events, export) |
 | `src/core/cache.ts` | the `Cache` service (keys, TTL, LRU) |
-| `src/core/llm.ts` | the `Llm` service (auth, models, ask/stream, Π sessions) |
+| `src/core/llm.ts` | the `Llm` service (auth, models, ask/stream, classifier/image models, Π sessions) |
 | `src/core/typesafe.ts` | the `TypeSafe` service (System One client, `ask`, tracing, error mapping) |
 | `src/core/tags.ts` | `createLetterTag`, `LetterOutput`, `LetterPromise` |
 | `src/plugins/pi.ts` | the π letter |

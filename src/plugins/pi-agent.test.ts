@@ -1,5 +1,5 @@
 import { Context } from '@cordisjs/core'
-import type { AgentSession } from '@earendil-works/pi-coding-agent'
+import type { AgentSession, AgentSessionEvent } from '@earendil-works/pi-coding-agent'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LetterFn } from '../core/tags.ts'
 import { FAKE_MODEL, FAKE_USAGE, mountTestCore } from '../testing/helpers.ts'
@@ -46,6 +46,7 @@ function fakeSession(overrides: Partial<Record<keyof AgentSession, unknown>> = {
     getLastAssistantText: () => 'ok',
     messages: [],
     getSessionStats: () => fakeStats(turns),
+    subscribe: vi.fn(() => () => {}),
     ...overrides,
   } as unknown as AgentSession
 }
@@ -128,6 +129,94 @@ describe('Π letter plugin', () => {
     expect(vi.mocked(ctx.llm.agentSession)).toHaveBeenCalledWith(
       expect.objectContaining({ session: 'review' })
     )
+  })
+
+  it('forwards codemode/toolSearch/mcp to the agent session', async () => {
+    const Π = await bootAgent('done')
+
+    await Π.quiet({ codemode: true, toolSearch: true, mcp: true })`explore`
+
+    expect(vi.mocked(ctx.llm.agentSession)).toHaveBeenCalledWith(
+      expect.objectContaining({ codemode: true, toolSearch: true, mcp: true })
+    )
+  })
+
+  it('records a tool-call trace event for each Π tool execution', async () => {
+    mountTestCore(ctx)
+    ctx.plugin(piAgentPlugin)
+    await ctx.start()
+
+    let listener: ((event: AgentSessionEvent) => void) | undefined
+    let turns = 0
+    const session = fakeSession({
+      subscribe: vi.fn((l: (event: AgentSessionEvent) => void) => {
+        listener = l
+        return () => {
+          listener = undefined
+        }
+      }),
+      sendUserMessage: vi.fn(async () => {
+        turns += 1
+        listener?.({ type: 'tool_execution_start', toolCallId: 'c1', toolName: 'bash', args: {} })
+        listener?.({
+          type: 'tool_execution_end',
+          toolCallId: 'c1',
+          toolName: 'bash',
+          result: {},
+          isError: false,
+          durationMs: 12,
+        })
+      }),
+      getSessionStats: () => fakeStats(turns),
+    })
+    vi.spyOn(ctx.llm, 'agentSession').mockResolvedValue({ session, modelId: FAKE_MODEL.id })
+
+    const Π = ctx.letters.get('Π')
+    if (!Π) throw new Error('Π not registered')
+    await Π.quiet`do it`
+
+    const calls = ctx.trace.events.filter((e) => e.kind === 'tool-call')
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toMatchObject({
+      kind: 'tool-call',
+      source: 'pi',
+      toolName: 'bash',
+      title: 'bash',
+      status: 'ok',
+      durationMs: 12,
+    })
+  })
+
+  it('maps a pi-aborted run to a CANCELLED error and still bills its tokens', async () => {
+    mountTestCore(ctx)
+    ctx.plugin(piAgentPlugin)
+    await ctx.start()
+
+    let listener: ((event: AgentSessionEvent) => void) | undefined
+    let turns = 0
+    const session = fakeSession({
+      subscribe: vi.fn((l: (event: AgentSessionEvent) => void) => {
+        listener = l
+        return () => {
+          listener = undefined
+        }
+      }),
+      sendUserMessage: vi.fn(async () => {
+        turns += 1
+        listener?.({ type: 'agent_settled', aborted: true })
+      }),
+      getSessionStats: () => fakeStats(turns),
+    })
+    vi.spyOn(ctx.llm, 'agentSession').mockResolvedValue({ session, modelId: FAKE_MODEL.id })
+    const usage = vi.spyOn(ctx.llm, 'recordUsage')
+
+    const Π = ctx.letters.get('Π')
+    if (!Π) throw new Error('Π not registered')
+    await expect(Π.quiet`do it`).rejects.toMatchObject({ code: 'CANCELLED' })
+
+    // The aborted run's tokens are still attributed to its own span.
+    expect(usage).toHaveBeenCalledTimes(1)
+    expect(usage.mock.calls[0][1].totalTokens).toBe(FAKE_USAGE.totalTokens)
   })
 
   it('reports only the latest invocation on a reused pooled session', async () => {

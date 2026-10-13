@@ -1,6 +1,6 @@
 {
   "name": "@topce/pizx",
-  "version": "2.0.0",
+  "version": "2.4.0",
   "description": "zx fork with native Pi AI integration on the cordis plugin framework — shell scripting with AI agents, user-definable letter tags, traceable runs with JSONL log export, and a local result cache. Ships with π (text generation), Π (coding agent), α (any ACP-compatible agent), ε (any CLI AI harness — claude, kiro-cli, …), and TypeSafe's typed decisions noul/choice/score (plus the fanout/composite/gate/intent pattern words).",
   "type": "module",
   "main": "./dist/index.js",
@@ -67,6 +67,10 @@
     "example:word-composite": "node dist/cli.js examples/word-composite.mjs",
     "example:word-gate": "node dist/cli.js examples/word-gate.mjs",
     "example:word-intent": "node dist/cli.js examples/word-intent.mjs",
+    "example:pi-codemode": "node dist/cli.js examples/pi-codemode.mjs",
+    "example:pi-mcp": "node dist/cli.js examples/pi-mcp.mjs",
+    "example:pi-tool-trace": "node dist/cli.js examples/pi-tool-trace.mjs",
+    "example:llm-nonchat": "node dist/cli.js examples/llm-nonchat.mjs",
     "example:trace": "node dist/cli.js --cache --trace --export-log examples/trace-and-cache.mjs",
     "example:all": "npm run example:quick && npm run example:release-notes && npm run example:hello && npm run example:typed && npm run example:trace && npm run example:custom"
   },
@@ -96,7 +100,8 @@
     "access": "public"
   },
   "overrides": {
-    "brace-expansion": "5.0.12"
+    "brace-expansion": "5.0.12",
+    "source-map-js": "1.2.2"
   },
   "homepage": "https://github.com/topce/pizx#readme",
   "repository": {
@@ -109,8 +114,8 @@
   "dependencies": {
     "@agentclientprotocol/sdk": "^1.7.0",
     "@cordisjs/core": "^3.18.1",
-    "@earendil-works/pi-ai": "1.0.0",
-    "@earendil-works/pi-coding-agent": "1.0.0",
+    "@earendil-works/pi-ai": "1.2.0",
+    "@earendil-works/pi-coding-agent": "1.2.0",
     "@typesafe-ai/sdk": "^0.6.0",
     "schemastery": "^3.18.0",
     "zx": "8.8.5"

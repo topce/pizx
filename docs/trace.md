@@ -12,9 +12,19 @@ AsyncLocalStorage, so concurrent letters never interleave).
 | `run-start` / `run-end` | `runId`, node/pizx versions, aggregate `totals` |
 | `letter-start` / `letter-end` | `spanId`, `parentSpanId`, letter name, prompt, status, output preview, duration |
 | `llm-call` | `modelId`, `inputTokens`, `outputTokens`, `cacheReadTokens`, `cacheWriteTokens`, `totalTokens`, `costUsd`, `durationMs` |
-| `tool-call` | ACP agent (α) tool activity — `server`, `toolCallId`, `title`, `status` |
+| `tool-call` | α (ACP) or Π (Pi) tool activity — `source` (`'acp'` \| `'pi'`), `toolCallId`, `title`, `status`, optional `durationMs`, plus `server` (α) or `toolName` (Π) |
 | `cache-hit` / `cache-miss` | the content-addressed cache `key` |
 | `error` | message, optional `spanId` |
+
+`tool-call` events are discriminated by `source`. α (ACP) reports a call per
+`session/update` notification, so one tool may appear several times as its
+`status` (the ACP value — `pending`, `in_progress`, `completed`, `failed`, or
+`unknown` when the update omits it) changes; `server` names the ACP command
+line and `title` is the latest title the agent reported, falling back to
+`toolCallId` when an update carries none. Π (the Pi coding agent) records
+exactly one `tool-call` per **completed** tool execution: `toolName` is the
+tool, `title` mirrors it, and `status` is `'ok'` or `'error'`. `durationMs` is
+present when the runtime reports it (Π, from Pi or measured locally).
 
 Token counts are **disjoint** (deepseek-harness convention): `inputTokens` is
 uncached input only; prompt-cache reads/writes are reported separately, so a
@@ -68,8 +78,8 @@ export function apply(ctx) {
 - **Observability** — every `llm-call` records provider prompt-cache
   read/write tokens, and `--trace` prints the cache hit ratio. α (ACP)
   invocations record `tool-call` events per agent tool update and an
-  `llm-call` when the agent reports usage, so external agents are as
-  observable as π/Π.
+  `llm-call` when the agent reports usage; Π records one `tool-call` per
+  completed tool execution. External agents are as observable as π.
 - **Stable prompts** — letters share one agent session per model/tools (Π),
   so provider caches stay warm across invocations.
 - **Local result cache** — cacheable letters with `cache: true` (or

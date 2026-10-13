@@ -25,6 +25,15 @@ not been reviewed against the same principles yet:
 - `LetterOutput.answer` (getter) and `LetterOutput.withAnswer` (internal) —
   extends the L1 “public and mutable” note; `answer` is preserved by the cache
 - `PizxErrorCode` gains `TYPESAFE`; CLI **exit code 9**
+- `Llm.modelsOfType`, `Llm.pickOfType`, `Llm.classify`, `Llm.generateImages` —
+  2.4.0; non-chat (`classifier`/`image`) model access added to the public `Llm`
+  service. Note the deliberate error-semantics split from `Llm.ask`: `ask`
+  throws, while `classify`/`generateImages` **resolve** and report failure
+  through `stopReason` — an intentional divergence that should be reviewed
+  against the audit's “consistent error semantics” principle
+- `ToolCallEvent` — 2.4.0; renamed from `AcpToolCallEvent` (kept as a
+  deprecated alias) and now discriminated by a required `source`, with `server`
+  optional. See the breaking-change note in `CHANGELOG.md`
 
 ---
 

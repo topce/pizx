@@ -216,6 +216,8 @@ pizx --acp --acp-server "kiro-cli acp" "your prompt"  # quick ACP agent query
 pizx --run --run-harness claude "your prompt"         # quick CLI harness query
 pizx --Pi "your prompt"        # quick coding-agent query (Π, tools enabled)
 pizx --Pi --session auth --tools read,edit "continue"  # durable Π conversation
+pizx --Pi --codemode "count the TS files"  # + JS sandbox over tools
+pizx --Pi --mcp "use the radius server"    # + MCP servers from mcp.json
 pizx --model <id> script.mjs   # model for the run
 pizx --config ./cfg.mjs s.mjs  # load plugins from a config file
 pizx --letters                 # list registered letters

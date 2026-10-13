@@ -13,8 +13,20 @@ import { join, resolve } from 'node:path'
 import { type Context, Service } from '@cordisjs/core'
 import type {
   Api,
+  AssistantImages,
   AssistantMessageEventStream,
+  ClassifierApi,
+  ClassifierContext,
+  ClassifierModel,
+  ClassifierResult,
+  ImageApi,
+  ImageModel,
+  ImagesContext,
   Model,
+  ModelsClassifierOptions,
+  ModelsImagesOptions,
+  ModelType,
+  ModelTypeMap,
   Context as PiContext,
   SimpleStreamOptions,
   ThinkingBudgets,
@@ -26,7 +38,11 @@ import { completeSimple, streamSimple } from '@earendil-works/pi-ai/compat'
 import {
   type AgentSession,
   createAgentSession,
+  createCodemodeExtension,
+  createMcpExtension,
+  createToolSearchExtension,
   DefaultResourceLoader,
+  getAgentDir,
   ModelRegistry,
   ModelRuntime,
   SessionManager,
@@ -335,6 +351,19 @@ export interface AgentSessionOptions {
   system?: string
   appendSystemPrompt?: string
   skills?: string[]
+  /**
+   * Enable the `codemode` tool: a JavaScript sandbox that calls the session's
+   * other tools (in parallel) and non-LLM models, so only the script's output
+   * reaches the model.
+   */
+  codemode?: boolean
+  /** Enable the `tool_search` tool, which finds and declares tools not yet declared. */
+  toolSearch?: boolean
+  /**
+   * Connect MCP servers from `mcp.json` (global and trusted project). Servers
+   * with the default `codemode` exposure activate the `codemode` tool.
+   */
+  mcp?: boolean
   /** Name of a persistent session to resume (or create). Omit for an in-memory session. */
   session?: string
   /** Per-provider-request timeout in ms (Pi `retry.provider.timeoutMs`). */
@@ -540,6 +569,77 @@ export class Llm extends Service<LlmConfig> {
     })
   }
 
+  // ── Non-chat models (classifier / image) ─────────────────────────────────
+
+  /** Every known model of a non-chat type, optionally for one provider. */
+  async modelsOfType<T extends ModelType>(
+    type: T,
+    provider?: string
+  ): Promise<readonly ModelTypeMap[T][]> {
+    const reg = await getRegistry()
+    return reg.getModelsOfType(type, provider)
+  }
+
+  /**
+   * Pick a model of a non-chat type by `provider/id`, bare `id`, or the first
+   * model of that type with working credentials.
+   */
+  async pickOfType<T extends ModelType>(
+    type: T,
+    preferred?: string
+  ): Promise<ModelTypeMap[T] | undefined> {
+    const reg = await getRegistry()
+    if (preferred) {
+      const slash = preferred.indexOf('/')
+      if (slash > 0) {
+        const hit = reg.getModelOfType(type, preferred.slice(0, slash), preferred.slice(slash + 1))
+        if (hit) return hit
+      }
+      const hit = reg
+        .getModelsOfType(type)
+        .find((m) => m.id === preferred || m.id.endsWith(`/${preferred}`))
+      if (hit) return hit
+    }
+    const available = await reg.getAvailableOfType(type)
+    return available[0]
+  }
+
+  /**
+   * Classify structured state with a classifier model, resolving credentials
+   * at request time. Never rejects on a provider error — check `stopReason`.
+   * Usage is recorded into the active trace span.
+   */
+  async classify(
+    model: ClassifierModel<ClassifierApi>,
+    context: ClassifierContext,
+    options: ModelsClassifierOptions = {}
+  ): Promise<ClassifierResult> {
+    const reg = await getRegistry()
+    const t0 = Date.now()
+    const result = await reg.classify(model, context, options)
+    if (result.usage)
+      this.recordUsage(`${result.provider}/${result.model}`, result.usage, Date.now() - t0)
+    return result
+  }
+
+  /**
+   * Generate images with an image model, resolving credentials at request time.
+   * Never rejects on a provider error — check `stopReason`. Usage is recorded
+   * into the active trace span.
+   */
+  async generateImages(
+    model: ImageModel<ImageApi>,
+    context: ImagesContext,
+    options: ModelsImagesOptions = {}
+  ): Promise<AssistantImages> {
+    const reg = await getRegistry()
+    const t0 = Date.now()
+    const result = await reg.generateImages(model, context, options)
+    if (result.usage)
+      this.recordUsage(`${result.provider}/${result.model}`, result.usage, Date.now() - t0)
+    return result
+  }
+
   // ── Coding agent (Π) ──────────────────────────────────────────────────────
 
   /** Get (or reuse) a shared agent session keyed by every behavior-affecting option. */
@@ -580,25 +680,39 @@ export class Llm extends Service<LlmConfig> {
       }
     }
 
+    // A caller-provided loader is not reloaded by createAgentSession, so load
+    // its resources here: the system prompt, any extended skills, and the
+    // extension factories (codemode / tool_search / MCP). Without this the
+    // extensions register nothing and their tools never become available.
+    if (loader) await loader.reload()
+
     const sessionManager = opts.session
       ? await openNamedSession(opts.cwd ?? process.cwd(), opts.session)
       : SessionManager.inMemory()
 
-    const created = await createAgentSession({
-      cwd: opts.cwd,
-      model,
-      thinkingLevel: opts.thinkingLevel,
-      tools: opts.tools,
-      excludeTools: opts.excludeTools,
-      resourceLoader: loader,
-      settingsManager: agentSettingsManager(opts),
-      sessionManager,
-    }).catch((err: unknown) => {
+    let session: AgentSession
+    try {
+      const created = await createAgentSession({
+        cwd: opts.cwd,
+        model,
+        thinkingLevel: opts.thinkingLevel,
+        tools: opts.tools,
+        excludeTools: opts.excludeTools,
+        resourceLoader: loader,
+        settingsManager: agentSettingsManager(opts),
+        sessionManager,
+      })
+      session = created.session
+      // SDK sessions do not emit `session_start` on their own, and MCP servers
+      // connect on that event, so bind once when extension factories are loaded.
+      if (loader && hasExtensionFactories(opts)) {
+        await session.bindExtensions({})
+      }
+    } catch (err) {
       // A failed build must not leave the durable name claimed forever.
       releaseNamedSession(sessionManager.getSessionFile())
       throw err
-    })
-    const { session } = created
+    }
     this.sessions.set(key, session)
     return { session, modelId: model.id }
   }
@@ -636,21 +750,54 @@ function findModelById(reg: ModelRegistry, id: string): Model<Api> | undefined {
   return all.find((m) => m.id === id || m.id.endsWith(`/${id}`))
 }
 
-function createLoader(opts: {
+/**
+ * Build the resource loader for a Π session.
+ *
+ * Returns undefined when the session needs neither a custom system prompt nor
+ * any SDK extension, so Pi can use its own default loader. `codemode`,
+ * `tool_search`, and MCP are built-in extensions in the Pi CLI but not in the
+ * SDK, so they are attached here as explicit factories.
+ *
+ * @internal — exported for tests only; not part of the public API.
+ */
+export function createLoader(opts: {
   cwd?: string
   system?: string
   appendSystemPrompt?: string
+  codemode?: boolean
+  toolSearch?: boolean
+  mcp?: boolean
 }): DefaultResourceLoader | undefined {
   const hasSystem = opts.system !== undefined
   const hasAppend = opts.appendSystemPrompt !== undefined
-  if (!hasSystem && !hasAppend) return undefined
+
+  // The CLI loads codemode, tool_search, and MCP as built-in extensions; SDK
+  // sessions must add them explicitly. `codemode` and `tool_search` register
+  // inactive — agentSettingsManager() activates them through `defaultTools`.
+  const extensionFactories = []
+  if (opts.codemode || opts.mcp) extensionFactories.push(createCodemodeExtension())
+  if (opts.toolSearch) extensionFactories.push(createToolSearchExtension())
+  if (opts.mcp) extensionFactories.push(createMcpExtension())
+
+  if (!hasSystem && !hasAppend && extensionFactories.length === 0) return undefined
 
   return new DefaultResourceLoader({
     cwd: opts.cwd ?? process.cwd(),
-    agentDir: '',
+    // getAgentDir() is where mcp.json lives; the default SDK loader uses it too.
+    agentDir: getAgentDir(),
     systemPrompt: opts.system,
     appendSystemPrompt: opts.appendSystemPrompt ? [opts.appendSystemPrompt] : undefined,
+    ...(extensionFactories.length > 0 ? { extensionFactories } : {}),
   })
+}
+
+/** Whether an Π option requested one of the SDK extensions. */
+function hasExtensionFactories(opts: {
+  codemode?: boolean
+  toolSearch?: boolean
+  mcp?: boolean
+}): boolean {
+  return Boolean(opts.codemode || opts.toolSearch || opts.mcp)
 }
 
 /**
@@ -669,20 +816,32 @@ export function agentSettingsManager(opts: {
   cwd?: string
   timeoutMs?: number
   maxRetries?: number
+  codemode?: boolean
+  toolSearch?: boolean
 }): SettingsManager | undefined {
   const hasTimeout = opts.timeoutMs !== undefined
   const hasRetries = opts.maxRetries !== undefined
-  if (!hasTimeout && !hasRetries) return undefined
+  // `+name` changes the resolved default selection instead of replacing it, so
+  // read/bash/edit/write stay available alongside codemode/tool_search.
+  const defaultTools: string[] = []
+  if (opts.codemode) defaultTools.push('+codemode')
+  if (opts.toolSearch) defaultTools.push('+tool_search')
+  if (!hasTimeout && !hasRetries && defaultTools.length === 0) return undefined
 
   const manager = SettingsManager.create(opts.cwd ?? process.cwd())
   manager.applyOverrides({
-    retry: {
-      ...(hasRetries ? { maxRetries: opts.maxRetries } : {}),
-      provider: {
-        ...(hasTimeout ? { timeoutMs: opts.timeoutMs } : {}),
-        ...(hasRetries ? { maxRetries: opts.maxRetries } : {}),
-      },
-    },
+    ...(defaultTools.length > 0 ? { defaultTools } : {}),
+    ...(hasTimeout || hasRetries
+      ? {
+          retry: {
+            ...(hasRetries ? { maxRetries: opts.maxRetries } : {}),
+            provider: {
+              ...(hasTimeout ? { timeoutMs: opts.timeoutMs } : {}),
+              ...(hasRetries ? { maxRetries: opts.maxRetries } : {}),
+            },
+          },
+        }
+      : {}),
   })
   return manager
 }

@@ -169,7 +169,8 @@ await vote({ voter: 'π', model: 'deepseek/deepseek-v4-flash', votes: 5 })`revie
 
 Recognized keys: `model`, `thinkingLevel`, `thinkingBudgets`, `system`,
 `appendSystemPrompt`, `maxTokens`, `timeoutMs`, `maxRetries`, `apiKey`, `cwd`,
-`env`, `server`, `tools`, `excludeTools`, `skills`, `session`. `quiet` is
+`env`, `server`, `tools`, `excludeTools`, `skills`, `codemode`, `toolSearch`,
+`mcp`, `session`. `quiet` is
 deliberately not forwarded — slot calls stay quiet and the word owns its status
 output. `session` (a durable Π conversation) is forwarded, but only
 *sequential* words can use it: `ralph`/orchestrate-style loops carry one

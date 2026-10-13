@@ -57,6 +57,7 @@ function requireServer(opts: AlphaOpts): string[] {
 function toolTraceEvent(serverLabel: string, ev: AcpToolEvent) {
   return {
     kind: 'tool-call' as const,
+    source: 'acp' as const,
     server: serverLabel,
     toolCallId: ev.toolCallId,
     title: ev.title,

@@ -84,6 +84,7 @@ describe('Trace service', () => {
     const span = trace.span('α', 'hello')
     span.emit({
       kind: 'tool-call',
+      source: 'acp',
       server: 'kiro-cli acp',
       toolCallId: 'call-1',
       title: 'Reading a file',
@@ -94,6 +95,7 @@ describe('Trace service', () => {
     expect(span.toolCalls).toHaveLength(1)
     expect(span.toolCalls[0]).toMatchObject({
       kind: 'tool-call',
+      source: 'acp',
       spanId: span.spanId,
       server: 'kiro-cli acp',
       toolCallId: 'call-1',
@@ -103,6 +105,33 @@ describe('Trace service', () => {
     const jsonl = trace.exportLog('jsonl')
     expect(jsonl).toContain('"kind":"tool-call"')
     expect(jsonl).toContain('"server":"kiro-cli acp"')
+  })
+
+  it('records Π tool-call events with source, name, and duration', async () => {
+    const trace = await startTrace()
+    const span = trace.span('Π', 'fix it')
+    span.emit({
+      kind: 'tool-call',
+      source: 'pi',
+      toolName: 'bash',
+      toolCallId: 'call-2',
+      title: 'bash',
+      status: 'ok',
+      durationMs: 42,
+    })
+    span.end('ok', 'done')
+
+    expect(span.toolCalls).toHaveLength(1)
+    expect(span.toolCalls[0]).toMatchObject({
+      kind: 'tool-call',
+      source: 'pi',
+      toolName: 'bash',
+      status: 'ok',
+      durationMs: 42,
+    })
+    const jsonl = trace.exportLog('jsonl')
+    expect(jsonl).toContain('"source":"pi"')
+    expect(jsonl).toContain('"durationMs":42')
   })
 
   it('aggregates totals from llm-call and cache events', async () => {

@@ -45,6 +45,9 @@ const LETTER_OPTION_KEYS = [
   'tools',
   'excludeTools',
   'skills',
+  'codemode',
+  'toolSearch',
+  'mcp',
   'session',
 ] as const
 

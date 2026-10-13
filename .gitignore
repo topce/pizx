@@ -32,5 +32,11 @@ skills-lock.json
 .pizx/
 .npm-cache
 
+# local scratch (npm cache workaround, pi smoke tests, release verification)
+.npm-cache-tmp/
+.pi-smoke/
+.pi-upgrade-scratch/
+.launch-smoke/
+
 # npm pack artifacts
 *.tgz

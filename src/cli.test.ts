@@ -104,12 +104,18 @@ describe('cli parseArgs', () => {
       'read,edit',
       '--exclude-tools',
       'bash write',
+      '--codemode',
+      '--tool-search',
+      '--mcp',
       'fix the failing tests',
     ])
     expect(flags.pi).toBe(true)
     expect(flags.session).toBe('auth-refactor')
     expect(flags.tools).toEqual(['read', 'edit'])
     expect(flags.excludeTools).toEqual(['bash', 'write'])
+    expect(flags.codemode).toBe(true)
+    expect(flags.toolSearch).toBe(true)
+    expect(flags.mcp).toBe(true)
     expect(positional).toEqual(['fix the failing tests'])
   })
 
@@ -120,7 +126,14 @@ describe('cli parseArgs', () => {
 
 describe('assertPiFlags', () => {
   it('rejects Π-only flags without --Pi as VALIDATION', () => {
-    for (const flag of [{ session: 'auth' }, { tools: ['read'] }, { excludeTools: ['bash'] }]) {
+    for (const flag of [
+      { session: 'auth' },
+      { tools: ['read'] },
+      { excludeTools: ['bash'] },
+      { codemode: true },
+      { toolSearch: true },
+      { mcp: true },
+    ]) {
       expect(() => assertPiFlags({ pi: false, ...flag })).toThrowError(
         expect.objectContaining({ code: 'VALIDATION' })
       )
@@ -129,7 +142,15 @@ describe('assertPiFlags', () => {
 
   it('accepts them with --Pi', () => {
     expect(() =>
-      assertPiFlags({ pi: true, session: 'auth', tools: ['read'], excludeTools: ['bash'] })
+      assertPiFlags({
+        pi: true,
+        session: 'auth',
+        tools: ['read'],
+        excludeTools: ['bash'],
+        codemode: true,
+        toolSearch: true,
+        mcp: true,
+      })
     ).not.toThrow()
   })
 

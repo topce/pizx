@@ -114,9 +114,14 @@ Pass options as a plain object before the template: `` π({ ...opts })`prompt` `
 
 **`Π` (coding agent):** `cwd`, `model`, `thinkingLevel`, `thinkingBudgets`,
 `quiet`, `tools` (allow-list), `excludeTools`, `system`, `appendSystemPrompt`,
-`skills`, `session`, `timeoutMs`, `maxRetries`, `apiKey`, `confirm`.
+`skills`, `codemode`, `toolSearch`, `mcp`, `session`, `timeoutMs`, `maxRetries`,
+`apiKey`, `confirm`.
 `session: 'name'` persists and resumes one conversation in pi's session store;
 unnamed Π calls stay in-memory, and a name may be open only once per process.
+`codemode` enables the JavaScript sandbox tool, `toolSearch` the tool-search tool,
+and `mcp` connects MCP servers from `~/.pi/agent/mcp.json` (and a trusted
+project's `.pi/mcp.json`); the SDK does not load pi's built-in extensions, so
+these opt in.
 
 **`α` (ACP agent):** `server` (**required** — string array, e.g.
 `['kiro-cli', 'acp']`), `cwd`, `env`, `quiet`, `timeoutMs`, `confirm`. Server
@@ -196,6 +201,23 @@ Or inject everything as globals (boots a lazy default app):
 import '@topce/pizx/globals'
 const answer = await π`explain async/await`
 ```
+
+### Non-chat models (`ctx.llm`)
+
+Besides `ask`/`stream`/`pick`, the `llm` service reaches Pi's non-chat models
+(`classifier`, `image`) directly:
+
+```js
+await app.ctx.llm.modelsOfType('classifier')          // readonly models of a type
+await app.ctx.llm.pickOfType('image', 'fake/img-1')   // 'provider/id' | 'id' | first credentialed
+
+const res = await app.ctx.llm.classify(model, context)        // structured classification
+const img = await app.ctx.llm.generateImages(model, context)  // image generation
+```
+
+`classify`/`generateImages` resolve credentials per request and, unlike `ask`,
+**do not throw on a provider error** — check `res.stopReason` (and
+`errorMessage`). Usage is recorded on the active trace span like any other call.
 
 ---
 
@@ -340,6 +362,8 @@ echo "prompt" | pizx -p               # empty prompt + piped stdin also reads st
 pizx --acp --acp-server "kiro-cli acp" "prompt"   # quick α query
 pizx --run --run-harness claude "prompt"          # quick ε query (harness CLI)
 pizx --Pi "prompt"                    # quick Π query (coding agent, tools)
+pizx --Pi --codemode "prompt"          # + JS codemode sandbox over tools
+pizx --Pi --mcp "prompt"               # + MCP servers from mcp.json
 pizx --Pi --session auth "continue"   # resume a durable Π conversation
 pizx --Pi --tools read,edit "prompt"  # restrict the tool allow-list
 pizx --letters                        # list registered letters
@@ -384,7 +408,7 @@ exits with the matching code below.
 | `3` | `AUTH` — no credentials/model (run `pi auth login`) |
 | `4` | `AGENT` — Π coding-agent failure |
 | `5` | `ACP` — α ACP server/connection failure |
-| `6` | `CANCELLED` — user declined a confirmation gate |
+| `6` | `CANCELLED` — user declined a confirmation gate, or a Π run was aborted |
 | `7` | `INTERNAL` — unexpected internal error |
 | `8` | `HARNESS` — ε harness failure (non-zero exit, timeout, missing binary) |
 

@@ -4,6 +4,24 @@ pizx is published to npm as [`@topce/pizx`](https://www.npmjs.com/package/@topce
 Releases are cut manually from `main`. CI (`.github/workflows/ci.yml`) runs
 typecheck, lint, tests, build, and `npm pack --dry-run` on every push and PR.
 
+## Versioning
+
+**A pizx version is twice the Pi version it is built against** — `@earendil-works/pi-ai`
+1.0.0 → pizx 2.0.0, pi 1.2.0 → pizx 2.4.0. The scheme starts at the pi 1.0.0
+cut, so 2.4.0 means "the pizx built for pi 1.2.x".
+
+This is deliberately **not** SemVer:
+
+- The version communicates the Pi SDK generation, not the size of the change.
+- A breaking change can ship in a minor (`2.0.0 → 2.4.0`) when the Pi dependency
+  moves.
+- There is no "major bump" available to signal a break, so **breaking changes
+  must be called out explicitly** in the `CHANGELOG.md` entry, including the
+  migration needed — see the `tool-call` trace-event change in `[2.4.0]`.
+
+Because consumers cannot infer compatibility from the version, pin exact
+versions (`npm i @topce/pizx@2.4.0`) rather than relying on `^`.
+
 ## Pre-release checklist
 
 Run the exact CI sequence locally from a clean tree:
@@ -21,6 +39,9 @@ Verify the tarball contains only `dist/`, `README.md`, `AGENTS.md`, `llms.txt`,
 and `package.json` (see the `files` field in `package.json`), and that no test
 fixtures, secrets, or stray build artifacts are included.
 
+If the global npm cache is not writable (a common cause of `EPERM ... _cacache`),
+add `--cache <local-dir>` to `pack`/`publish` rather than running with `sudo`.
+
 Then:
 
 1. Move the `[Unreleased]` changelog section to a dated `## [x.y.z]` section.
@@ -28,6 +49,32 @@ Then:
 3. Commit and merge to `main`: `Release vX.Y.Z — <summary>`.
 4. `npm publish` (the `prepublishOnly` hook runs `npm run build`).
 5. `git tag vX.Y.Z && git push --follow-tags`.
+6. **Verify the published artifact** (see below) — publishing is not the end of
+   the release.
+
+## Post-publish verification
+
+The tarball that CI packed is not necessarily the tarball the registry serves.
+In the first minutes after `npm publish`, check the real thing from a scratch
+directory:
+
+```bash
+mkdir /tmp/pizx-verify && cd /tmp/pizx-verify
+npm init -y
+npm i @topce/pizx@X.Y.Z
+npx pizx --version              # prints the new version
+npx pizx --letters --json       # the expected letter set, valid JSON
+npx pizx -p "reply OK" --json   # one live π call, exit code 0
+```
+
+Then confirm the release is reachable and reversible:
+
+- `npm view @topce/pizx@X.Y.Z version` resolves, and the latest tag is right.
+- The GitHub release/tag exists (`git push --follow-tags` actually ran).
+- No deprecation warning is attached to the version.
+
+If any of these fail, go straight to the rollback plan below — do not wait for
+user reports.
 
 ## Rollback plan
 

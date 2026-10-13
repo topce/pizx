@@ -155,6 +155,9 @@ describe('Words service', () => {
       server: ['kiro-cli', 'acp'],
       cwd: '/x',
       session: 'review', // durable Π session name
+      codemode: true, // Π extension flags forward to agent slots
+      toolSearch: true,
+      mcp: true,
       env: undefined, // undefined values are skipped
       unknown: 1, // unrecognized keys are skipped
     }
@@ -163,6 +166,9 @@ describe('Words service', () => {
       server: ['kiro-cli', 'acp'],
       cwd: '/x',
       session: 'review',
+      codemode: true,
+      toolSearch: true,
+      mcp: true,
     })
   })
 })

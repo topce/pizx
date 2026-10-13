@@ -93,6 +93,7 @@ export {
   type RunEndEvent,
   type RunStartEvent,
   type RunTotals,
+  type ToolCallEvent,
   Trace,
   type TraceConfig,
   type TraceErrorEvent,
